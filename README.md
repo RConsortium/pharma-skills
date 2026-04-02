@@ -60,7 +60,7 @@ group_sequential_design/
 Each design produces a subfolder under `output/` containing:
 - `gsd_design.R` -- R design script
 - `gsd_results.json` -- design results
-- `multiplicity_diagram.png` -- Maurer-Bretz diagram
+- `multiplicity_diagram.png` -- graphical testing diagram
 - `gsd_verification.R` -- simulation verification script
 - `gsd_verification_log.md` -- pass/fail results
 - `gsd_report.py` -- Python report generator
