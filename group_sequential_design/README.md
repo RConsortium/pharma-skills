@@ -2,6 +2,10 @@
 
 A Claude Code skill for designing group sequential clinical trials for survival endpoints (OS, PFS, DFS) with interim analyses, spending functions, multiplicity, and event/enrollment prediction.
 
+## Video Demo
+
+https://drive.google.com/file/d/1O9-SCJEoXGJv6J3YXuZZ1eiVB4Jk6Gao/view
+
 ## What It Does
 
 - Collects design inputs through a structured Q&A
@@ -54,17 +58,7 @@ group_sequential_design/
 ├── post_design.md      # IA timing checks and verification procedure
 ├── README.md           # This file
 ├── LICENSE
-└── references/         # Bundled PDFs and protocol text references
-    ├── gsDesign.pdf
-    ├── gsDesign2.pdf
-    ├── lrstat.pdf
-    ├── eventPred.pdf
-    ├── gMCPLite.pdf
-    ├── gsd-tech-manual-text.txt
-    ├── kn048-text.txt
-    ├── kn407-text.txt
-    ├── kn426-text.txt
-    └── kn564-text.txt
+
 ```
 
 ## Output
