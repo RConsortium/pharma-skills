@@ -1,1 +1,9 @@
 references/
+
+# Local AI rule definitions
+AGENTS.md
+.cursorrules
+.windsurfrules
+.github/copilot-instructions.md
+llms.txt
+CLAUDE.md
