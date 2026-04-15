@@ -1,5 +1,5 @@
 ---
-name: group-sequential-design
+name: group_sequential_design
 description: >
   Design group sequential clinical trials for survival endpoints (OS, PFS, DFS) with interim analyses,
   spending functions, boundaries, multiplicity, and event/enrollment prediction. Triggers on: Phase 3 trial design, sample size/events for survival endpoints, alpha spending, group sequential design, interim analysis planning, or enrollment/event timeline prediction for clinical trials.
@@ -11,7 +11,8 @@ description: >
 |------|-----------------|--------------|
 | `reference.md` | Design guidance, parameter tables, spending functions, key rules, failure modes, analysis framework, protocol references | After collecting user inputs, before writing R code |
 | `examples.md` | All R code examples organized by design pattern | When you need code for a specific pattern — read only the relevant section |
-| `post-design.md` | IA timing checks (warning messages, user options), verification procedure (pass criteria, lrsim code, log template) | After computing the design (step 6), before delivering |
+| `post_design.md` | IA timing checks (warning messages, user options), verification procedure (pass criteria, lrsim code, log template) | After computing the design (step 6), before delivering |
+| `scripts/gsd_report_template.py` | Bundled Python report template — reads gsd_results.json, generates gsd_report.docx with zero hardcoded values | Step 9: copy to output dir and run (or extend for design-specific features) |
 
 Do NOT read these files upfront. Read them only when you reach the corresponding step.
 
@@ -40,14 +41,16 @@ This gives the user a visual progress indicator (spinner → checkmark) througho
 
 ---
 
-1. **Create output subfolder** — Immediately after the user answers Q1 (disease/setting), create `output/gsd_{disease}_{endpoints}_{YYYYMMDD}/` (e.g., `output/gsd_1l_mnsclc_pfs_os_20260327/`). Use a placeholder for `{endpoints}` if not yet known (e.g., `output/gsd_1l_mnsclc_20260327/`), and rename later once endpoints are confirmed. ALL outputs — including any exploratory plots or comparisons generated during the Q&A phase — go in this subfolder.
+1. **Create output subfolder** — If the user specifies an output directory path (e.g., "write all outputs to /some/path"), use that exact path as `out_dir` and create it. Otherwise, immediately after the user answers Q1 (disease/setting), create `output/gsd_{disease}_{endpoints}_{YYYYMMDD}/` (e.g., `output/gsd_1l_mnsclc_pfs_os_20260327/`). Use a placeholder for `{endpoints}` if not yet known (e.g., `output/gsd_1l_mnsclc_20260327/`), and rename later once endpoints are confirmed. ALL outputs — including any exploratory plots or comparisons generated during the Q&A phase — go in this subfolder.
 2. **Collect inputs** — Ask the questions below, one at a time
-3. **Summarize and confirm** — Present a clean table, get user confirmation
+3. **Summarize and confirm** — Present a clean table, get user confirmation. If the prompt states all inputs are confirmed or is an automated run, skip this step and proceed immediately.
 4. **Read `reference.md`** — Review design guidance, key rules, and failure modes
 5. **Read relevant sections of `examples.md`** — Get code for the chosen design pattern
-6. **Write and run the R design script** — Compute boundaries, save results to `gsd_results.json`, generate `multiplicity_diagram.png` via `graphicalMCP::graph_create()` + `plot()`. Save all outputs to the subfolder created in step 1.
+6. **Write and run the R design script** — Compute boundaries, save results to `gsd_results.json`, generate `multiplicity_diagram.png` via `graphicalMCP::graph_create()` + `plot()`. Save all outputs to the subfolder created in step 1. **gsd_results.json must include all user-specified constraints** (min_followup, min_gap, max_N, feasible_range, power_target, n_sim) so the report script can reference them without hardcoding.
 
    **Transition matrix validation (step-down designs only).** Immediately after defining the transition matrix in the R script, call `validate_transition_matrix(tm, gate_prereqs)` (see `examples.md` → "Transition Matrix Validation"). This function checks Rule 3 programmatically and stops with an error if any transition routes alpha to a hypothesis that must already be rejected. The script must not proceed to boundary computation if validation fails.
+
+   **Piecewise control hazards:** When the control arm has a piecewise hazard (e.g., different median survival in early vs late periods), use `gsSurv(lambdaC=c(log(2)/m1, log(2)/m2), S=breakpoint, ...)` — do NOT write custom event calculation functions. `gsSurv()` natively supports piecewise hazards via the `lambdaC` vector and `S` breakpoint parameters. This ensures correct event accrual, timing, and boundary computation. Similarly, use `nSurv()` with the same piecewise parameters for baseline calculations.
 
    **N-first approach.** N is a top-level design parameter — all results (IA timing, FA timing, events, power) depend on N. The design script follows three phases:
    - **Phase A: Determine starting N** — Compute required events via Schoenfeld, estimate minimum N from events and prevalence, pick starting N from user's feasibility range (Q13b). Derive R from enrollment ramp. See `reference.md` → "N-First Design Algorithm".
@@ -65,20 +68,57 @@ This gives the user a visual progress indicator (spinner → checkmark) througho
 
    **Multiplicity diagram:** The node labels must show the **actual initial alpha** (e.g., 0.005), not the fraction of total alpha. Pass the raw alpha values directly as `hypotheses` — `graphicalMCP` displays whatever values you pass. Use `hyp_names` for the hypothesis name + endpoint (e.g., `"H1\nPFS-Ext"`) and `precision = 4` in `plot()`.
 
+6b. **Check for over-powered hypotheses** — After computing boundaries and power for all hypotheses, check if any hypothesis has power more than 3 percentage points above the target (e.g., >93% when target is 90%). If so, present a table showing each hypothesis's power and flag the over-powered ones. Suggest alpha reallocation: reduce the over-powered hypothesis's alpha and shift it to the hypothesis with the least margin above the power target. This is especially important for:
+   - Step-down designs where gated hypotheses (tested at full alpha 0.025) are inherently over-powered
+   - Co-primary designs where one endpoint has a stronger HR than the other
+   - Multi-population designs where the ITT population has many more events than the subgroup
+
+   **Direction of reallocation matters:** Always reallocate alpha FROM the overpowered endpoint TO the underpowered one. For example, if PFS has power 97% and OS has power 90%, suggest *reducing* PFS alpha (e.g., 0.005 → 0.003) and *increasing* OS alpha (e.g., 0.020 → 0.022). Never suggest increasing alpha for an already-overpowered endpoint — that makes the imbalance worse.
+
+   **Alpha reallocation comparison table:** When suggesting alpha reallocation, always include a comparison table showing the current design vs the proposed reallocation, at the same fixed N. The table should show:
+
+   | Metric | Current (PFS 0.005 / OS 0.020) | Proposed (PFS 0.003 / OS 0.022) |
+   |--------|-------------------------------|--------------------------------|
+   | PFS power | 97.5% | 94.1% |
+   | OS power | 90.0% | 91.2% |
+   | PFS Z boundary | 2.576 | 2.748 |
+   | OS Z boundary (FA) | 2.109 | 2.082 |
+   | Events (unchanged) | ... | ... |
+   | IA / FA timing (unchanged) | ... | ... |
+
+   This lets the user see the concrete impact of the reallocation — how much power shifts between endpoints — before deciding. Compute the alternative boundaries in the R script and store both options in `gsd_results.json` (e.g., `"alpha_reallocation_comparison"` array).
+
+   See `reference.md` → "Handling Over-Powered Hypotheses" for the full options (increase alpha vs accept derived power).
+
 7. **Check IA timing vs enrollment** — Compare each interim analysis calendar time against the enrollment duration. If ANY interim analysis occurs before enrollment completes, **warn the user** and present options to fix it (see "IA Timing vs Enrollment Check" section below). Do NOT proceed until the user confirms the design or adjusts it.
 7b. **NPH Evaluation** *(only if user specified NPH in Q7b)* — With the PH design complete (events, boundaries, enrollment from steps 1–7), evaluate it under the NPH assumptions. See "NPH Evaluation Workflow" section below. Present the NPH evaluation table to the user. If power under NPH is unacceptable, discuss options before proceeding:
    - **Add looks for NPH robustness**: If there is a large gap between analyses AND the endpoint's AHR improves over time, suggest adding the endpoint to an additional analysis. This gives the endpoint a second chance at a later timepoint with better AHR. See `reference.md` → "Adding Looks for NPH Robustness" for the full strategy. When evaluating timing options for the additional analysis, always compute and compare the NPH endpoint's power at each option — the timing should be driven by NPH power, not just the triggering endpoint's IF.
    - **Alpha reallocation**: Shift alpha from an over-powered endpoint to the NPH-affected endpoint
    - **Increase N**: More events improve AHR over time (modest effect)
+   - **Reduce N to push analyses later** *(counterintuitive but effective for delayed-effect NPH)*: With fewer patients, events accrue more slowly, so analyses happen at later calendar times when the AHR has improved (closer to the late-period HR). This is especially powerful when: (a) the delayed effect period is short (e.g., 3 months) relative to the analysis timeline, and (b) the late-period HR is substantially better than the overall PH HR. Trade-off: the study enrolls fewer patients but runs longer. Present an N sensitivity table showing how reducing N affects: analysis calendar times, AHR at each analysis, NPH power, and total study duration. Often a modest N reduction (e.g., 700 → 620) can push the FA 6–12 months later, improving AHR from 0.80 to 0.76 and gaining 5–8 pp of NPH power.
+   - **Relax min follow-up or min gap constraints**: If these constraints are binding (forcing analyses earlier than event-driven timing would dictate), relaxing them allows the event-driven schedule to determine timing — which naturally produces later analyses with better AHR under NPH.
    - **Accept lower NPH power**: If NPH is a sensitivity analysis, not the primary design basis
-8. **Verify via simulation** — Run `lrstat` simulation. Save verification script and log in the subfolder. If verification FAILS, investigate and fix the design before proceeding. *(If NPH was specified, run verification under BOTH PH and NPH assumptions.)*
-9. **Generate Word report via Python** — Only after verification passes. **Before writing `gsd_report.py`, read `reference.md` → "Report Sections", "Boundary Table Format", "IA/FA Plan Table Format", and "Sample Size and Power Summary"** to get the exact section order, table columns, and content requirements. Then write the script to match that spec exactly. The report has 6 sections: (1) Design Assumptions, (2) IA/FA Analysis Plan, (3) Multiplicity Strategy, (4) Efficacy/Futility Boundaries, (5) Sample Size and Power Summary, (6) Design Assessment.
+8. **Verify via simulation** — Run `lrstat` simulation. Save verification script and log in the subfolder. If verification FAILS, investigate and fix the design before proceeding. *(If NPH was specified, run verification under BOTH PH and NPH assumptions — the NPH verification must include both power under H1-NPH AND type I error under H0-NPH. See `post_design.md` → "NPH verification" for the required log format.)*
 
-   **Critical: Zero hardcoded design values.** The report script must be a pure template driven entirely by `gsd_results.json`. Every number in the report — alpha values, event counts, timing, power, section headings, narrative text, and improvement suggestions — must be read from the JSON. The script should produce a correct report for ANY version of the JSON without editing the script itself. This means:
-   - Section headings (e.g., "H1: PFS-Ext, α = ...") use `h['H1']['alpha']`, not a literal
-   - Narrative paragraphs reference `timing['ia_time']`, `ss['total_N']`, etc.
-   - Design Assessment uses conditional logic based on JSON values to decide which limitations and improvements to include
-   - When the design is revised (alpha reallocation, sample size change), re-running the same `gsd_report.py` on the updated JSON must produce a correct report with no manual edits
+   **Store verification results in `gsd_results.json`.** After verification passes, write all simulation outputs (simulated power, type I error, simulated events, simulated timing per analysis) into `gsd_results.json` under a `"verification"` key. The report script must read these from JSON — never hardcode simulation result values (e.g., `"90.4%"`, `"2.40%"`, `"598"`) directly in `gsd_report.py`. This is the #2 source of hardcoding after sensitivity tables.
+9. **Generate Word report via Python** — Only after verification passes. **Use the bundled report template** at `scripts/gsd_report_template.py` as the starting point. This template is structurally hardcoding-free — it reads all values from `gsd_results.json` and generates the 6-section report dynamically.
+
+   **How to use the template:**
+   1. Copy `scripts/gsd_report_template.py` to the output subfolder as `gsd_report.py`
+   2. Review whether the JSON structure from `gsd_design.R` matches what the template expects (field names like `total_N`, `os_z_upper`, `os_hr_upper`, etc.)
+   3. If the JSON uses different field names, either (a) adjust the R script to use the expected names, or (b) add a small mapping section at the top of the copied script — but do NOT hardcode any design values
+   4. If the design has features not covered by the template (e.g., NPH evaluation, 2-IA alternative, multi-population), extend the template by adding new sections that read from JSON — following the same pattern of `j("key")` lookups
+   5. Run: `python gsd_report.py <output_dir>` — **always execute the report script and verify gsd_report.docx was created.** Do not consider this step complete until the .docx file exists. If the script errors, fix it and rerun. **This is non-negotiable** — in past iterations, the report script was written but never executed, resulting in a missing .docx. Always run the script and confirm the file exists before proceeding.
+
+   **Why a template?** Writing the report from scratch each time is the #1 source of hardcoded values across all evaluations. The template eliminates this structurally — every number flows from JSON by construction. Extending the template for a specific design is much less error-prone than writing 400+ lines from scratch.
+
+   **If you must write from scratch** (e.g., the design structure is too different from what the template handles), follow these rules strictly:
+   - Every number must come from `gsd_results.json` via `r["key"]` or equivalent
+   - Narrative text like "meeting the 6-month gap requirement" must use `r["min_gap"]`
+   - Threshold strings like "≥ 90%" must be built: `f">= {r['power_target']}%"`
+   - Sensitivity tables, verification results, and comparison tables must be stored in `gsd_results.json` as arrays/objects first, then looped over in the report script: `for row in data["sensitivity_table"]: ...`
+   - After writing, grep for numeric literals and fix any that match design values
+   - **Self-check**: if you find yourself typing a number (e.g., `"K=13"`, `"90.4%"`, `"450 patients"`), stop — put it in `gsd_results.json` first and read it from there
 10. **Copy all scripts** — Copy `gsd_design.R`, `gsd_report.py`, and `gsd_verification.R` into the output subfolder.
 11. **Deliver outputs** — Report the subfolder path, summarize results, and present the key strengths/limitations to the user
 
@@ -94,6 +134,8 @@ This gives the user a visual progress indicator (spinner → checkmark) througho
 - **OS IF > 85%**: Increasing N can lower OS IF at IA. Run an N sensitivity table. See `reference.md` → "High OS IF at IA".
 - **Short-survival diseases** (median OS 8–10 mo): The N-duration effect is disproportionately large. If FA is too late, present N sensitivity table first — modest N increases often solve the problem. See `reference.md` → "Short-survival amplification".
 - **N sensitivity table values must be consistent with the enrollment ramp.** Iterate over the last enrollment period duration K and compute actual N = sum(gamma × R). Do NOT use arbitrary round numbers.
+- **N sensitivity table must include operational columns** — not just N/events/power. Required columns: `K (months) | N | Events_IA | Events_FA | Enroll(mo) | IA(mo) | FA(mo) | Study(mo) | MinFU(mo) | IA-FA Gap(mo) | Power(%)`. This lets users compare the full operational picture — a design with slightly more patients but 12 fewer months of study duration is often preferable.
+- **Store the sensitivity table in `gsd_results.json`** as a `"sensitivity_table"` array of objects so the report can loop over it without hardcoding any values.
 
 ---
 
@@ -318,9 +360,9 @@ Collect design parameters by asking **ONE question at a time**. Wait for the use
     - A) **Beta spending** — boundary controls probability of stopping under H1.
     - B) **Under the null** — boundary set for high probability of stopping when HR=1.
 
-    **Event inflation depends on binding vs non-binding:**
-    - **Binding (test.type=3):** Beta spending inflates events.
-    - **Non-binding (test.type=4):** No event inflation regardless of spending function or gamma.
+    **Event inflation — "non-binding" is asymmetric in gsDesign:**
+    - **Binding (test.type=3):** Beta spending inflates events (both alpha and power assume binding).
+    - **Non-binding (test.type=4):** Also inflates events, but less than binding. "Non-binding" only applies to alpha (efficacy boundaries ignore futility). Power is still computed as if futility IS binding — trials that cross the futility bound under H1 are treated as lost, so more events are needed to maintain target power. The inflation is modest (~0.5% for gamma=-20, ~3% for gamma=-4, ~5% for gamma=-2). See `reference.md` → "Beta spending futility and sample size" for the full explanation.
     - **Under the null:** No event inflation.
 
     *(If beta spending)* "Which spending function for futility?"
@@ -337,8 +379,11 @@ Collect design parameters by asking **ONE question at a time**. Wait for the use
 13b. "What range of total sample size do you consider feasible for this trial? This helps us check whether the computed design falls within practical limits."
     - Example: "600–900 patients" or "no more than 800"
     - If the user provides a range, store it. After the design is computed, compare the resulting total N against this range. If N falls outside the range, flag it and discuss options (adjust alpha split, relax power target, change enrollment, etc.).
+    - **Infeasibility check:** If the minimum N required to meet the power target exceeds the user's upper bound, this is an infeasible constraint. Do NOT silently exceed the limit — explicitly flag it: "The minimum sample size for these design parameters is N_min = XXX, which exceeds your constraint of < YYY. Options: (a) relax the N constraint, (b) reduce power target, (c) increase HR assumption, (d) adjust alpha allocation." Present trade-offs and let the user decide before proceeding.
     - **N sensitivity exploration must center around the user's stated range.** The user's range reflects what is feasible and desired — anchor exploration there. If the user says "less than 600", explore e.g., 500–600 in steps of 20. If the user says "600–900", explore that range. Do NOT start from the computed minimum N and work up — that wastes the user's time on infeasible or uninteresting values.
     - **N values must be consistent with the enrollment ramp.** Do NOT use arbitrary round numbers (e.g., 520, 560, 600). Instead, compute the actual N that results from varying the last enrollment period duration. With a ramp of 5/mo×2mo + 20/mo×3mo + 30/mo×Kmo, the only free parameter is K (months of steady-state enrollment). Iterate over K values and report the resulting N = 5×2 + 20×3 + 30×K = 70 + 30K. For example: K=15→520, K=16→550, K=17→580, K=18→610. This ensures every N in the sensitivity table is achievable with the stated enrollment rates.
+    - **N sensitivity must include a "what-if" row up to 5% above the constraint.** When the design is near the N constraint boundary, always include at least one row in the sensitivity table that exceeds the constraint by up to 5% (e.g., if the constraint is N < 450, include the next achievable N up to ~472). Label it clearly as "exceeds constraint" and show the improvement in study duration, IA-FA gap, or power. This gives the user concrete data on the cost of relaxing the constraint by a small amount — often a modest N increase (e.g., 420 → 450) produces a disproportionate improvement in study timeline.
+   - **Proactively recommend the above-constraint N when the operational benefit is significant.** If the "what-if" row shows a disproportionate improvement (e.g., 6+ months shorter study duration, or IA-FA gap dropping from borderline to comfortable), explicitly recommend it: "N = 450 exceeds the constraint by 7%, but it shortens the study by 8 months and provides a comfortable 9-month IA-FA gap vs the tight 4-month gap at N = 420. Consider relaxing the N constraint." The sensitivity table makes the trade-off visible; your recommendation makes the choice actionable.
     - If the user says "no constraint" or declines to specify, skip and proceed.
 
 14. "What percentage of patients do you expect to drop out of the study per year?"
@@ -425,7 +470,16 @@ Based on the collected inputs, identify the closest design pattern from `example
 
 **Single-look (k=1) endpoints**: When a co-primary endpoint has only one analysis (e.g., PFS tested only at the IA), `gsDesign(k=1)` and `gsSurv(k=1)` will fail. Use `compute_single_look_boundary()` from `examples.md` and `nSurv()` for the baseline. See `reference.md` → "gsDesign(k=1) failure" for details.
 
-**Multi-population designs**: Use Pattern 5 for any design with 2+ populations. Events are pre-specified (derived from prevalence via Schoenfeld formula — do NOT use `nSurv()`/`gsSurv()` which can oversize subpopulation designs), boundaries computed via `compute_gsd_boundaries()` per hypothesis, and multiplicity controlled via Maurer-Bretz graphical method. See `reference.md` → "Multi-Population Design" for the alpha recycling priority rules and step-down vs alpha-split strategies.
+**Multi-population designs**: Use Pattern 5 for any design with 2+ populations. Boundaries are computed via `compute_gsd_boundaries()` per hypothesis, and multiplicity is controlled via Maurer-Bretz graphical method. See `reference.md` → "Multi-Population Design" for the alpha recycling priority rules and step-down vs alpha-split strategies.
+
+   **Why Schoenfeld (not gsSurv/nSurv) for subgroup events:** `gsSurv()` and `nSurv()` treat the subgroup as an independent trial — they size enrollment as if the subgroup were the entire study. But in a multi-population design, the subgroup is a *fraction* of the total enrollment. Using `gsSurv()` for a 70%-prevalence subgroup effectively sizes the trial as if 100% of patients are in the subgroup, inflating the total N by up to 1/prevalence (e.g., ~43% for 70% prevalence). Instead, derive events analytically:
+   1. Compute required events per hypothesis: `events = 4 × (z_α + z_β)² / log(HR)²` (Schoenfeld)
+   2. For multi-look hypotheses, apply the GSD inflation factor: `events_FA = events_schoenfeld × gsDesign(k, alpha, beta, sfu)$n.I[k] / gsDesign(k=1, alpha, beta)$n.I[1]`
+   3. Compute per-patient event probability using `compute_event_prob()` (see `examples.md`), which integrates over the enrollment distribution
+   4. Derive N from the bottleneck hypothesis: `N_sub = events_FA / event_prob`, then `N_total = N_sub / prevalence`
+   5. Take the max N across all hypotheses
+
+   This approach correctly accounts for the fact that the subgroup sees only `prevalence × N` patients, and avoids the inflation that `gsSurv()` introduces.
 
 **Step-down gated hypotheses**: For hypotheses with initial alpha = 0 (gated behind other hypotheses), compute boundaries at **full alpha (0.025)**, not at the alpha that might flow through the gate. The gated hypothesis has no initial allocation — its effective alpha depends entirely on the cascade. Full alpha is the appropriate basis for design properties (boundaries, events, power).
 
@@ -470,7 +524,7 @@ Then read `reference.md` and the relevant sections of `examples.md` to proceed.
 
 ## IA Timing Checks
 
-After computing the design (step 6), **read `post-design.md` → "IA Timing Checks"** for the full checklist, warning messages, and user options.
+After computing the design (step 6), **read `post_design.md` → "IA Timing Checks"** for the full checklist, warning messages, and user options.
 
 Quick summary — all must pass before proceeding:
 - [ ] IA1 occurs at least [Q15 answer] months after enrollment ends
@@ -510,7 +564,7 @@ Key principle: **design the FA-triggering endpoint first** (it drives the study 
 
 ## Verification
 
-Every new design MUST be verified by simulation before delivery. **Read `post-design.md` → "Verification"** for the full procedure: what to verify, pass criteria, how to run `lrsim()`, and the verification log template.
+Every new design MUST be verified by simulation before delivery. **Read `post_design.md` → "Verification"** for the full procedure: what to verify, pass criteria, how to run `lrsim()`, and the verification log template.
 
 Quick pass criteria:
 - Power (H1): within ±2 pp of calculated

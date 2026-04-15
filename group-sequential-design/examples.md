@@ -1241,6 +1241,70 @@ print(est$details)
 
 ---
 
+## Event Probability Calculator for Multi-Population Designs
+
+`compute_event_prob()` calculates the average probability that a patient experiences an event by a given analysis time, properly integrating over the enrollment distribution. This is the correct way to convert between required events and sample size for subpopulation designs — do NOT use `nSurv()` or `gsSurv()` for this purpose.
+
+**Why this matters**: For subpopulation designs, N_total = events / event_prob / prevalence. The `estimate_min_N()` function above uses a crude median-followup approximation. This function gives the exact answer by integrating over each patient's actual follow-up time given the enrollment schedule.
+
+**Why not use `gsSurv()` for subgroup event derivation?** `gsSurv()` treats the subgroup as an independent trial — it takes subgroup enrollment rates and optimizes enrollment duration to hit the event target. But in a multi-population trial, enrollment duration is fixed by the overall trial, not the subgroup. The result is `gsSurv()` can inflate N beyond what's needed, especially at lower prevalences (e.g., 30% biomarker-positive). The correct approach: compute required events via Schoenfeld, compute per-patient event probability via `compute_event_prob()`, then derive N = events / event_prob / prevalence.
+
+**Bundled script**: `scripts/compute_event_prob.R` — source it in your design script:
+```r
+source("<skill_path>/scripts/compute_event_prob.R")
+```
+
+Also provides `compute_N_from_events(events_FA, analysis_time, lambdaC, hr, eta, gamma_vec, R_vec, prevalence, ratio, S)` which returns `list(event_prob, N_sub, N_total)`.
+
+**Usage — deriving N_total for a subpopulation hypothesis:**
+```r
+# Eval-3 example: H3 = OS in PD-L1>=50% subgroup (prevalence 70%)
+# Step 1: Schoenfeld events (for the subgroup)
+events_os_sub <- schoenfeld_events(alpha = 0.020, power = 0.90, hr = 0.69)
+# Inflate for 2-look GSD spending
+gsd_inflation <- gsDesign(k=2, alpha=0.020, beta=0.10, sfu=sfLDOF)$n.I[2] /
+                 gsDesign(k=1, alpha=0.020, beta=0.10)$n.I[1]
+events_os_sub_FA <- ceiling(events_os_sub * gsd_inflation)
+
+# Step 2: Event probability at estimated FA time
+# Use TOTAL enrollment rates (not subgroup) — prevalence is applied to N, not rates
+p_event <- compute_event_prob(
+  analysis_time = 35,           # estimated FA time
+  lambdaC = log(2) / 8,        # OS-sub control median 8 months
+  hr = 0.69,
+  eta = -log(1 - 0.02) / 12,   # 2% annual dropout
+  gamma_vec = c(5, 20, 30),    # total enrollment rates
+  R_vec = c(2, 3, 18),
+  ratio = 1
+)
+
+# Step 3: N from events, event_prob, and prevalence
+N_subgroup <- ceiling(events_os_sub_FA / p_event)
+N_total <- ceiling(N_subgroup / 0.70)   # prevalence = 70%
+cat(sprintf("Events=%d, p_event=%.3f, N_sub=%d, N_total=%d\n",
+            events_os_sub_FA, p_event, N_subgroup, N_total))
+```
+
+**Usage — piecewise hazard (eval-4 style):**
+```r
+p_event_pw <- compute_event_prob(
+  analysis_time = 40,
+  lambdaC = c(log(2)/4, log(2)/8),  # piecewise: median 4 mo then 8 mo
+  hr = 0.75,
+  eta = -log(1 - 0.03) / 12,
+  gamma_vec = c(5, 20),
+  R_vec = c(3, 34),
+  ratio = 1,
+  S = 3                              # breakpoint at 3 months
+)
+```
+
+**When to use**: Whenever you need to convert between events and N for multi-population designs. The key formula is `N_total = events / event_prob / prevalence`. Use this instead of `nSurv()` or `gsSurv()` for subpopulation event/N calculations, because those functions treat the subgroup as an independent trial and can oversize the design.
+
+**Relationship to `calc_expected_events()`**: `calc_expected_events(T, lambda, hr, eta, gamma, R, ratio)` returns the *total expected events* for a given N (encoded in gamma and R). `compute_event_prob()` returns the *per-patient event probability* — it's the building block for the N-total calculation when N is unknown. Once N is fixed, use `calc_expected_events()` for all subsequent event computations.
+
+---
+
 ## Single-Look (k=1) Boundary Computation
 
 `gsDesign(k=1)` and `gsSurv(k=1)` both fail — use this helper for any endpoint with a single analysis.

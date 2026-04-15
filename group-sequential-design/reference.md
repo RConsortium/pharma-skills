@@ -493,6 +493,11 @@ The R script saves all design results to `gsd_results.json`. Key fields the Pyth
 - PFS boundaries: `pfs_z_upper`, `pfs_p_upper`, `pfs_hr_upper`, `pfs_info_frac`, `pfs_N`, `pfs_cum_cross_h1`, `pfs_cum_cross_h0`, `pfs_power`, `pfs_power_full`
 - OS boundaries: `os_z_upper`, `os_z_lower`, `os_p_upper`, `os_hr_upper`, `os_hr_lower`, `os_info_frac`, `os_N`, `os_cum_cross_h1`, `os_cum_cross_h0`, `os_power`, `os_power_full`
 
+- Sensitivity table: `sensitivity_table` — array of objects, each row with `K`, `N`, `events_ia`, `events_fa`, `enroll_mo`, `ia_mo`, `fa_mo`, `study_mo`, `min_fu_mo`, `ia_fa_gap_mo`, `power_pct`
+- Verification: `verification` — object with `ph_power_simulated`, `ph_alpha_simulated`, `ph_overall_pass`, and optionally `nph_power_simulated`, `nph_alpha_simulated`, `nph_overall_pass`
+- Timing checks: `timing_checks` — object with `min_followup_met`, `min_followup_actual`, `min_gap_pairs`, `all_constraints_met` (see Phase C above)
+- Alpha comparison (when applicable): `alpha_comparison` — array of objects, each with `config`, `alpha_pfs`, `alpha_os`, `pfs_power`, `os_power`, `ia_mo`, `fa_mo`, `study_mo`
+
 **JSON R-to-Python gotcha: named vectors become arrays.** R's `toJSON()` converts named vectors (e.g., `c(H1=0, H2=1, H3=0, H4=0)`) to JSON arrays `[0, 1, 0, 0]`, losing the names. In the Python report script, access these by position index (e.g., `tm['H1'][1]` for the H2 weight), not by name (e.g., `tm['H1']['H2']` will fail). Similarly, `fromJSON()` in R converts JSON lists-of-objects to data frames — access with `$column[row]` (e.g., `res$populations$prevalence[1]`), not `[[1]]$prevalence`. Always test JSON round-trip access patterns before building the report script.
 
 ---
@@ -557,6 +562,16 @@ The choice depends on how much excess power exists:
 - **Close to 90% (e.g., 91–93%)**: Option A is safer
 - **Well above 90% (e.g., 95%+)**: Option B is cleaner
 - **Both can be combined**: increase alpha modestly AND accept derived power
+
+**Always produce a comparison table when suggesting alpha reallocation.** Don't just say "consider moving alpha from PFS to OS" — show the quantitative impact at fixed N. The table should include both the current and proposed alpha splits, with resulting power for each endpoint, IA timing, FA timing, and study duration. This lets the user see the concrete trade-off rather than guessing.
+
+Example format (store as `"alpha_comparison"` in `gsd_results.json`):
+```
+| Config    | α_PFS  | α_OS   | PFS Power | OS Power | IA(mo) | FA(mo) | Study(mo) |
+|-----------|--------|--------|-----------|----------|--------|--------|-----------|
+| Current   | 0.005  | 0.020  | 97.5%     | 90.0%    | 47.0   | 57.2   | 57.2      |
+| Proposed  | 0.002  | 0.023  | 93.1%     | 91.8%    | 47.0   | 55.8   | 55.8      |
+```
 
 ---
 
@@ -658,6 +673,18 @@ This is counterintuitive because one might expect more patients to generate prop
 3. Pick starting N from user's feasibility range (Q13b), close to N_min. If N_min falls outside the range, flag it.
 4. Derive R from enrollment ramp: given rates `gamma = c(g1, g2, g3)` and period durations `R = c(d1, d2, K)`, solve `K = ceiling((N - g1*d1 - g2*d2) / g3)`. Actual N = sum(gamma × R).
 
+**Multi-population event derivation (Phase A, subgroup designs):**
+
+For multi-population designs (Pattern 5, 5+7), do NOT use `nSurv()` or `gsSurv()` to derive subgroup events or N — they treat the subgroup as an independent trial and can oversize the design. Instead:
+
+1. Compute required events per hypothesis via Schoenfeld: `events_h = 4 × (z_α + z_β)² / log(HR)²`
+2. For multi-look hypotheses, inflate by GSD spending factor: `events_FA = events_h × gsDesign(k, alpha, beta, sfu)$n.I[k] / gsDesign(k=1, alpha, beta)$n.I[1]`
+3. Compute per-patient event probability using `compute_event_prob()` (see `examples.md`), which integrates over the enrollment distribution properly (not a crude median-followup approximation)
+4. Derive N: `N_sub = events_FA / event_prob`, then `N_total = N_sub / prevalence`
+5. Take max across hypotheses to find the bottleneck
+
+After N is fixed, use `calc_expected_events()` for all event computations at specific calendar times, and `gsDesign()` (not `gsSurv()`) with `n.I = c(events_IA, events_FA)` for boundaries. The subgroup's events at the IA and FA are derived from `calc_expected_events()` using `gamma_vec * prevalence` as the subgroup enrollment rates.
+
 **Phase B — Design at fixed N:**
 
 All calculations use the fixed R/N. Use `gsSurv()` ONLY for boundary computation (with fixed R, `minfup=NULL, T=NULL`), NOT for enrollment sizing.
@@ -680,13 +707,47 @@ After Phase B, check requirements:
 
 If any requirement fails, present N adjustment as an option alongside other levers (alpha reallocation, relaxed power target, faster enrollment). When running an N sensitivity analysis, iterate over K (last enrollment period duration) to produce achievable N values consistent with the enrollment ramp. Re-run Phase B with the new N.
 
+**Soft N constraint — prefer slightly exceeding N for better timing:** When the optimal design slightly exceeds the N constraint (by <5%), present it as the recommended option alongside the constrained design, showing the timing/gap improvement gained by the extra patients. Example: if N_max=450 and N=460 cuts study duration by 8 months and brings the IA-FA gap from 28 months to 16 months, recommend N=460 with clear trade-off explanation. A small feasibility stretch for substantially better operational timing is almost always a good trade-off. Present both options in the sensitivity table so the user can decide.
+
+**Reducing N as a lever for short inter-analysis gaps:** When events accrue faster than the minimum gap allows (common in short-survival diseases with median OS 4-8 months), **reducing N** is a counter-intuitive but effective lever. Fewer patients → slower event accrual → wider calendar-time gaps between IF milestones. The trade-off is lower power or a different IF schedule. Present a sensitivity table showing how reducing N widens the gaps — the user may prefer 85% power with operationally feasible 6-month gaps over 90% power with 2-month gaps that cannot be executed in practice.
+
+**Timing constraint checks — required in `gsd_results.json`:** Always include a `timing_checks` object:
+```json
+"timing_checks": {
+  "min_followup_required": 6,
+  "min_followup_actual": 6.0,
+  "min_followup_met": true,
+  "min_gap_required": 6,
+  "min_gap_pairs": [
+    {"pair": "IA-FA", "gap": 6.3, "met": true}
+  ],
+  "all_constraints_met": true,
+  "violations_flagged": false
+}
+```
+If any constraint is violated, set `all_constraints_met: false` and `violations_flagged: true`, and explain in the design summary which constraints are violated and why (e.g., "IA1-IA2 gap is 2.9 months — events accrue too fast for 6-month gap at this N").
+
 ### Beta spending futility and sample size (test.type=3 vs test.type=4)
 **Binding futility (test.type=3):** Beta spending inflates the required events because the design accounts for trials that stop early for futility under H1, losing power. The more aggressive the futility (less negative `sflpar`), the larger the inflation:
 - `sflpar=-2`: ~6% more events than no-futility design
 - `sflpar=-6`: ~1% more events
 - `sflpar=-20`: effectively zero inflation
 
-**Non-binding futility (test.type=4):** No event inflation regardless of spending function or gamma. `gsSurv()` computes events and power **ignoring the futility boundary entirely** — it assumes the trial always continues. The beta spending function only determines where the futility boundary is placed, not the sample size. The required events match a `test.type=1` (efficacy-only) design exactly.
+**Non-binding futility (test.type=4):** Despite the name "non-binding," `gsDesign` **does** inflate events for test.type=4. The key is that "non-binding" is asymmetric — it means different things for alpha vs power:
+
+- **Type I error (alpha):** Computed as if futility bounds don't exist (truly non-binding). Efficacy boundaries are identical to test.type=1. Actual alpha is slightly below nominal (e.g., 0.0239 vs 0.025) because some H0 trials would stop for futility and never reach later efficacy bounds.
+- **Power (beta):** Computed as if futility bounds ARE binding. Under H1, trials that cross the futility bound are "absorbed" — they lose the chance to cross efficacy at later looks. `gsDesign` inflates events to compensate, ensuring target power is met even with futility stopping under H1.
+
+This is a deliberate design choice in the `gsDesign` package (see `gsDType4ss()` in the source code). The rationale: even though futility is advisory, DMCs often follow the recommendation and stop. Beta spending ensures the trial maintains target power even if futility stopping occurs. If the trial ignores futility entirely (truly non-binding), actual power exceeds the target — the design is conservative on power.
+
+The inflation depends on beta spending aggressiveness:
+- `sflpar=-20`: ~0.5% more events than test.type=1 (nearly zero)
+- `sflpar=-4`: ~3% more events
+- `sflpar=-2`: ~5% more events
+
+**Implication for verification:** `lrsim()` must use `futilityBounds = rep(-6, k-1)` to disable futility in both H0 and H1 simulations. This matches the non-binding alpha assumption. The simulated power will match the analytical power from `gsDesign`, which already accounts for the beta-spending inflation internally. Including actual futility bounds in `lrsim()` would double-count the penalty and produce lower "operational power" that doesn't match the analytical value.
+
+**Implication for reporting:** When presenting the design, explain that the non-binding futility boundary does not inflate the type I error but does modestly inflate the required events (to maintain power if futility stopping occurs). The actual type I error is slightly below nominal alpha — this is conservative and acceptable to regulators.
 
 ### nSurv() dimension error at arbitrary calendar times
 `nSurv()` crashes with `"attempt to set 'rownames' on an object with no dimensions"` when called with `T < sum(R)` (calendar time during enrollment). It requires `T = sum(R) + minfup` exactly. **Fix**: Use the `calc_expected_events()` analytical helper (see `examples.md`) which works at any calendar time.

@@ -152,3 +152,18 @@ For every new design, save a verification log to the design's output subfolder a
 ```
 
 For co-primary endpoints, include a separate results table for each endpoint. Append to the log file if multiple endpoints are verified in the same design.
+
+**Multi-population designs:** The verification script must simulate and report power AND type I error for ALL hypotheses — including gated hypotheses (H2, H4) at full alpha (0.025). Do not verify only the lead hypotheses (H1, H3) and skip the rest. Each hypothesis has its own boundary, event count, and enrollment subset, so each needs independent verification. The verification log must have a results table for every hypothesis in the design.
+
+**NPH verification (when applicable):** If the design includes an NPH evaluation, the verification log must include a separate section for NPH with BOTH power AND type I error:
+
+```markdown
+## NPH Verification (delayed effect: HR=X for 0-Y mo, HR=Z thereafter)
+
+| Metric | Analytical | Simulated | Criterion | Pass? |
+|--------|-----------|-----------|-----------|-------|
+| Power at FA (H1, NPH) | xxx% | xxx% | ±2 pp | Y/N |
+| Type I error (H0, NPH) | xxx% | xxx% | ±0.5 pp | Y/N |
+```
+
+The NPH H0 simulation uses the NPH control hazard (piecewise if applicable) with HR=1 on both arms. This confirms that the boundaries designed under PH also control type I error under the NPH null. Do not skip the NPH type I error check — it is required for a complete verification.
