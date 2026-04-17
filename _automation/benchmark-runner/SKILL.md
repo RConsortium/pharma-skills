@@ -1,5 +1,5 @@
 ---
-name: skill-benchmark-runner
+name: benchmark-runner
 description: Auto-discover all skills with evals in RConsortium/pharma_skills, benchmark each with vs. without skill using parallel sub-agents, and post scored results to the linked GitHub issue. Use whenever someone says "run benchmarks", "compare skill performance", "eval the skills", or wants to measure whether a skill improves output quality.
 ---
 
@@ -133,7 +133,7 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 {1-2 sentence overall verdict}
 
 ---
-*Posted automatically by `skill-benchmark-runner` · Repo: https://github.com/RConsortium/pharma_skills*
+*Posted automatically by `benchmark-runner` · Repo: https://github.com/RConsortium/pharma_skills*
 ```
 
 ---
