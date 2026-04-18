@@ -26,20 +26,25 @@ python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {CURRENT_M
 
 ## Step 2 — Run two sub-agents in parallel
 
-Use the Agent tool to launch both agents simultaneously for the selected eval case.
+Use the Agent tool (e.g., `generalist`) to launch both agents simultaneously for the selected eval case. **Record the start time for each agent.**
 
 **Agent A — WITH the skill:**
 - Provide the full contents of `_skill_content`.
 - Provide all files from `_bundled_resources` (e.g., `reference.md`, `examples.md`, `scripts/gsd_report_template.py`).
 - Provide any referenced `files` from the eval case.
 - Give the `prompt` from the eval case.
-- Instruct: "Follow the skill workflow to complete this task. Produce all expected outputs."
+- Instruct: "Follow the skill workflow to complete this task. Save all generated files into a directory named `output_A/`. Produce all expected outputs."
 
 **Agent B — WITHOUT the skill:**
 - Give the exact same `prompt` and `files`.
-- Instruct: "Complete this task using only your base knowledge and tools. Do NOT use any SKILL.md or skill instructions. Produce all expected outputs."
+- Instruct: "Complete this task using only your base knowledge and tools. Do NOT use any SKILL.md or skill instructions. Save all generated files into a directory named `output_B/`. Produce all expected outputs."
 
 Both agents use the same model (whichever model this session is running).
+
+**When the agents return:**
+- Record the end time and calculate duration.
+- Extract total token usage from the agent response metadata.
+- Note any system errors, tool failures, or retries.
 
 ---
 
@@ -52,9 +57,31 @@ For each agent's output, evaluate against every assertion in the eval case:
 
 Score = (passes + 0.5 x partials) / total assertions, as a fraction and percentage.
 
+Identify "Key Metrics" from the assertions (e.g., Sample Size, Power, Error Rates) to include in the scorecard for direct comparison.
+
 ---
 
-## Step 4 — Format the benchmark report
+## Step 4 — Archive and Upload Detailed Outputs
+
+To allow for deep inspection of the results:
+
+1. **Package:** Create a zip archive containing both `output_A/` and `output_B/` directories.
+   ```bash
+   zip -r benchmark_results_{eval_id}.zip output_A/ output_B/
+   ```
+2. **Upload:** 
+   - **Preferred:** If running in a CI environment with artifact support, upload the zip and capture the URL.
+   - **Fallback (Gist):** For a quick public reference of the most important files (scripts, JSON results, logs), create a GitHub Gist:
+     ```bash
+     gh gist create output_A/*.py output_A/*.R output_A/*.json output_B/*.py output_B/*.R output_B/*.json --public --desc "Benchmark Details: {_skill_name} - {eval_id}"
+     ```
+   - **Local/Repo:** If instructed, commit the zip to the `{skill}/evals/benchmark-results/` directory in the repository.
+
+Capture the resulting URL for inclusion in the report.
+
+---
+
+## Step 5 — Format the benchmark report
 
 Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using this template:
 
@@ -70,13 +97,19 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 | **Model** | `{model name}` |
 | **Skill version** | `{_skill_sha}` |
 | **Triggered by** | Scheduled/Manual |
+| **Detailed Outputs** | [View Archive/Gist]({upload_url}) |
 
 ### Scorecard
 
-| | With Skill | Without Skill |
+| Metric | With Skill | Without Skill |
 |---|---|---|
 | **Score** | {score_A} ({pct_A}%) | {score_B} ({pct_B}%) |
 | **Assertions** | {pass_A} Pass {partial_A} Partial {fail_A} Fail | {pass_B} Pass {partial_B} Partial {fail_B} Fail |
+| **Skills loaded** | {n_skills_A} | {n_skills_B} |
+| **Execution time** | {time_A}s | {time_B}s |
+| **Token usage** | {tokens_A} | {tokens_B} |
+| **{Key Metric 1}** | {value_A1} | {value_B1} |
+| **{Key Metric 2}** | {value_A2} | {value_B2} |
 
 ### Assertion Breakdown
 
@@ -88,6 +121,26 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 ### Key Observations
 
 - {2-4 bullet points comparing both agents}
+
+### Debugging Information
+
+<details>
+<summary>Agent A (With Skill) Execution Details</summary>
+
+- **Total Tool Calls:** {count}
+- **Tool Success Rate:** {rate}%
+- **Errors/Retries:** {any errors or "None"}
+- **Environment Note:** {e.g. R unavailable, specific library missing}
+</details>
+
+<details>
+<summary>Agent B (Without Skill) Execution Details</summary>
+
+- **Total Tool Calls:** {count}
+- **Tool Success Rate:** {rate}%
+- **Errors/Retries:** {any errors or "None"}
+- **Environment Note:** {same or different}
+</details>
 
 ### Verdict
 
@@ -119,6 +172,7 @@ Run get_next_eval.py (Detects SHA, Model, and File Order)
        |-- Agent A (with skill) ---+
        |-- Agent B (without skill)-+--- run in parallel
        |-- Score both against assertions
+       |-- Archive and Upload detailed outputs
        |-- Format Markdown report
        |-- Post comment to GitHub issue #{N}
 ```
