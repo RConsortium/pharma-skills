@@ -42,8 +42,9 @@ Use the Agent tool (e.g., `generalist`) to launch both agents simultaneously for
 Both agents use the same model (whichever model this session is running).
 
 **When the agents return:**
-- Record the end time and calculate duration.
+- Record the end time and calculate duration **in minutes (rounded to 1 decimal place)**.
 - Extract total token usage from the agent response metadata.
+- **Calculate the total tokens used in this entire task (orchestrator session + both sub-agents).**
 - Note any system errors, tool failures, or retries.
 
 ---
@@ -97,6 +98,7 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 | **Model** | `{model name}` |
 | **Skill version** | `{_skill_sha}` |
 | **Triggered by** | Scheduled/Manual |
+| **Total session tokens** | `{total_tokens}` |
 | **Detailed Outputs** | [View Archive/Gist]({upload_url}) |
 
 ### Scorecard
@@ -106,7 +108,7 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 | **Score** | {score_A} ({pct_A}%) | {score_B} ({pct_B}%) |
 | **Assertions** | {pass_A} Pass {partial_A} Partial {fail_A} Fail | {pass_B} Pass {partial_B} Partial {fail_B} Fail |
 | **Skills loaded** | {n_skills_A} | {n_skills_B} |
-| **Execution time** | {time_A}s | {time_B}s |
+| **Execution time (min)** | {time_A}m | {time_B}m |
 | **Token usage** | {tokens_A} | {tokens_B} |
 | **{Key Metric 1}** | {value_A1} | {value_B1} |
 | **{Key Metric 2}** | {value_A2} | {value_B2} |
