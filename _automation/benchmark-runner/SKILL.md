@@ -115,10 +115,40 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 
 ### Assertion Breakdown
 
+<details>
+<summary>View Line-by-Line Results</summary>
+
 | Assertion | With Skill | Without Skill |
 |---|---|---|
 | {assertion_text_1} | {Pass/Partial/Fail} | {Pass/Partial/Fail} |
 | {assertion_text_2} | {Pass/Partial/Fail} | {Pass/Partial/Fail} |
+
+</details>
+
+### Detailed Artifacts
+
+<details>
+<summary>Artifacts: Agent A (With Skill)</summary>
+
+#### `{file_name_1}`
+```{language}
+{file_content_1}
+```
+
+#### `{file_name_2}`
+```{language}
+{file_content_2}
+```
+</details>
+
+<details>
+<summary>Artifacts: Agent B (Without Skill)</summary>
+
+#### `{file_name_1}`
+```{language}
+{file_content_1}
+```
+</details>
 
 ### Key Observations
 
