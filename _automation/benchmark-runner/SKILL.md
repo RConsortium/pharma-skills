@@ -11,6 +11,23 @@ Repository: `RConsortium/pharma_skills` (https://github.com/RConsortium/pharma_s
 
 ---
 
+## Cloud Environment Setup
+
+If running as a Claude Code routine in the cloud environment, ensure the following setup is performed once per session to enable CRAN access and R package installation:
+
+1. **Network Access**: Verify the environment is configured with `Network access: Full` or `Custom` (allowing `*.r-project.org`).
+2. **Install R**: If `R` is not available, run the following setup command (requires root/sudo):
+   ```bash
+   sudo apt update && sudo apt install -y r-base
+   ```
+3. **Fast Package Installation**: Always use the **Posit Public Package Manager** for pre-compiled Linux binaries to significantly reduce installation time:
+   ```r
+   options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))
+   install.packages("gsDesign") # Example
+   ```
+
+---
+
 ## Step 1 — Get the Next Evaluation Case
 
 Run the dispatcher script to identify the highest-priority pending evaluation:
@@ -99,7 +116,6 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 | **Skill version** | `{_skill_sha}` |
 | **Triggered by** | Scheduled/Manual |
 | **Total session tokens** | `{total_tokens}` |
-| **Detailed Outputs** | [View Archive/Gist]({upload_url}) |
 
 ### Scorecard
 
@@ -127,6 +143,8 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 
 <details>
 <summary>View Assertion Breakdown, Code Artifacts, and Logs</summary>
+
+**Detailed Outputs:** [View Full Archive/Gist]({upload_url})
 
 ### Assertion Breakdown
 

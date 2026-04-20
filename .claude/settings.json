@@ -11,6 +11,7 @@
       "Bash(gh gist create:*)",
       "Bash(python3 _automation/*:*)",
       "Bash(Rscript:*)",
+      "Bash(R:*)",
       "Bash(zip:*)",
       "Bash(uvx:*)"
     ],

@@ -13,3 +13,60 @@ This directory contains automated workflows for managing, evaluating, and report
 ## Usage
 
 Each skill contains a `SKILL.md` file that provides specific instructions for LLM agents to execute the workflow. To run a skill, point an agent at its directory or reference its `SKILL.md` content directly.
+
+## Running as a Claude Code Routine (Scheduled Job)
+
+Automation skills can be scheduled as [Claude Code Routines](https://code.claude.com/docs/en/routines) — cloud-hosted jobs that run on a cadence without your laptop being open.
+
+Because these skills use R (via `Rscript`) to execute evaluations, the routine's cloud environment needs explicit CRAN network access and R installed. Follow the steps below.
+
+### 1. Create a custom environment
+
+Go to [claude.ai/code](https://claude.ai/code), open any session, and create a new environment via the environment selector:
+
+- **Name**: e.g. `pharma-skills-r`
+- **Network access**: `Custom`
+  - Check **"Also include default list of common package managers"** (keeps npm, PyPI, etc.)
+  - Add the following domains, one per line:
+    ```
+    cran.r-project.org
+    cloud.r-project.org
+    cran.rstudio.com
+    *.r-project.org
+    ```
+- **Setup script** (installs R and pre-caches key packages — result is cached, runs once):
+  ```bash
+  #!/bin/bash
+  apt-get update -qq && apt-get install -y --no-install-recommends r-base
+  Rscript -e "install.packages(c('gsDesign', 'rpact', 'jsonlite'), repos='https://cloud.r-project.org')"
+  ```
+
+### 2. Create the routine
+
+Go to [claude.ai/code/routines](https://claude.ai/code/routines) and click **New routine**:
+
+| Field | Value |
+|---|---|
+| **Repository** | `RConsortium/pharma_skills` |
+| **Environment** | The `pharma-skills-r` environment from step 1 |
+| **Trigger** | Schedule — e.g. weekly on Monday at 09:00 |
+| **Prompt** | See example below |
+
+Example prompt for the benchmark runner:
+
+```
+Run the benchmark suite for all skills in this repository.
+Follow the instructions in _automation/benchmark-runner/SKILL.md exactly.
+Post results as comments on the relevant GitHub issues.
+```
+
+### 3. Verify CRAN access before the first scheduled run
+
+Click **Run now** on the routine detail page and confirm that R package installation succeeds in the session log. If CRAN domains are missing, the setup script will fail with a network error — add the missing domain to the environment's custom allowlist and re-run.
+
+### Notes
+
+- **R is not pre-installed** in cloud sessions. The setup script above handles this; do not skip it.
+- The setup script output is **cached** by Anthropic, so R and the pre-installed packages are available instantly on subsequent runs without reinstalling.
+- Environment variables (e.g. `GH_TOKEN`, `PHARMA_SKILLS_SLACK_CHANNEL`) are set in the environment config, not in `.claude/settings.json`.
+- The `.claude/settings.json` `permissions.allow` rules in this repo (e.g. `Bash(Rscript:*)`) apply to local CLI sessions only and have no effect on routine network access.
