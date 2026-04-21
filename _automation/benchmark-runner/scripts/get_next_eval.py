@@ -205,6 +205,32 @@ def main() -> None:
                         size_warned = True
                     bundled[rel] = content
             eval_case["_bundled_resources"] = bundled
+
+            # ── Pre-build Agent B prompt (deterministic, no LLM discretion) ──
+            # Only the language constraint (if present) + the raw eval prompt.
+            # Nothing else — no filenames, no package hints, no structure.
+            lang_prefix = (
+                f"Use {eval_case['language']} for this task.\n\n"
+                if eval_case.get("language") else ""
+            )
+            files_block = ""
+            for fname, fcontent in (eval_case.get("files") or {}).items():
+                files_block += f"\n\n--- {fname} ---\n{fcontent}"
+            usage_suffix = (
+                "\n\nAt the very end of your response, state your best estimate of the "
+                "total tokens used in this turn (input + output) using the format: "
+                "`[USAGE: {total_tokens}]`"
+            )
+            eval_case["_prompt_b"] = (
+                "Complete this task using only your base knowledge and tools. "
+                "Do NOT use any SKILL.md or skill instructions. "
+                "Save all generated files into a directory named `output_B/`.\n\n"
+                f"{lang_prefix}"
+                f"{eval_case['prompt']}"
+                f"{files_block}"
+                f"{usage_suffix}"
+            )
+
             eligible_evals.append(eval_case)
 
             # If we prioritized a specific issue and found it, we can stop collecting

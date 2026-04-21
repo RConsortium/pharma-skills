@@ -43,24 +43,31 @@ python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {CURRENT_M
 
 ## Step 2 — Run two sub-agents in parallel
 
-Use the Agent tool (e.g., `generalist`) to launch both agents simultaneously for the selected eval case. **Record the start time for each agent.**
+Run both agents simultaneously. **Record the start time for each agent.**
 
-**Agent A — WITH the skill:**
+**Agent A — WITH the skill** (use the Agent tool / generalist sub-agent):
 - Provide the full contents of `_skill_content`.
 - Provide all files from `_bundled_resources` (e.g., `reference.md`, `examples.md`, `scripts/gsd_report_template.py`).
 - Provide any referenced `files` from the eval case.
 - Give the `prompt` from the eval case.
 - Instruct: "Follow the skill workflow to complete this task. Save all generated files into a directory named `output_A/`. Produce all expected outputs. **At the very end of your response, please state your best estimate of the total tokens used in this turn (input + output) using the format: `[USAGE: {total_tokens}]`.**"
 
-**Agent B — WITHOUT the skill:**
-- Give the exact same `prompt` and `files`.
-- If the eval case has a `language` field (e.g., `"language": "R"`), prepend one line: *"Use {language} for this task."* That is the **only** addition allowed beyond the raw prompt.
-- Instruct: "Complete this task using only your base knowledge and tools. Do NOT use any SKILL.md or skill instructions. Save all generated files into a directory named `output_B/`. **At the very end of your response, please state your best estimate of the total tokens used in this turn (input + output) using the format: `[USAGE: {total_tokens}]`.**"
+**Agent B — WITHOUT the skill** (use `claude -p` to start a brand-new session):
 
-> **Firewall rule — do NOT add any of the following to Agent B's prompt:**
-> filenames, package names, install commands, expected output structure, assertion text,
-> or any other implementation hint. Agent B must derive all of that from the prompt alone.
-> Violating this rule contaminates the baseline and invalidates the comparison.
+The prompt for Agent B is pre-built by `get_next_eval.py` and stored in `_prompt_b`. Pass it
+directly to a fresh `claude` session — do not modify it, do not add to it:
+
+```bash
+mkdir -p /tmp/benchmark_{id}/output_B
+cd /tmp/benchmark_{id} && claude -p "{_prompt_b}" --allowedTools "Bash,Read,Write,Edit,Glob"
+```
+
+> **Why a new session?** `_prompt_b` is constructed deterministically by the script from
+> the raw eval prompt and optional `language` field only — no filenames, no package hints,
+> no structure. Running it in a fresh `claude -p` session guarantees the agent has exactly
+> that input and nothing else. Using the Agent tool inside the current session risks the
+> orchestrator accidentally injecting context it has already seen (skill content, assertions,
+> bundled resources).
 
 Both agents use the same model (whichever model this session is running).
 
