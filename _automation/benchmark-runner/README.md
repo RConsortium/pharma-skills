@@ -4,7 +4,7 @@ The **Skill Benchmark Runner** is an automated framework designed to quantify th
 
 ## How It Works
 
-1.  **Discovery**: Scans the repository for all folders containing an `evals/evals.json` file.
+1.  **Discovery**: Scans the `evals/` directory for all `.json` evaluation cases.
 2.  **Deduplication**: Checks the linked GitHub issues (e.g., `#21`) to see if a benchmark has already been posted for the **current skill version (Git SHA)** and the **current model** (e.g., Claude 3.5 Sonnet).
 3.  **Parallel Execution**: Launches two independent sub-agents simultaneously:
     *   **Agent A (With Skill)**: Pre-loaded with the `SKILL.md` instructions and all supporting resources.
@@ -13,9 +13,9 @@ The **Skill Benchmark Runner** is an automated framework designed to quantify th
 5.  **Performance Tracking**: Records technical metrics including **Execution Time**, **Token Usage**, and **Tool Success Rates**.
 6.  **Reporting**: Generates a detailed Markdown report and posts it as a comment on the originating GitHub issue.
 
-## Understanding `evals.json` (Example: Issue #21)
+## Understanding Evaluation Files (Example: Issue #21)
 
-Each entry in the `evals.json` file controls a different part of the benchmark lifecycle. Using **Issue #21** as an example:
+Each evaluation JSON file controls a different part of the benchmark lifecycle. Using **Issue #21** as an example:
 
 | Field | Purpose | Lifecycle Role |
 |---|---|---|
@@ -42,7 +42,7 @@ Each automated report provides a deep-dive comparison:
 To add a new test case to a skill's evaluation suite:
 1.  Open a new GitHub Issue with the `benchmark` label.
 2.  Follow the template headers: `## Skills`, `## Query`, `## Expected Output`, and `## Rubric Criteria (Assertions)`.
-3.  Run the **Issue to Eval** skill (`python3 _automation/issue-to-eval/scripts/sync_benchmarks.py`) to automatically import the issue into the skill's `evals/evals.json`.
+3.  Run the **Issue to Eval** skill (`python3 _automation/issue-to-eval/scripts/sync_benchmarks.py`) to automatically import the issue into the root `evals/` directory.
 
 ## Usage
 
