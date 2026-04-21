@@ -50,18 +50,20 @@ Use the Agent tool (e.g., `generalist`) to launch both agents simultaneously for
 - Provide all files from `_bundled_resources` (e.g., `reference.md`, `examples.md`, `scripts/gsd_report_template.py`).
 - Provide any referenced `files` from the eval case.
 - Give the `prompt` from the eval case.
-- Instruct: "Follow the skill workflow to complete this task. Save all generated files into a directory named `output_A/`. Produce all expected outputs."
+- Instruct: "Follow the skill workflow to complete this task. Save all generated files into a directory named `output_A/`. Produce all expected outputs. **At the very end of your response, please state your best estimate of the total tokens used in this turn (input + output) using the format: `[USAGE: {total_tokens}]`.**"
 
 **Agent B — WITHOUT the skill:**
 - Give the exact same `prompt` and `files`.
-- Instruct: "Complete this task using only your base knowledge and tools. Do NOT use any SKILL.md or skill instructions. Save all generated files into a directory named `output_B/`. Produce all expected outputs."
+- Instruct: "Complete this task using only your base knowledge and tools. Do NOT use any SKILL.md or skill instructions. Save all generated files into a directory named `output_B/`. Produce all expected outputs. **At the very end of your response, please state your best estimate of the total tokens used in this turn (input + output) using the format: `[USAGE: {total_tokens}]`.**"
 
 Both agents use the same model (whichever model this session is running).
 
 **When the agents return:**
-- Record the end time and calculate duration **in minutes (rounded to 1 decimal place)**.
-- Extract total token usage from the agent response metadata.
-- **Calculate the total tokens used in this entire task (orchestrator session + both sub-agents).**
+- Extract the `[USAGE: {n}]` value from each agent's response.
+- Run the recording script to capture duration and tokens:
+  ```bash
+  python3 _automation/benchmark-runner/scripts/record_run_result.py --eval-id {id} --model {CURRENT_MODEL_NAME} --status completed --tokens-a {tokens_A} --tokens-b {tokens_B}
+  ```
 - Note any system errors, tool failures, or retries.
 
 ---
@@ -74,6 +76,8 @@ For each agent's output, evaluate against every assertion in the eval case:
 - Partial — partially met
 
 Score = (passes + 0.5 x partials) / total assertions, as a fraction and percentage.
+
+Retrieve the recorded duration from the most recent entry in `_automation/benchmark-runner/runs/runs.json`.
 
 Identify "Key Metrics" from the assertions (e.g., Sample Size, Power, Error Rates) to include in the scorecard for direct comparison.
 
@@ -115,7 +119,6 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 | **Model** | `{model name}` |
 | **Skill version** | `{_skill_sha}` |
 | **Triggered by** | Scheduled/Manual |
-| **Total session tokens** | `{total_tokens}` |
 
 ### Scorecard
 

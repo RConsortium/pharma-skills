@@ -86,6 +86,7 @@ def write_run_manifest(eval_case: dict, model: str, skill_sha: str, status: str)
         "skill_sha": skill_sha,
         "model": model,
         "run_date": datetime.now(timezone.utc).isoformat(),
+        "start_timestamp": datetime.now(timezone.utc).timestamp(),
         "status": status,
     }
     manifest_path = RUNS_DIR / "runs.json"
