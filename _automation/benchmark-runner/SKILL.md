@@ -87,15 +87,15 @@ Identify "Key Metrics" from the assertions (e.g., Sample Size, Power, Error Rate
 
 To allow for deep inspection of the results:
 
-1. **Package:** Create a zip archive containing both `output_A/` and `output_B/` directories.
+1. **Package:** Create a zip archive containing both `output_A/` and `output_B/` directories from the temporary folder.
    ```bash
-   zip -r benchmark_results_{eval_id}.zip output_A/ output_B/
+   cd /tmp/benchmark_{id} && zip -r {REPO_ROOT}/benchmark_results_{eval_id}.zip output_A/ output_B/
    ```
 2. **Upload:** 
    - **Preferred:** If running in a CI environment with artifact support, upload the zip and capture the URL.
    - **Fallback (Gist):** For a quick public reference of the most important files (scripts, JSON results, logs), create a GitHub Gist:
      ```bash
-     gh gist create output_A/*.py output_A/*.R output_A/*.json output_B/*.py output_B/*.R output_B/*.json --public --desc "Benchmark Details: {_skill_name} - {eval_id}"
+     cd /tmp/benchmark_{id} && gh gist create output_A/*.py output_A/*.R output_A/*.json output_B/*.py output_B/*.R output_B/*.json --public --desc "Benchmark Details: {_skill_name} - {eval_id}"
      ```
    - **Local/Repo:** If instructed, commit the zip to the `{skill}/evals/benchmark-results/` directory in the repository.
 
@@ -231,4 +231,6 @@ but using the API ID avoids any ambiguity across runs.
 - Only one high-priority evaluation is processed per run
 - Deduplication correctly accounts for both Skill SHA and Model Name (normalised)
 - LLM token usage is minimised by offloading discovery to a script
+- Results are posted as comments on the correct GitHub issues
+overy to a script
 - Results are posted as comments on the correct GitHub issues
