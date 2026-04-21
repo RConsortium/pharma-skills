@@ -106,7 +106,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model", required=True,
-        help="Model API ID being used (e.g. claude-sonnet-4-6). "
+        help="Model API ID being used (e.g. gemini-2.0-flash, gpt-4o, claude-3-7-sonnet). "
              "Use the canonical API identifier, not the display name, "
              "to keep deduplication consistent.",
     )

@@ -14,15 +14,15 @@ This directory contains automated workflows for managing, evaluating, and report
 
 Each skill contains a `SKILL.md` file that provides specific instructions for LLM agents to execute the workflow. To run a skill, point an agent at its directory or reference its `SKILL.md` content directly.
 
-## Running as a Claude Code Routine (Scheduled Job)
+## Running as a Scheduled Job (Cloud CLI or CI/CD)
 
-Automation skills can be scheduled as [Claude Code Routines](https://code.claude.com/docs/en/routines) — cloud-hosted jobs that run on a cadence without your laptop being open.
+Automation skills can be scheduled as cloud-hosted jobs (e.g., Claude Code Routines, GitHub Actions, or custom Gemini CLI runners) that run on a cadence without your laptop being open.
 
 Because these skills use R (via `Rscript`) to execute evaluations, the routine's cloud environment needs explicit CRAN network access and R installed. Follow the steps below.
 
 ### 1. Create a custom environment
 
-Go to [claude.ai/code](https://claude.ai/code), open any session, and create a new environment via the environment selector:
+If using a cloud CLI platform (like claude.ai/code, or equivalent Gemini/OpenAI cloud setups), create a new environment:
 
 - **Name**: e.g. `pharma-skills-r`
 - **Network access**: `Custom`
@@ -70,3 +70,4 @@ Click **Run now** on the routine detail page and confirm that R package installa
 - The setup script output is **cached** by Anthropic, so R and the pre-installed packages are available instantly on subsequent runs without reinstalling.
 - Environment variables (e.g. `GH_TOKEN`, `PHARMA_SKILLS_SLACK_CHANNEL`) are set in the environment config, not in `.claude/settings.json`.
 - The `.claude/settings.json` `permissions.allow` rules in this repo (e.g. `Bash(Rscript:*)`) apply to local CLI sessions only and have no effect on routine network access.
+n routine network access.

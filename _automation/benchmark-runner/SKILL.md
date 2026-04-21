@@ -13,7 +13,7 @@ Repository: `RConsortium/pharma_skills` (https://github.com/RConsortium/pharma_s
 
 ## Cloud Environment Setup
 
-If running as a Claude Code routine in the cloud environment, ensure the following setup is performed once per session to enable CRAN access and R package installation:
+If running in a cloud or CI/CD environment (like Gemini CLI, Claude Code, or GitHub Actions), ensure the following setup is performed once per session to enable CRAN access and R package installation:
 
 1. **Network Access**: Verify the environment is configured with `Network access: Full` or `Custom` (allowing `*.r-project.org`).
 2. **Install R**: If `R` is not available, run the following setup command (requires root/sudo):
@@ -222,8 +222,8 @@ Run get_next_eval.py (Detects composite skill SHA, model, and file order)
 
 ## Notes on Model Name
 
-Pass `--model` using the canonical API model ID (e.g., `claude-sonnet-4-6`), not the
-display name (e.g., `Claude Sonnet 4.6`). The deduplication logic normalises both sides,
+Pass `--model` using the canonical API model ID (e.g., `gemini-2.0-flash`, `gpt-4o`, `claude-3-7-sonnet`), not the
+display name (e.g., `Claude Sonnet 3.7`). The deduplication logic normalises both sides,
 but using the API ID avoids any ambiguity across runs.
 
 ## Success Criteria

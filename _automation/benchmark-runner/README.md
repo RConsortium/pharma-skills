@@ -5,7 +5,7 @@ The **Skill Benchmark Runner** is an automated framework designed to quantify th
 ## How It Works
 
 1.  **Discovery**: Scans the `evals/` directory for all `.json` evaluation cases.
-2.  **Deduplication**: Checks the linked GitHub issues (e.g., `#21`) to see if a benchmark has already been posted for the **current skill version (Git SHA)** and the **current model** (e.g., Claude 3.5 Sonnet).
+2.  **Deduplication**: Checks the linked GitHub issues (e.g., `#21`) to see if a benchmark has already been posted for the **current skill version (Git SHA)** and the **current model** (e.g., GPT-4o, Gemini 2.0 Flash, Claude 3.7 Sonnet).
 3.  **Parallel Execution**: Launches two independent sub-agents simultaneously:
     *   **Agent A (With Skill)**: Pre-loaded with the `SKILL.md` instructions and all supporting resources.
     *   **Agent B (Without Skill)**: Given only the raw prompt and files, with explicit instructions *not* to use any skill data.
