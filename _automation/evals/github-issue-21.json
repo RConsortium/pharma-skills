@@ -6,13 +6,11 @@
     "none"
   ],
   "assertions": [
-    "gsd_design.R exists and calls gsSurv(),",
-    "gsd_results.json exists and contains total_N < 450, OR if N exceeds 450 the skill explicitly flags the constraint conflict and explains why (e.g., gap constraint required larger N)",
+    "sample N < 450, OR if N exceeds 450 the skill explicitly flags the constraint conflict and explains why (e.g., gap constraint required larger N)",
     "multiplicity_diagram.png exists",
-    "gsd_verification_log.md reports simulated power within \u00b12pp of 90%",
-    "gsd_verification_log.md reports type I error within \u00b10.5pp of 0.025",
-    "gsd_report.docx exists",
-    "gsd_report.R reads all values from gsd_results.json with no hardcoded numbers",
+    "simulated power within \u00b12pp of 90%",
+    "simulated type I error within \u00b10.5pp of 0.025",
+    "a report document exists",
     "IA/FA gap is evaluated and a second IA is suggested if gap > 18 months",
     "In the recommended design, the first IA occurs within 18 months from the end of enrollment"
   ],

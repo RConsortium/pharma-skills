@@ -49,13 +49,14 @@ def parse_issue_markdown(body: str) -> dict:
     Emits a WARNING to stderr for any expected header that produces an empty result (fix 1.5).
     """
     sections = {
-        "skill":           r"## Skills\n(.*?)(?=\n##|$)",
-        "language":        r"## Language(?: \(Optional\))?\n(.*?)(?=\n##|$)",
-        "prompt":          r"## Query\n(.*?)(?=\n##|$)",
-        "expected_output": r"## Expected Output\n(.*?)(?=\n##|$)",
-        "files":           r"## Attached Files / Input Context \(Optional\)\n(.*?)(?=\n##|$)",
-        "assertions":      r"## Rubric Criteria \(Assertions\)\n(.*?)(?=\n##|$)",
+        "skill":           r"## Skills\s*\n(.*?)(?=\n##|$)",
+        "language":        r"## Language(?: \(Optional\))?\s*\n(.*?)(?=\n##|$)",
+        "prompt":          r"## Query\s*\n(.*?)(?=\n##|$)",
+        "expected_output": r"## Expected Output\s*\n(.*?)(?=\n##|$)",
+        "files":           r"## Attached Files / Input Context \(Optional\)\s*\n(.*?)(?=\n##|$)",
+        "assertions":      r"## Rubric Criteria \(Assertions\)\s*\n(.*?)(?=\n##|$)",
     }
+
 
     data: dict = {}
     for key, pattern in sections.items():
