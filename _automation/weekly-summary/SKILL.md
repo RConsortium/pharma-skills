@@ -39,8 +39,8 @@ If neither is set, **stop and report an error** — do not guess a channel ID.
 
 3. **Slack Output**
    - Read the Slack channel from the environment variable `PHARMA_SKILLS_SLACK_CHANNEL`, falling back to `slack_channel` in `config.json`.
-   - Post the summary using the `slack_send_message` tool.
+   - Post the summary to Slack using an available webhook or chat integration tool.
 
 4. **File Output**
    - Save the summary as a markdown file: `/sessions/[session-dir]/mnt/outputs/pharma-skills-weekly-summary-[YYYY-MM-DD].md`.
-   - Present the file using the `present_files` tool.
+   - Present or output the path to the saved file so the user can review it.

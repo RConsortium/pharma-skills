@@ -1,0 +1,10 @@
+{
+  "id": "github-issue-3",
+  "prompt": "following SAP https://cdn.clinicaltrials.gov/large-docs/22/NCT01471522/SAP_003.pdf reproduce number using gsDesign",
+  "expected_output": "An R script that executes a group sequential design analysis mirroring the methodology in the attached SAP,\n - Outputting the reproduced clinical trial design numbers.",
+  "files": [],
+  "assertions": [],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

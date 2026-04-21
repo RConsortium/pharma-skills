@@ -1,0 +1,23 @@
+{
+  "id": "github-issue-22",
+  "prompt": "I'm designing a Phase 3 trial in first-line metastatic gastric/GEJ adenocarcinoma. Single population, all-comers. Co-primary endpoints: PFS and OS. 1:1 randomization. Control median PFS is 8 months, control median OS is 20 months. Target hazard ratio: PFS 0.69, OS 0.74. Total alpha 0.025 one-sided. Alpha split: PFS 0.005, OS 0.020. Full bidirectional alpha reallocation (if one endpoint wins, its alpha flows to the other). PFS triggers the interim analysis. Both PFS and OS are tested at the IA. PFS is tested only at the IA (single look). OS is also tested at the FA (which OS triggers). One interim + one final analysis. Alpha spending for OS: Lan-DeMets O'Brien-Fleming. Futility: non-binding for OS only, HSD gamma=-20. OS target power: 90%. Enrollment: 5 patients/month for the first 3 months, then 20/month for the next 41 months. Annual dropout: PFS 5%, OS 2%. Feasible sample size range: under 900 patients. Minimum follow-up 3 months, minimum gap between analyses 6 months. All inputs are confirmed \u2014 skip the Q&A and proceed directly to computation.",
+  "expected_output": "gsd_design.R using compute_single_look_boundary() for PFS (not gsDesign k=1), gsSurv() or gsDesign() for OS with 2 looks. gsd_results.json with separate boundary tables for PFS (single Z-value) and OS (IA + FA boundaries). multiplicity_diagram.png showing PFS and OS nodes with alpha 0.005 and 0.020. Verification confirms power for both endpoints. Report has dual boundary tables.",
+  "files": [],
+  "assertions": [
+    "\"gsd_design.R exists and does NOT call gsDesign(k=1) or gsSurv(k=1) for PFS\"",
+    "\"gsd_design.R uses compute_single_look_boundary() or equivalent for PFS single-look boundary\"",
+    "\"gsd_results.json contains separate boundary information for PFS and OS\"",
+    "\"PFS has exactly 1 boundary (single look), OS has 2 boundaries (IA + FA)\"",
+    "\"If PFS is overpowered, skill suggests reallocating alpha from PFS to OS (e.g., lowering PFS alpha below 0.005)\"",
+    "\"gsd_verification_log.md reports OS simulated power within \u00b12pp of 90%\"",
+    "\"gsd_verification_log.md reports type I error within \u00b10.5pp for both PFS and OS\",",
+    "\"multiplicity_diagram.png exists and shows two hypothesis nodes\",",
+    "\"gsd_report.docx exists with boundary tables for both endpoints\",",
+    "\"gsd_report.py reads all values from gsd_results.json with no hardcoded numbers\",",
+    "\"Minimum follow-up constraint is met: the IA occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged in gsd_results.json or the skill log\",",
+    "\"Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged in gsd_results.json or the skill log\""
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

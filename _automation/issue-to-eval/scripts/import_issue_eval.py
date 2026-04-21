@@ -70,41 +70,32 @@ def save_to_evals(eval_entry: dict, skill_name: str) -> str:
     if not skill_name or skill_name == "unknown-skill":
         return "Error: Could not determine target skill name from issue."
 
-    target_dir = os.path.join(skill_name, "evals")
+    target_dir = os.path.join("_automation", "evals")
     os.makedirs(target_dir, exist_ok=True)
-    eval_file = os.path.join(target_dir, "evals.json")
+    eval_file = os.path.join(target_dir, f"{eval_entry['id']}.json")
+
+    eval_entry["target_skills"] = [skill_name]
 
     if os.path.exists(eval_file):
         with open(eval_file) as f:
             try:
-                data = json.load(f)
+                existing = json.load(f)
             except json.JSONDecodeError:
-                data = {"skill_name": skill_name, "evals": []}
-    else:
-        data = {"skill_name": skill_name, "evals": []}
+                existing = {}
 
-    found_idx = -1
-    for i, existing in enumerate(data["evals"]):
-        if existing.get("id") == eval_entry["id"]:
-            found_idx = i
-            break
-
-    if found_idx != -1:
-        existing = data["evals"][found_idx]
         changed = any(
             existing.get(field) != eval_entry.get(field)
-            for field in ("prompt", "expected_output", "files", "assertions")
+            for field in ("prompt", "expected_output", "files", "assertions", "target_skills")
         )
         if not changed:
-            return f"Skipped: {eval_entry['id']} in {skill_name} is up to date."
-        data["evals"][found_idx] = eval_entry
-        status = f"Updated: {eval_entry['id']} in {skill_name}/evals/evals.json (content changed)"
+            return f"Skipped: {eval_entry['id']} in _automation/evals/ is up to date."
+        
+        status = f"Updated: {eval_entry['id']} in _automation/evals/ (content changed)"
     else:
-        data["evals"].append(eval_entry)
-        status = f"Success: Added {eval_entry['id']} to {skill_name}/evals/evals.json"
+        status = f"Success: Added {eval_entry['id']} to _automation/evals/"
 
     with open(eval_file, "w") as f:
-        json.dump(data, f, indent=2)
+        json.dump(eval_entry, f, indent=2)
 
     return status
 

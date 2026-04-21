@@ -1,0 +1,13 @@
+{
+  "id": "github-issue-2",
+  "prompt": "Following SAP from NCT05638204, reproduce number using group sequential design.",
+  "expected_output": "An R script running a group sequential design analysis that perfectly reproduces the exact clinical trial numbers specified in the attached SAP document.",
+  "files": [],
+  "assertions": [
+    "The script must use the `gsDesign` R package.",
+    "The script must accurately reproduce the trial design parameters and numbers documented in the SAP."
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

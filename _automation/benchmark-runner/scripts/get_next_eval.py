@@ -106,7 +106,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model", required=True,
-        help="Model API ID being used (e.g. claude-sonnet-4-6). "
+        help="Model API ID being used (e.g. gemini-2.0-flash, gpt-4o, claude-3-7-sonnet). "
              "Use the canonical API identifier, not the display name, "
              "to keep deduplication consistent.",
     )
@@ -114,87 +114,85 @@ def main() -> None:
     parser.add_argument("--priority-issue", help="Prioritize this specific issue ID (e.g. github-issue-27).")
     args = parser.parse_args()
 
-    # Discover skills relative to REPO_ROOT — no CWD assumption (fix 1.4)
-    skills: list[Path] = []
-    for item in REPO_ROOT.iterdir():
-        if not item.is_dir() or item.name.startswith(".") or item.name.startswith("_"):
-            continue
-        if (item / "SKILL.md").exists() and (item / "evals" / "evals.json").exists():
-            skills.append(item)
-
-    # Prioritize selected skill if provided
-    if args.priority_skill:
-        skills.sort(key=lambda p: (0 if p.name == args.priority_skill else 1, p.name))
-    else:
-        skills.sort(key=lambda p: p.name)
+    # Discover evals from the centralized evals directory
+    evals_dir = REPO_ROOT / "_automation" / "evals"
+    if not evals_dir.exists():
+        print("STATUS: UP_TO_DATE")
+        return
 
     # Collect all eligible evaluations across all skills
     today_last_digit = int(str(datetime.now(timezone.utc).day)[-1])
     eligible_evals: list[dict] = []
 
-    for skill_path in skills:
-        evals_path = skill_path / "evals" / "evals.json"
+    for eval_file in sorted(evals_dir.glob("*.json")):
         try:
-            with open(evals_path) as f:
-                eval_data = json.load(f)
+            with open(eval_file) as f:
+                eval_case = json.load(f)
         except (OSError, json.JSONDecodeError) as e:
-            print(f"Error reading {evals_path}: {e}", file=sys.stderr)
+            print(f"Error reading {eval_file}: {e}", file=sys.stderr)
             continue
 
-        skill_name = eval_data.get("skill_name", skill_path.name)
+        eval_id = eval_case.get("id")
+        if args.priority_issue and eval_id != args.priority_issue:
+            continue
+
+        target_skills = eval_case.get("target_skills", [])
+        if not target_skills:
+            continue
+
+        primary_skill_name = target_skills[0]
+        if args.priority_skill and primary_skill_name != args.priority_skill:
+            continue
+
+        skill_path = REPO_ROOT / primary_skill_name
+        if not (skill_path / "SKILL.md").exists():
+            continue
+
         skill_sha = get_git_sha(skill_path)
 
-        # Prioritize selected issue if provided; otherwise reverse to pick newest first
-        eval_cases = eval_data.get("evals", [])
-        if args.priority_issue:
-            eval_cases.sort(key=lambda e: (0 if e.get("id") == args.priority_issue else 1))
-        
-        for eval_case in eval_cases:
-            eval_id = eval_case.get("id")
+        if not check_github_comments(eval_id, skill_sha, args.model):
+            eval_case["_skill_name"] = primary_skill_name
+            eval_case["_skill_sha"] = skill_sha
+            eval_case["_skill_dir"] = str(skill_path.relative_to(REPO_ROOT))
 
-            if not check_github_comments(eval_id, skill_sha, args.model):
-                eval_case["_skill_name"] = skill_name
-                eval_case["_skill_sha"] = skill_sha
-                eval_case["_skill_dir"] = str(skill_path.relative_to(REPO_ROOT))
+            with open(skill_path / "SKILL.md") as s:
+                eval_case["_skill_content"] = s.read()
 
-                with open(skill_path / "SKILL.md") as s:
-                    eval_case["_skill_content"] = s.read()
-
-                # Bundle .md and .py files — exclude evals/ to avoid leaking rubric
-                # to Agent A, and warn if total exceeds 100 KB (fixes 2.3)
-                bundled: dict[str, str] = {}
-                total_bytes = 0
-                size_warned = False
-                for root, dirs, files in os.walk(skill_path):
-                    root_path = Path(root)
-                    if root_path.name == "evals":
-                        dirs.clear()
+            # Bundle .md and .py files — exclude evals/ to avoid leaking rubric
+            # to Agent A, and warn if total exceeds 100 KB (fixes 2.3)
+            bundled: dict[str, str] = {}
+            total_bytes = 0
+            size_warned = False
+            for root, dirs, files in os.walk(skill_path):
+                root_path = Path(root)
+                if root_path.name == "evals":
+                    dirs.clear()
+                    continue
+                for fname in sorted(files):
+                    if not (fname.endswith(".md") or fname.endswith(".py")):
                         continue
-                    for fname in sorted(files):
-                        if not (fname.endswith(".md") or fname.endswith(".py")):
-                            continue
-                        fpath = root_path / fname
-                        rel = str(fpath.relative_to(skill_path))
-                        try:
-                            content = fpath.read_text()
-                        except OSError:
-                            continue
-                        total_bytes += len(content.encode())
-                        if total_bytes > BUNDLE_SIZE_LIMIT_BYTES and not size_warned:
-                            print(
-                                f"Warning: bundle for '{skill_name}' exceeds "
-                                f"{BUNDLE_SIZE_LIMIT_BYTES // 1024} KB — consider "
-                                "a _bundle_manifest.json to control included files.",
-                                file=sys.stderr,
-                            )
-                            size_warned = True
-                        bundled[rel] = content
-                eval_case["_bundled_resources"] = bundled
-                eligible_evals.append(eval_case)
+                    fpath = root_path / fname
+                    rel = str(fpath.relative_to(skill_path))
+                    try:
+                        content = fpath.read_text()
+                    except OSError:
+                        continue
+                    total_bytes += len(content.encode())
+                    if total_bytes > BUNDLE_SIZE_LIMIT_BYTES and not size_warned:
+                        print(
+                            f"Warning: bundle for '{primary_skill_name}' exceeds "
+                            f"{BUNDLE_SIZE_LIMIT_BYTES // 1024} KB — consider "
+                            "a _bundle_manifest.json to control included files.",
+                            file=sys.stderr,
+                        )
+                        size_warned = True
+                    bundled[rel] = content
+            eval_case["_bundled_resources"] = bundled
+            eligible_evals.append(eval_case)
 
-                # If we prioritized a specific issue and found it, we can stop collecting
-                if args.priority_issue and eval_id == args.priority_issue:
-                    break
+            # If we prioritized a specific issue and found it, we can stop collecting
+            if args.priority_issue and eval_id == args.priority_issue:
+                break
 
     if not eligible_evals:
         print("STATUS: UP_TO_DATE")

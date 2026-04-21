@@ -74,7 +74,7 @@ def sync_all_benchmarks(repo: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Sync all GitHub issues labeled 'benchmark' into local evals.json files."
+        description="Sync all GitHub issues labeled 'benchmark' into local _automation/evals/ directory."
     )
     parser.add_argument(
         "--repo",

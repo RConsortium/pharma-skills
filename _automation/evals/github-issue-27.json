@@ -1,0 +1,17 @@
+{
+  "id": "github-issue-27",
+  "prompt": "Use the skill of group-sequential-design, answer in English:  Consider an Oncology Study, two-sided significance level of 5%, power of 80%, median survival time is 11 months in control group and 17 months in treatment group;      \ntarget on 2:1 for treatment group/control group; a total dropout rate will be 15%; a group-sequential design will be applied on 50% and 75% of total information time     \nwith respect to event number of PFS; an O'Brien-Fleming Type boundary is assumed to be applied (alpha spending approach)",
+  "expected_output": "A Clinical Trial design with total event number around 180 and sample size around 250; group sequential design is applied with critical boundary of (2.963, 2.359, 2.014) at information time of (0.5, 0.75, 1) with nominal siginificance level of (0.0031, 0.0183, 0.044). The actual event number at each interim should be given.",
+  "files": [],
+  "assertions": [
+    "the package of '{gsdesign}' is applied properly with correct input parameters",
+    "gsd_results.json exists and contains event number within [160, 200] and sample size within [220, 280]",
+    "Critical boundary table is given including information time, event number at each time, critical boudary and nominal significance level.",
+    "The alpha spending function (O'Brien-Fleming Type Boundary) is applied correctly and approximately calculated based on calculated event number. While the event number can be round up, the boundary should be calcualted around time points of (0.5, 0.75, 1). The expected critical boundary is (2.963, 2.359, 2.014) at information time of (0.5, 0.75, 1) with nominal siginificance level of (0.0031, 0.0183, 0.044).",
+    "multiplicity_diagram.png exists",
+    "gsd_report.docx exists"
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

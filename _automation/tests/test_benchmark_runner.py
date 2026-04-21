@@ -36,6 +36,12 @@ class TestNormalizeModelName(unittest.TestCase):
             gne.normalize_model_name("claude-sonnet-4-6"),
         )
 
+    def test_gemini_normalization(self):
+        self.assertEqual(gne.normalize_model_name("gemini-2.0-flash"), "gemini20flash")
+
+    def test_gpt_normalization(self):
+        self.assertEqual(gne.normalize_model_name("gpt-4o"), "gpt4o")
+
 
 class TestCheckGithubComments(unittest.TestCase):
     def _make_comment(self, sha, model_display):

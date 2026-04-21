@@ -100,55 +100,52 @@ Expected output content.
 
 
 class TestSaveToEvals(unittest.TestCase):
-    def _write_evals(self, tmpdir, evals_list):
-        evals_dir = Path(tmpdir) / "my-skill" / "evals"
-        evals_dir.mkdir(parents=True)
-        path = evals_dir / "evals.json"
-        path.write_text(json.dumps({"skill_name": "my-skill", "evals": evals_list}))
+    def _write_eval(self, tmpdir, eval_id, eval_dict):
+        evals_dir = Path(tmpdir) / "evals"
+        evals_dir.mkdir(parents=True, exist_ok=True)
+        path = evals_dir / f"{eval_id}.json"
+        path.write_text(json.dumps(eval_dict))
         return path
 
     def test_adds_new_entry(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            self._write_evals(tmpdir, [])
             entry = {"id": "github-issue-1", "prompt": "p", "expected_output": "e", "files": [], "assertions": ["a"]}
-            with patch("import_issue_eval.os.getcwd", return_value=tmpdir):
-                orig = Path.cwd
-                Path.cwd = lambda: Path(tmpdir)  # type: ignore
-                # Patch os.path.join to use tmpdir as base
-                import os
-                orig_join = os.path.join
-                def patched_join(*args):
-                    if args and args[0] == "my-skill":
-                        return orig_join(tmpdir, *args)
-                    return orig_join(*args)
-                with patch("import_issue_eval.os.path.join", side_effect=patched_join):
-                    with patch("import_issue_eval.os.makedirs"):
-                        evals_file = Path(tmpdir) / "my-skill" / "evals" / "evals.json"
-                        with patch("builtins.open", unittest.mock.mock_open(read_data=json.dumps({"skill_name": "my-skill", "evals": []}))):
-                            pass  # just verify it runs — full integration tested below
+            
+            import os
+            orig_join = os.path.join
+            def patched_join(*args):
+                if len(args) >= 2 and args[0] == "_automation" and args[1] == "evals":
+                    return orig_join(tmpdir, *args)
+                return orig_join(*args)
+                
+            with patch("import_issue_eval.os.path.join", side_effect=patched_join):
+                status = ite.save_to_evals(entry, "my-skill")
+                self.assertIn("Success", status)
+                
+                # Verify file was created
+                path = Path(tmpdir) / "_automation" / "evals" / "github-issue-1.json"
+                self.assertTrue(path.exists())
+                data = json.loads(path.read_text())
+                self.assertEqual(data["target_skills"], ["my-skill"])
 
     def test_add_and_skip_lifecycle(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = self._write_evals(tmpdir, [])
-
             import os
             orig_join = os.path.join
-
             def patched_join(*args):
-                if args and args[0] == "my-skill":
+                if len(args) >= 2 and args[0] == "_automation" and args[1] == "evals":
                     return orig_join(tmpdir, *args)
                 return orig_join(*args)
 
-            with patch("import_issue_eval.os.path.join", side_effect=patched_join), \
-                 patch("import_issue_eval.os.makedirs"):
+            with patch("import_issue_eval.os.path.join", side_effect=patched_join):
                 entry = {"id": "github-issue-1", "prompt": "p", "expected_output": "e", "files": [], "assertions": ["a"]}
+                
+                # First save should add
                 status = ite.save_to_evals(entry, "my-skill")
                 self.assertIn("Added", status)
 
-                # Re-read and confirm
-                data = json.loads(path.read_text())
-                self.assertEqual(len(data["evals"]), 1)
-
+                path = Path(tmpdir) / "_automation" / "evals" / "github-issue-1.json"
+                
                 # Same content → skip
                 status2 = ite.save_to_evals(entry, "my-skill")
                 self.assertIn("up to date", status2)
