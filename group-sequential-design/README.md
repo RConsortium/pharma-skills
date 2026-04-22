@@ -85,9 +85,10 @@ output/gsd_{disease}_{endpoints}_{YYYYMMDD}/
                    └── evals.json
    ```
 
-2. Install the required R packages:
+2. Install the required R packages (uses `pak` for parallel, binary-first installs):
    ```r
-   install.packages(c("gsDesign", "gsDesign2", "lrstat", "graphicalMCP", "jsonlite"))
+   install.packages("pak")
+   pak::pak(c("gsDesign", "gsDesign2", "lrstat", "graphicalMCP", "jsonlite"))
    ```
 
 3. Install the required Python package:
