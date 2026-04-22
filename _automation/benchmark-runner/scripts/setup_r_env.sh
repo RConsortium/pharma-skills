@@ -17,67 +17,166 @@ R_VERSION=$(R --version | head -1 | awk '{print $3}')
 echo "[setup] R ${R_VERSION} available."
 
 # ---------------------------------------------------------------------------
-# 2. Install required R packages via Posit Public Package Manager
-#    (pre-compiled Linux binaries — much faster than building from source)
+# 2. Pre-install system libraries required by R packages
+#    Doing this up front via apt is faster than letting pak discover them at
+#    install time, and avoids restarting the R session mid-install.
+# ---------------------------------------------------------------------------
+echo "[setup] Installing system build dependencies..."
+sudo apt-get install -y --no-install-recommends \
+  libcurl4-openssl-dev \
+  libssl-dev \
+  libxml2-dev \
+  libfontconfig1-dev \
+  libfreetype-dev \
+  libharfbuzz-dev \
+  libfribidi-dev \
+  libpng-dev \
+  libjpeg-dev \
+  libuv1-dev \
+  2>/dev/null || echo "[setup] Some system packages failed — continuing."
+
+# ---------------------------------------------------------------------------
+# 3. Pin CRAN to a known IP to prevent DNS cache overflow errors.
+#    R's download engine resolves hostnames separately from the system
+#    resolver cache and can hit "DNS cache overflow" under load.
+# ---------------------------------------------------------------------------
+echo "[setup] Pinning CRAN hostname to bypass DNS cache overflow..."
+pin_host() {
+  local domain="$1"
+  if ! grep -q "${domain}" /etc/hosts 2>/dev/null; then
+    local ip
+    ip=$(curl -s --max-time 10 -w "%{remote_ip}" -o /dev/null "https://${domain}" 2>/dev/null || true)
+    if [ -n "${ip}" ]; then
+      echo "${ip} ${domain}" | sudo tee -a /etc/hosts > /dev/null
+      echo "[setup] Pinned ${domain} -> ${ip}"
+    else
+      echo "[setup] Warning: could not resolve ${domain} — skipping pin."
+    fi
+  else
+    echo "[setup] ${domain} already pinned in /etc/hosts."
+  fi
+}
+pin_host "cran.r-project.org"
+pin_host "cloud.r-project.org"
+
+# ---------------------------------------------------------------------------
+# 4. Bootstrap pak — the fast parallel package manager for R.
+#    pak: parallel downloads, automatic system-dep detection, binary packages.
+#    Install strategy (in order of preference):
+#      a) Already installed → skip.
+#      b) pak's own r-lib CDN (independent of CRAN, pre-built binaries).
+#      c) CRAN with curl + SSL-bypass fallback.
+# ---------------------------------------------------------------------------
+echo "[setup] Checking for pak..."
+Rscript --no-save -e "
+if (requireNamespace('pak', quietly = TRUE)) {
+  message('[setup] pak ', as.character(packageVersion('pak')), ' already installed.')
+  quit(status = 0)
+}
+message('[setup] Installing pak...')
+
+# Strategy (a): pak CDN — pre-built binaries, no CRAN dependency
+cdn_url <- sprintf(
+  'https://r-lib.github.io/p/pak/stable/%s/%s/%s',
+  .Platform\$pkgType, R.Version()\$os, R.Version()\$arch
+)
+ok <- tryCatch({
+  install.packages('pak', repos = cdn_url, quiet = TRUE)
+  requireNamespace('pak', quietly = TRUE)
+}, error = function(e) FALSE, warning = function(w) FALSE)
+
+if (ok) {
+  message('[setup] pak installed from r-lib CDN.')
+  quit(status = 0)
+}
+
+# Strategy (b): CRAN with curl download method and SSL bypass
+message('[setup] r-lib CDN failed — trying CRAN...')
+options(download.file.method = 'curl', download.file.extra = '-k')
+tryCatch({
+  install.packages('pak', repos = 'https://cran.r-project.org', quiet = FALSE)
+}, error = function(e) stop('[setup] Failed to install pak: ', conditionMessage(e)))
+
+if (!requireNamespace('pak', quietly = TRUE)) {
+  stop('[setup] pak installed but cannot be loaded.')
+}
+message('[setup] pak ', as.character(packageVersion('pak')), ' installed from CRAN.')
+" 2>&1
+
+# ---------------------------------------------------------------------------
+# 5. Install all required R packages via pak
+#    pak resolves and installs in parallel, detects missing system libraries,
+#    and prefers pre-compiled binaries when a PPM repo is configured.
 # ---------------------------------------------------------------------------
 
-# Detect OS codename for the correct PPM binary URL (e.g. noble, jammy, focal)
+# Detect OS codename for PPM binary URL (e.g. noble, jammy)
 OS_CODENAME=$(. /etc/os-release 2>/dev/null && echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}" || true)
 if [ -z "${OS_CODENAME}" ] && command -v lsb_release &>/dev/null; then
   OS_CODENAME=$(lsb_release -cs 2>/dev/null || true)
 fi
 
-if [ -n "${OS_CODENAME}" ]; then
-  PPM_URL="https://packagemanager.posit.co/cran/__linux__/${OS_CODENAME}/latest"
-  echo "[setup] Detected OS codename '${OS_CODENAME}' — using PPM URL: ${PPM_URL}"
-else
-  PPM_URL="https://cloud.r-project.org"
-  echo "[setup] Could not detect OS codename — falling back to CRAN: ${PPM_URL}"
-fi
+echo "[setup] Installing R packages via pak..."
+Rscript --no-save - "${OS_CODENAME:-}" <<'REOF'
+os_codename <- commandArgs(trailingOnly = TRUE)[1]
 
-Rscript --no-save - "${PPM_URL}" <<'REOF'
-ppm_url <- commandArgs(trailingOnly = TRUE)[1]
-
-# Verify the PPM URL is reachable and has packages; fall back to CRAN if not
-ppm_ok <- tryCatch({
-  av <- available.packages(repos = ppm_url)
-  nrow(av) > 100
-}, error = function(e) FALSE)
-
-repo_url <- if (ppm_ok) ppm_url else {
-  message("[setup] PPM URL unreachable — falling back to CRAN")
-  "https://cloud.r-project.org"
-}
-
+# Always set curl + SSL-bypass as the download fallback.
+# R's default libcurl method can hit "DNS cache overflow" under connection
+# load; system curl resolves using the /etc/hosts pin we set above.
 options(
-  repos = c(CRAN = repo_url),
-  warn  = 1   # print warnings immediately
+  download.file.method = "curl",
+  download.file.extra  = "-k",
+  warn = 1
 )
 
-# Packages needed by benchmark-runner automation scripts
+# Choose repository: PPM for pre-compiled binaries, CRAN as fallback.
+ppm_url <- if (nzchar(os_codename)) {
+  sprintf("https://packagemanager.posit.co/cran/__linux__/%s/latest", os_codename)
+} else {
+  NULL
+}
+
+ppm_ok <- !is.null(ppm_url) && tryCatch({
+  nrow(available.packages(repos = ppm_url)) > 100
+}, error = function(e) FALSE)
+
+repo_url <- if (ppm_ok) {
+  message("[setup] Using PPM binary repo: ", ppm_url)
+  ppm_url
+} else {
+  message("[setup] PPM unavailable — using CRAN.")
+  "https://cran.r-project.org"
+}
+
+options(repos = c(CRAN = repo_url))
+
+# Packages required by benchmark-runner automation scripts
 automation_pkgs <- c(
   "jsonlite",   # JSON parse/emit in R-based dispatcher helpers
   "digest"      # SHA hashing used by deduplication logic
 )
 
-# Packages needed by the group-sequential-design skill
-# (pre-installing avoids mid-benchmark install delays that skew timing)
+# Packages required by the group-sequential-design skill.
+# Pre-installing avoids mid-benchmark install delays that skew timing.
 skill_pkgs <- c(
   "gsDesign",     # group sequential boundaries and sample size
   "gsDesign2",    # non-proportional hazards evaluation
   "lrstat",       # log-rank simulation for design verification
   "graphicalMCP", # Maurer-Bretz graphical multiplicity testing
   "eventPred",    # event prediction under non-proportional hazards
-  "ggplot2"       # visualisation used in examples and outputs
+  "ggplot2"       # visualisation used in skill outputs
 )
 
 all_pkgs  <- unique(c(automation_pkgs, skill_pkgs))
 installed <- installed.packages()[, "Package"]
 missing   <- all_pkgs[!all_pkgs %in% installed]
 
-if (length(missing) > 0) {
-  message("[setup] Installing missing packages: ", paste(missing, collapse = ", "))
-  install.packages(missing, quiet = FALSE, dependencies = TRUE)
+if (length(missing) == 0) {
+  message("[setup] All packages already installed — skipping.")
+} else {
+  message("[setup] Installing via pak: ", paste(missing, collapse = ", "))
+  # pak installs in parallel, handles system requirements, prefers binaries.
+  # sysreqs = TRUE lets pak install any missing system libraries via apt.
+  pak::pak(missing, upgrade = FALSE, ask = FALSE)
 }
 
 # Verify every package can actually be loaded
