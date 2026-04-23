@@ -286,7 +286,9 @@ def build_agent_prompts(eval_case: dict) -> None:
         "Assertions:\n"
         + "\n".join(f"- {assertion}" for assertion in eval_case.get("assertions", []))
         + "\n\nReturn a concise score table with Pass, Partial, or Fail for each "
-        "assertion and each candidate. Do not mention or infer treatment labels."
+        "assertion and each candidate. Do not mention or infer treatment labels. "
+        "Do not reward output length or artifact count unless an assertion requires it — "
+        "a short correct answer and a long correct answer are equal if both satisfy all assertions."
     )
 
     blind_seed = hashlib.sha256(

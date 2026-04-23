@@ -264,11 +264,17 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 
 ### Key Observations
 
-- {2-4 bullet points comparing both agents}
+- {2-4 bullet points comparing both agents — ground each point in assertion outcomes or
+  factual execution differences (score, turns, tokens, files produced). Do not characterize
+  one response as "richer" or "better" based on output length or artifact count unless an
+  assertion explicitly requires it. If both agents pass the same assertions, state that.}
 
 ### Verdict
 
-{1-2 sentence overall verdict}
+{1-2 sentence overall verdict — state the assertion outcome first, then any meaningful
+execution difference (cost, speed). Do not invent a qualitative winner when both agents
+satisfy the same assertions. A short correct answer and a long correct answer are equal
+if no assertion distinguishes them.}
 
 ---
 
