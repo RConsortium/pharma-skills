@@ -117,21 +117,41 @@ Text files are also embedded in `_common_task_prompt` under neutral names such a
 Example launcher shape for each side:
 
 ```bash
-cd /tmp/benchmark_{id}/agent_A && cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob"
-cd /tmp/benchmark_{id}/agent_B && cat prompt_B.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob"
+cd /tmp/benchmark_{id}/agent_A && cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob" --output-format stream-json | tee agent_A_run.jsonl
+cd /tmp/benchmark_{id}/agent_B && cat prompt_B.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob" --output-format stream-json | tee agent_B_run.jsonl
 ```
 
 `prompt_A.txt` should contain only the skill context plus `_prompt_a`. `prompt_B.txt` should
 contain only `_prompt_b`. The experimental contrast must be skill access, not launcher,
 model, cwd, file naming, or prior-session context.
 
+The `--output-format stream-json` flag emits one JSON object per line covering every event in
+the agent's run: session init, assistant turns, tool calls, tool results, and a final `result`
+record with API-reported token counts. `tee` writes this to `agent_{X}_run.jsonl` while still
+forwarding the stream so the orchestrator can read the response inline.
+
 **When the agents return:**
-- Extract the `[USAGE: {n}]` value from each agent's response.
+- Extract token counts from the JSONL `result` event (more accurate than self-reported values):
+  ```bash
+  python3 - <<'PY'
+  import json
+  for path, label in [("agent_A_run.jsonl", "A"), ("agent_B_run.jsonl", "B")]:
+      for line in open(f"/tmp/benchmark_{id}/agent_{label}/{path}"):
+          ev = json.loads(line)
+          if ev.get("type") == "result":
+              u = ev.get("usage", {})
+              total = u.get("input_tokens", 0) + u.get("output_tokens", 0)
+              print(f"tokens_{label}={total}")
+              break
+  PY
+  ```
+  Fall back to grepping `[USAGE: {n}]` from the plain-text response if the JSONL file is
+  absent or the `result` event has no `usage` field.
 - Run the recording script to capture duration and tokens:
   ```bash
   python3 _automation/benchmark-runner/scripts/record_run_result.py --eval-id {id} --model {CURRENT_MODEL_NAME} --status completed --tokens-a {tokens_A} --tokens-b {tokens_B}
   ```
-- Note any system errors, tool failures, or retries.
+- Note any system errors, tool failures, or retries visible in the JSONL stream.
 
 ---
 
@@ -168,23 +188,48 @@ for the report.
 
 To allow for deep inspection of the results (and support downloading binary files like `.docx` and `.png`):
 
-1. **Package:** Create a zip archive containing both isolated output directories.
+1. **Package:** Create a zip archive containing both isolated output directories and the JSONL run logs.
    ```bash
-   cd /tmp/benchmark_{id} && zip -r benchmark_results_{eval_id}.zip agent_A/output_A/ agent_B/output_B/
+   cd /tmp/benchmark_{id} && zip -r benchmark_results_{eval_id}.zip \
+     agent_A/output_A/ agent_A/agent_A_run.jsonl \
+     agent_B/output_B/ agent_B/agent_B_run.jsonl
    ```
-2. **Upload:** Use the GitHub CLI to upload the zip file to a dedicated "Benchmark Results" release.
-   - First, check if the release exists. If not, create it:
-     ```bash
-     gh release view "benchmark-results" --repo RConsortium/pharma-skills || gh release create "benchmark-results" --repo RConsortium/pharma-skills --title "Automated Benchmark Results" --notes "Rolling release for automated benchmark zip files." --prerelease
-     ```
-   - Upload the zip file as a release asset (overwriting if it already exists):
-     ```bash
-     cd /tmp/benchmark_{id} && gh release upload "benchmark-results" benchmark_results_{eval_id}.zip --repo RConsortium/pharma-skills --clobber
-     ```
-   - Construct the direct download URL:
-     `https://github.com/RConsortium/pharma-skills/releases/download/benchmark-results/benchmark_results_{eval_id}.zip`
 
-Capture this direct download URL for inclusion in the markdown report.
+2. **Check/create the release (MCP primary):**
+   Use the `mcp__github__get_release_by_tag` tool with `tag = "benchmark-results"` and
+   `owner = "RConsortium"`, `repo = "pharma-skills"`. If the call succeeds, the release
+   already exists — note its `upload_url` for the next step. If it returns an error (release
+   not found), you must create it via the REST API fallback below, as the MCP server does not
+   expose a create-release tool.
+
+   REST API fallback to create the release (requires `GH_TOKEN` or `GITHUB_TOKEN`):
+   ```bash
+   curl -s -X POST \
+     -H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}" \
+     -H "Accept: application/vnd.github+json" \
+     https://api.github.com/repos/RConsortium/pharma-skills/releases \
+     -d '{"tag_name":"benchmark-results","name":"Automated Benchmark Results","body":"Rolling release for automated benchmark zip files.","prerelease":true}'
+   ```
+
+3. **Upload the zip as a release asset (REST API):**
+   The MCP server does not expose a release-asset upload endpoint, so use the REST API
+   directly. Replace `{upload_url_base}` with the `upload_url` from step 2 (strip the
+   `{?name,label}` template suffix):
+   ```bash
+   curl -s -X POST \
+     -H "Authorization: Bearer ${GH_TOKEN:-$GITHUB_TOKEN}" \
+     -H "Content-Type: application/zip" \
+     "{upload_url_base}?name=benchmark_results_{eval_id}.zip" \
+     --data-binary @/tmp/benchmark_{id}/benchmark_results_{eval_id}.zip
+   ```
+   If neither `GH_TOKEN` nor `GITHUB_TOKEN` is set, skip the upload and include all agent
+   outputs inline in the report instead (see Step 5 artifacts section).
+
+4. **Construct the direct download URL** (whether upload succeeded or not):
+   `https://github.com/RConsortium/pharma-skills/releases/download/benchmark-results/benchmark_results_{eval_id}.zip`
+
+Capture this URL for inclusion in the markdown report. If the upload was skipped, note that
+in the report and include outputs inline.
 
 ---
 
@@ -245,14 +290,19 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 
 ### Debugging Information
 
+Parse `agent_A_run.jsonl` / `agent_B_run.jsonl` (included in the zip above) for full event
+history. Each line is one JSON event: `system/init`, `assistant`, `tool_use`, `tool_result`,
+or `result`. The `result` line contains API-reported `usage.input_tokens` /
+`usage.output_tokens` and `cost_usd`.
+
 #### Agent A (With Skill)
-- **Total Tool Calls:** {count}
-- **Tool Success Rate:** {rate}%
+- **Total Tool Calls:** {count — `tool_use` events in agent_A_run.jsonl}
+- **Tool Success Rate:** {rate}% — `tool_result` events where `is_error` is false
 - **Errors/Retries:** {any errors or "None"}
 
 #### Agent B (Without Skill)
-- **Total Tool Calls:** {count}
-- **Tool Success Rate:** {rate}%
+- **Total Tool Calls:** {count — `tool_use` events in agent_B_run.jsonl}
+- **Tool Success Rate:** {rate}% — `tool_result` events where `is_error` is false
 - **Errors/Retries:** {any errors or "None"}
 
 ### Detailed Artifacts
@@ -284,14 +334,17 @@ Write a Markdown file at `/tmp/benchmark_comment_{skill}_{eval_id}.md` using thi
 
 Extract the issue number from the `id` (e.g., `"github-issue-21"` -> **#21**).
 
-Post using the `gh` CLI:
-```bash
-gh issue comment {issue_number} --repo RConsortium/pharma-skills --body-file /tmp/benchmark_comment_{skill}_{eval_id}.md
+**Primary — MCP tool (no token required):**
+Use the `mcp__github__add_issue_comment` tool:
+```
+owner: RConsortium
+repo:  pharma-skills
+issue_number: {issue_number}
+body: <contents of /tmp/benchmark_comment_{skill}_{eval_id}.md>
 ```
 
-If `gh` is missing, unauthenticated, or blocked, use the REST API fallback. It requires
-`GH_TOKEN` or `GITHUB_TOKEN` with permission to write issue comments:
-
+**Fallback — REST API (requires `GH_TOKEN` or `GITHUB_TOKEN`):**
+If the MCP tool is unavailable or returns an error, use the Python fallback script:
 ```bash
 python3 _automation/benchmark-runner/scripts/post_issue_comment.py {issue_number} \
   --repo RConsortium/pharma-skills \
