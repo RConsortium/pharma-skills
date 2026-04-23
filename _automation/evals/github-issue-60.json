@@ -1,0 +1,13 @@
+{
+  "id": "github-issue-60",
+  "prompt": "What's the mean of a standard normal distribution?",
+  "expected_output": "0",
+  "files": [],
+  "assertions": [
+    "the output is 0"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

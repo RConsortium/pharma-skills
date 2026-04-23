@@ -4,14 +4,15 @@
   "expected_output": "gsd_design.R using compute_single_look_boundary() for PFS (not gsDesign k=1), gsSurv() or gsDesign() for OS with 2 looks. gsd_results.json with separate boundary tables for PFS (single Z-value) and OS (IA + FA boundaries). multiplicity_diagram.png showing PFS and OS nodes with alpha 0.005 and 0.020. Verification confirms power for both endpoints. Report has dual boundary tables.",
   "files": [],
   "assertions": [
-    "\"PFS has exactly 1 boundary (single look), OS has 2 boundaries (IA + FA)\"",
-    "\"If PFS is overpowered, skill suggests reallocating alpha from PFS to OS (e.g., lowering PFS alpha below 0.005)\"",
-    "\"OS simulated power within \u00b12pp of 90%\"",
-    "\"simulated type I error within \u00b10.5pp for both PFS and OS\",",
-    "\"multiplicity_diagram.png exists and shows two hypothesis nodes\",",
-    "\"boundaries calculated for both endpoints\",",
-    "\"Minimum follow-up constraint is met: the IA occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged\",",
-    "\"Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged \""
+    "PFS has exactly 1 boundary (single look), OS has 2 boundaries (IA + FA)",
+    "If PFS is overpowered, skill suggests reallocating alpha from PFS to OS (e.g., lowering PFS alpha below 0.005)",
+    "OS simulated power within \u00b12pp of 90%",
+    "simulated type I error within \u00b10.5pp for both PFS and OS",
+    "multiplicity_diagram.png exists and shows two hypothesis nodes",
+    "boundaries calculated for both endpoints",
+    "Minimum follow-up constraint is met: the IA occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged",
+    "Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged",
+    "IA/FA gap is evaluated and an additional IA is suggested if gap > 18 months"
   ],
   "language": "R",
   "target_skills": [
