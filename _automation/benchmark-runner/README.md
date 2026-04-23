@@ -62,5 +62,3 @@ Ask your agent:
 
 ## License
 MIT
-
-MIT
