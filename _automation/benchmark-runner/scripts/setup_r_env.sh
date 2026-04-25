@@ -62,45 +62,80 @@ pin_host "cloud.r-project.org"
 # ---------------------------------------------------------------------------
 # 4. Bootstrap pak — the fast parallel package manager for R.
 #    pak: parallel downloads, automatic system-dep detection, binary packages.
+#
 #    Install strategy (in order of preference):
-#      a) Already installed → skip.
-#      b) pak's own r-lib CDN (independent of CRAN, pre-built binaries).
-#      c) CRAN with curl + SSL-bypass fallback.
+#      a) Already installed AND built for linux-gnu → skip.
+#         A pre-existing linux-musl build (from the r-lib CDN) is treated
+#         as unusable here because its statically-linked libcurl ships with
+#         a vendored CA bundle and ignores CURL_CA_BUNDLE / SSL_CERT_FILE.
+#         In sandboxes behind a TLS-intercepting egress proxy that signs
+#         with a custom root CA, that build fails every CRAN/Bioc fetch
+#         with "self signed certificate in certificate chain". We remove it
+#         and reinstall from source.
+#      b) Install from source via CRAN. The resulting pak links against
+#         system libcurl/openssl (libcurl4-openssl-dev + libssl-dev from
+#         Step 2), which honor the system CA bundle and any proxy CAs in
+#         /etc/ssl/certs/ca-certificates.crt.
+#      c) r-lib CDN pre-built binary as a last resort. Faster on
+#         unrestricted networks but may fail at runtime in proxied
+#         sandboxes (see strategy a).
 # ---------------------------------------------------------------------------
 echo "[setup] Checking for pak..."
 Rscript --no-save -e "
-if (requireNamespace('pak', quietly = TRUE)) {
-  message('[setup] pak ', as.character(packageVersion('pak')), ' already installed.')
-  quit(status = 0)
+pak_platform_ok <- function() {
+  sitrep <- utils::capture.output(pak::pak_sitrep())
+  any(grepl('pak platform:.*linux-gnu', sitrep))
 }
-message('[setup] Installing pak...')
 
-# Strategy (a): pak CDN — pre-built binaries, no CRAN dependency
-cdn_url <- sprintf(
-  'https://r-lib.github.io/p/pak/stable/%s/%s/%s',
-  .Platform\$pkgType, R.Version()\$os, R.Version()\$arch
-)
+if (requireNamespace('pak', quietly = TRUE)) {
+  if (isTRUE(try(pak_platform_ok(), silent = TRUE))) {
+    message('[setup] pak ', as.character(packageVersion('pak')),
+            ' (linux-gnu) already installed.')
+    quit(status = 0)
+  }
+  message('[setup] Existing pak is not a linux-gnu build — removing and ',
+          'reinstalling from source so it uses system libcurl/openssl.')
+  try(utils::remove.packages('pak'), silent = TRUE)
+}
+
+message('[setup] Installing pak from source (links against system ',
+        'libcurl/openssl so the system CA bundle is honored)...')
+
+# Strategy (b): source install from CRAN. Requires libcurl4-openssl-dev +
+# libssl-dev, which Step 2 already installs.
 ok <- tryCatch({
-  install.packages('pak', repos = cdn_url, quiet = TRUE)
+  install.packages(
+    'pak',
+    type  = 'source',
+    repos = 'https://cloud.r-project.org',
+    quiet = FALSE
+  )
   requireNamespace('pak', quietly = TRUE)
 }, error = function(e) FALSE, warning = function(w) FALSE)
 
 if (ok) {
-  message('[setup] pak installed from r-lib CDN.')
+  message('[setup] pak ', as.character(packageVersion('pak')),
+          ' installed from CRAN source.')
   quit(status = 0)
 }
 
-# Strategy (b): CRAN with curl download method and SSL bypass
-message('[setup] r-lib CDN failed — trying CRAN...')
-options(download.file.method = 'curl', download.file.extra = '-k')
+# Strategy (c): pak CDN binary fallback — may not work behind a
+# TLS-intercepting proxy, but works on unrestricted networks.
+message('[setup] CRAN source build failed — trying r-lib CDN binary...')
+cdn_url <- sprintf(
+  'https://r-lib.github.io/p/pak/stable/%s/%s/%s',
+  .Platform\$pkgType, R.Version()\$os, R.Version()\$arch
+)
 tryCatch({
-  install.packages('pak', repos = 'https://cran.r-project.org', quiet = FALSE)
-}, error = function(e) stop('[setup] Failed to install pak: ', conditionMessage(e)))
+  install.packages('pak', repos = cdn_url, quiet = FALSE)
+}, error = function(e) stop('[setup] Failed to install pak: ',
+                            conditionMessage(e)))
 
 if (!requireNamespace('pak', quietly = TRUE)) {
   stop('[setup] pak installed but cannot be loaded.')
 }
-message('[setup] pak ', as.character(packageVersion('pak')), ' installed from CRAN.')
+message('[setup] pak ', as.character(packageVersion('pak')),
+        ' installed from r-lib CDN.')
 " 2>&1
 
 # ---------------------------------------------------------------------------
