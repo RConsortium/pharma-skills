@@ -1,0 +1,26 @@
+{
+  "id": "github-issue-69",
+  "prompt": "I'm designing a Phase 3 trial in second-line  SCLC. Two nested populations: Extensive-stage subgroup (expected prevalence 70%) and ITT (all patients, 100%). Co-primary endpoints PFS and OS in both populations, giving 4 hypotheses: H1 (PFS-subgroup), H2 (OS-subgroup), H3 (PFS-ITT), H4 (OS-ITT). 1:1 randomization. Control medians: PFS 4 months in subgroup, 4 months in ITT; OS 8 months in subgroup, 8 months in ITT. Target hazard ratios: PFS 0.65 (subgroup), 0.67 (ITT); OS 0.69 (subgroup), 0.72 (ITT). Total alpha 0.025 one-sided. alpha split strategy: OS has higher priority than PFS. If OS hypothesis is rejected in one population, pass majority alpha (e.g., 0.999) to OS in the other population. If PFS is rejected in one population, pass all alpha to OS in the same population. One interim analysis + final analysis. PFS tested only at the IA (single look) in both populations. OS tested at both IA and FA. PFS triggers the IA, OS triggers the FA. Alpha spending for OS hypotheses: Lan-DeMets O'Brien-Fleming. PFS and OS power target: at least 90% at originally assigned alpha in both populations. Explore initial alphas for the 4 hypotheses to meet the power requirement. No futility analysis. Enrollment: 5 patients/month for the first 2 months, 20/month for the next 3 months, then 30/month thereafter. Annual dropout: PFS 5%, OS 2%. Feasible sample size range: under 700 patients. Minimum follow-up 6 months, minimum gap between analyses 6 months.  I want FA is within 60 months from first patient in. All inputs are confirmed — skip the Q&A and proceed directly to computation.",
+  "expected_output": "One output file with interim analysis plan, efficacy boundaries, multiplicity diagram, sample size and power summary.",
+  "files": [],
+  "assertions": [
+    "All four hypotheses have initial assigned alpha  with boundaries computed at the initial assigned alpha",
+    "PFS hypotheses (H1, H2) each have exactly 1 boundary (single look)",
+    "OS hypotheses (H3, H4) each have 2 boundaries (IA + FA)",
+    "Multiplicity_diagram.png exists and shows 4 hypothesis nodes with actual alpha values. ",
+    "Transition matrix matches specified weights: H1->H2(1), H2->H4(0.999)+H1(0.001), H4->H2(0.999)+H3(0.001), H3->H4(1), 0.001 can be replaced with a very small number or epsilon",
+    "Sample size and study timeline are driven by the subgroup, not the ITT population. Meaning power for PFS and OS in ITT could be over-powered",
+    "IA timing is driven by PFS in the subgroup. ",
+    "If IA occurs too late after end of enrollment (e.g., > 9 months), a larger initial alpha is suggested for PFS in the subgroup",
+    "Total N is at most 700 (N <= 700)",
+    "If a hypothesis is overpowered (power >> 90%), skill suggests lowering that endpoint's alpha and reallocating to other endpoints",
+    " Minimum follow-up constraint is met: the IA occurs at least 6 months after enrollment ends, OR the violation is explicitly flagged",
+    "Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged",
+    "IA/FA gap is evaluated and a second IA is suggested if gap > 18 months",
+    "results are verified by simulations"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}
