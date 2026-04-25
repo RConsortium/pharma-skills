@@ -3,33 +3,38 @@
   "evals": [
     {
       "id": "github-issue-21",
-      "prompt": "I'm designing a Phase 3 trial in first-line metastatic NSCLC. Single population, all-comers. Primary endpoint is overall survival (OS). 1:1 randomization. Control arm median OS is 14 months, and we're powering for a hazard ratio of 0.70. Start with one interim analysis at 70% of events using Lan-DeMets O'Brien-Fleming spending. We also want a non-binding futility boundary using HSD gamma=-4. Target power is 90%, one-sided alpha 0.025. Enrollment ramp: 5 patients/month for 3 months, then 15/month for 3 months, then 30/month steady state. Annual dropout is 5%. Minimum follow-up after last patient in is 6 months, minimum gap between analyses is 6 months. We need to stay under 450 patients total. Please optimize the design: find the smallest feasible sample size, and also evaluate whether the gap between the IA and FA is reasonable \u2014 if the gap is too long (e.g., more than 18 months), suggest adding a second interim and show the revised timing.",
-      "expected_output": "All outputs in output/gsd_1l_mnsclc_os_/: gsd_design.R using gsSurv() with N <= 450, gsd_results.json with boundary values and event counts, multiplicity_diagram.png generated via graphicalMCP, gsd_verification.R + gsd_verification_log.md confirming power within 88-92% and type I error within 0.024-0.026, gsd_report.py driven purely from gsd_results.json, and gsd_report.docx.",
-      "files": [],
+      "prompt": "I'm designing a Phase 3 trial in first-line metastatic NSCLC. Single population, all-comers. Primary endpoint is overall survival (OS). 1:1 randomization. Control arm median OS is 14 months, and we're powering for a hazard ratio of 0.70. Start with one interim analysis at 70% of events using Lan-DeMets O'Brien-Fleming spending. We also want a non-binding futility boundary using HSD gamma=-4. Target power is 90%, one-sided alpha 0.025. Enrollment ramp: 5 patients/month for 3 months, then 15/month for 3 months, then 30/month steady state. Annual dropout is 5%. Minimum follow-up after last patient in is 6 months, minimum gap between analyses is 6 months. We need to stay under 450 patients total.\"",
+      "expected_output": "All outputs in output/gsd_1l_mnsclc_os_<date>/: gsd_design.R using gsSurv() with N <= 450, gsd_results.json with boundary values and event counts, multiplicity_diagram.png generated via graphicalMCP, gsd_verification.R + gsd_verification_log.md confirming power within 88-92% and type I error within 0.024-0.026, gsd_report.py driven purely from gsd_results.json, and gsd_report.docx.\"",
+      "files": [
+        "none"
+      ],
       "assertions": [
-        "gsd_design.R exists and calls gsSurv()",
-        "gsd_results.json exists and contains total_N < 450, OR if N exceeds 450 the skill explicitly flags the constraint conflict and explains why (e.g., gap constraint required larger N)",
+        "sample N < 450, OR if N exceeds 450 the skill explicitly flags the constraint conflict and explains why (e.g., gap constraint required larger N)",
         "multiplicity_diagram.png exists",
-        "gsd_verification_log.md reports simulated power within \u00b12pp of 90%",
-        "gsd_verification_log.md reports type I error within \u00b10.5pp of 0.025",
-        "gsd_report.docx exists",
-        "gsd_report.py reads all values from gsd_results.json with no hardcoded numbers",
+        "simulated power within \u00b12pp of 90%",
+        "simulated type I error within \u00b10.5pp of 0.025",
+        "a report document exists",
         "IA/FA gap is evaluated and a second IA is suggested if gap > 18 months",
-        "In the recommended design, the first IA occurs within 18 months from the end of enrollment"
+        "In the recommended design, minimum follow-up after last patient in is 6 months",
+        "In the recommended design, minimum gap between analyses is 6 months"
       ]
     },
     {
       "id": "github-issue-3",
       "prompt": "following SAP https://cdn.clinicaltrials.gov/large-docs/22/NCT01471522/SAP_003.pdf reproduce number using gsDesign",
       "expected_output": "An R script that executes a group sequential design analysis mirroring the methodology in the attached SAP,\n - Outputting the reproduced clinical trial design numbers.",
-      "files": [],
+      "files": [
+        "SAP Document: https://cdn.clinicaltrials.gov/large-docs/22/NCT01471522/SAP_003.pdf"
+      ],
       "assertions": []
     },
     {
       "id": "github-issue-2",
       "prompt": "Following SAP from NCT05638204, reproduce number using group sequential design.",
       "expected_output": "An R script running a group sequential design analysis that perfectly reproduces the exact clinical trial numbers specified in the attached SAP document.",
-      "files": [],
+      "files": [
+        "SAP Document: https://cdn.clinicaltrials.gov/large-docs/04/NCT05638204/SAP_000.pdf"
+      ],
       "assertions": [
         "The script must use the `gsDesign` R package.",
         "The script must accurately reproduce the trial design parameters and numbers documented in the SAP."
@@ -41,18 +46,15 @@
       "expected_output": "gsd_design.R using compute_single_look_boundary() for PFS (not gsDesign k=1), gsSurv() or gsDesign() for OS with 2 looks. gsd_results.json with separate boundary tables for PFS (single Z-value) and OS (IA + FA boundaries). multiplicity_diagram.png showing PFS and OS nodes with alpha 0.005 and 0.020. Verification confirms power for both endpoints. Report has dual boundary tables.",
       "files": [],
       "assertions": [
-        "\"gsd_design.R exists and does NOT call gsDesign(k=1) or gsSurv(k=1) for PFS\"",
-        "\"gsd_design.R uses compute_single_look_boundary() or equivalent for PFS single-look boundary\"",
-        "\"gsd_results.json contains separate boundary information for PFS and OS\"",
-        "\"PFS has exactly 1 boundary (single look), OS has 2 boundaries (IA + FA)\"",
-        "\"If PFS is overpowered, skill suggests reallocating alpha from PFS to OS (e.g., lowering PFS alpha below 0.005)\"",
-        "\"gsd_verification_log.md reports OS simulated power within \u00b12pp of 90%\"",
-        "\"gsd_verification_log.md reports type I error within \u00b10.5pp for both PFS and OS\",",
-        "\"multiplicity_diagram.png exists and shows two hypothesis nodes\",",
-        "\"gsd_report.docx exists with boundary tables for both endpoints\",",
-        "\"gsd_report.py reads all values from gsd_results.json with no hardcoded numbers\",",
-        "\"Minimum follow-up constraint is met: the IA occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged in gsd_results.json or the skill log\",",
-        "\"Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged in gsd_results.json or the skill log\""
+        "PFS has exactly 1 boundary (single look), OS has 2 boundaries (IA + FA)",
+        "If PFS is overpowered, skill suggests reallocating alpha from PFS to OS (e.g., lowering PFS alpha below 0.005)",
+        "OS simulated power within \u00b12pp of 90%",
+        "simulated type I error within \u00b10.5pp for both PFS and OS",
+        "multiplicity_diagram.png exists and shows two hypothesis nodes",
+        "boundaries calculated for both endpoints",
+        "Minimum follow-up constraint is met: the IA occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged",
+        "Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged",
+        "IA/FA gap is evaluated and an additional IA is suggested if gap > 18 months"
       ]
     },
     {
@@ -61,45 +63,44 @@
       "expected_output": "gsd_design.R deriving events from Schoenfeld formula scaled by prevalence (not nSurv/gsSurv for subgroup events), validating transition matrix, computing single-look PFS boundaries and multi-look OS boundaries. Gated hypotheses (H2, H4) have boundaries computed at full alpha 0.025. multiplicity_diagram.png shows 4 hypotheses with actual alpha values and transition weights. Verification covers all 4 hypotheses. N under 700.",
       "files": [],
       "assertions": [
-        "\"gsd_design.R exists and derives subgroup events using Schoenfeld formula scaled by prevalence (not nSurv/gsSurv)\"",
-        "\"gsd_design.R calls validate_transition_matrix() before boundary computation\",",
-        "\"Gated hypotheses (H2 initial alpha=0, H4 initial alpha=0) have boundaries computed at full alpha 0.025\",",
-        "\"PFS hypotheses (H1, H2) each have exactly 1 boundary (single look)\",",
-        "\"OS hypotheses (H3, H4) each have 2 boundaries (IA + FA)\",",
-        "\"multiplicity_diagram.png exists and shows 4 hypothesis nodes with actual alpha values (0.005, 0.020, 0, 0)\",",
-        "\"Transition matrix matches specified weights: H1->H3(1), H3->H4(1), H4->H1(0.5)+H2(0.5), H2->H1(1)\",",
-        "\"gsd_results.json contains all 4 hypotheses with correct gating structure\",",
-        "\"Transition matrix has zero weight from any hypothesis to its gate prerequisite (e.g., H4 does not pass alpha to H3, H2 does not pass alpha to H4)\",",
-        "\"gsd_verification_log.md reports power for all 4 hypotheses: H1 (PFS-sub) and H3 (OS-sub) at initially assigned alpha (0.005 and 0.020), H2 (PFS-ITT) and H4 (OS-ITT) at full alpha 0.025. Simulated power within \u00b12pp of calculated power for each hypothesis (overpowering is acceptable for gated hypotheses)\",",
-        "\"gsd_verification_log.md reports type I error within \u00b10.5pp for all tested hypotheses\",",
-        "\"Sample size and study timeline are driven by the subgroup (OS-sub power requirement), not the ITT population\",",
-        "\"Total N is at most 700 (N <= 700)\",",
-        "\"If PFS-sub or OS-sub is overpowered (power >> 90%), skill suggests lowering that endpoint's alpha and reallocating to the other endpoint\",",
-        "\"gsd_report.docx exists with boundary tables for all 4 hypotheses\",",
-        "\"Minimum follow-up constraint is met: the IA occurs at least 6 months after enrollment ends, OR the violation is explicitly flagged in gsd_results.json or the skill log\",",
-        "\"Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged in gsd_results.json or the skill log\""
+        "Derives subgroup events using Schoenfeld formula scaled by prevalence",
+        "Gated hypotheses (H2 initial alpha=0, H4 initial alpha=0) have boundaries computed at full alpha 0.025",
+        "PFS hypotheses (H1, H2) each have exactly 1 boundary (single look)",
+        "OS hypotheses (H3, H4) each have 2 boundaries (IA + FA)",
+        "multiplicity_diagram.png exists and shows 4 hypothesis nodes with actual alpha values (0.005, 0.020, 0, 0)",
+        "Transition matrix matches specified weights: H1->H3(1), H3->H4(1), H4->H1(0.5)+H2(0.5), H2->H1(1)",
+        "final report contains all 4 hypotheses with correct gating structure",
+        "Transition matrix has zero weight from any hypothesis to its gate prerequisite (e.g., H4 does not pass alpha to H3, H2 does not pass alpha to H4)",
+        "Power is reported for all 4 hypotheses: H1 (PFS-sub) and H3 (OS-sub) at initially assigned alpha (0.005 and 0.020), H2 (PFS-ITT) and H4 (OS-ITT) at full alpha 0.025. Simulated power within \u00b12pp of calculated power for each hypothesis (overpowering is acceptable for gated hypotheses)",
+        "reported type I error within \u00b10.5pp for all tested hypotheses",
+        "Sample size and study timeline are driven by the subgroup (OS-sub power requirement), not the ITT population",
+        "Total N is at most 700 (N <= 700)",
+        "If PFS-sub or OS-sub is overpowered (power >> 90%), skill suggests lowering that endpoint's alpha and reallocating to the other endpoint",
+        "final report contains boundary tables for all 4 hypotheses",
+        "Minimum follow-up constraint is met: the IA occurs at least 6 months after enrollment ends, OR the violation is explicitly flagged",
+        "Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged",
+        "IA/FA gap is evaluated and an additional IA is suggested if gap > 18 months"
       ]
     },
     {
       "id": "github-issue-24",
       "prompt": "I'm designing a Phase 3 trial in first-line advanced urothelial carcinoma. Single population, all-comers. Primary endpoint is overall survival (OS). 1:1 randomization. Control arm has piecewise median OS: 4 months for the first 3 months, then 8 months thereafter. Target hazard ratio under proportional hazards: 0.75. Total alpha 0.025 one-sided. Two interim analyses at information fractions of 0.8 and 0.9. Alpha spending: Lan-DeMets O'Brien-Fleming. Non-binding futility boundary using HSD gamma=-4. Target power under PH: greater than 90%. Enrollment: 5 patients/month for 3 months, then 20/month thereafter. Annual dropout 3%. Feasible sample size: not to exceed 700 patients. Minimum follow-up 3 months, minimum gap between analyses 6 months. Also evaluate this design under non-proportional hazards: delayed treatment effect with HR = 1.0 for months 0-3, then HR = 0.62 from month 3 onward (control hazard is piecewise: log(2)/4 for the first 3 months, then log(2)/8 thereafter). Target power under NPH: greater than 80% at the final analysis. Report the average hazard ratio (AHR) at each analysis timepoint, power under NPH, and whether the design is robust to the delayed effect. Run verification under both PH and NPH assumptions. All inputs are confirmed \u2014 skip the Q&A and proceed directly to computation.",
-      "expected_output": "All outputs in output/gsd_1l_uc_os_/: gsd_design.R computing PH design first with gsSurv() using piecewise control hazard (lambdaC with breakpoint S=3), then NPH evaluation using lrstat. NPH comparison table showing AHR at each analysis, PH vs NPH power. PH power > 90%, NPH power > 80% at FA. Verification runs under both PH and NPH. N not exceeding 700.",
+      "expected_output": "All outputs in output/gsd_1l_uc_os_<date>/: gsd_design.R computing PH design first with gsSurv() using piecewise control hazard (lambdaC with breakpoint S=3), then NPH evaluation using lrstat. NPH comparison table showing AHR at each analysis, PH vs NPH power. PH power > 90%, NPH power > 80% at FA. Verification runs under both PH and NPH. N not exceeding 700.",
       "files": [],
       "assertions": [
-        "\"gsd_design.R exists and computes the PH design first using piecewise control hazard (lambdaC with breakpoint S=3, not a single constant hazard)\",",
-        "\"gsd_design.R uses gsSurv() with lambdaC=c(log(2)/4, log(2)/8) and S=3 for the piecewise control median\",",
-        "\"NPH evaluation uses gsDesign2 functions (expected_time, gs_power_npe) or lrstat::lrsim() \u2014 not direct sizing under NPH\",",
-        "\"A comparison table shows AHR at each analysis timepoint (IA1, IA2, FA) under NPH\",",
-        "\"PH power is greater than or equal to 90%\",",
-        "\"NPH power at the final analysis is greater than 80%\",",
-        "\"If NPH power < PH power by more than 20%, options to improve robustness are discussed\",",
-        "\"gsd_verification_log.md has verification under PH: power within \u00b12pp of target, type I error within \u00b10.5pp\",",
-        "\"gsd_verification_log.md has verification under NPH with separate power and type I error results\",",
-        "\"Total N does not exceed 700\",",
-        "\"gsd_report.docx exists and includes NPH evaluation results\",",
-        "\"gsd_report.py reads all values from gsd_results.json with no hardcoded numbers\",",
-        "\"Minimum follow-up constraint is met: the first analysis (IA1) occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged in gsd_results.json or the skill log\",",
-        "\"Minimum gap constraint is met: all consecutive analysis pairs (IA1-IA2, IA2-FA) are at least 6 months apart, OR the violations are explicitly flagged in gsd_results.json or the skill log\""
+        "computes the PH design first using piecewise control hazard (lambdaC with breakpoint S=3, not a single constant hazard)",
+        "NPH evaluation uses gsDesign2 functions (expected_time, gs_power_npe) or lrstat::lrsim() \u2014 not direct sizing under NPH",
+        "A comparison table shows AHR at each analysis timepoint (IA1, IA2, FA) under NPH",
+        "PH power is greater than or equal to 90%",
+        "NPH power at the final analysis is greater than 80%",
+        "If NPH power < PH power by more than 20%, options to improve robustness are discussed",
+        "simulation verification under PH: power within \u00b12pp of target, type I error within \u00b10.5pp",
+        "verification under NPH with has separate power and type I error results",
+        "Total N does not exceed 700",
+        "final report includes NPH evaluation results",
+        "Minimum follow-up constraint is met: the first analysis (IA1) occurs at least 3 months after enrollment ends, OR the violation is explicitly flagged",
+        "Minimum gap constraint is met: all consecutive analysis pairs (IA1-IA2, IA2-FA) are at least 6 months apart, OR the violations are explicitly flaggeg",
+        "IA/FA gap is evaluated and an additional IA is suggested if gap > 18 months"
       ]
     },
     {
@@ -114,6 +115,115 @@
         "The alpha spending function (O'Brien-Fleming Type Boundary) is applied correctly and approximately calculated based on calculated event number. While the event number can be round up, the boundary should be calcualted around time points of (0.5, 0.75, 1). The expected critical boundary is (2.963, 2.359, 2.014) at information time of (0.5, 0.75, 1) with nominal siginificance level of (0.0031, 0.0183, 0.044).",
         "multiplicity_diagram.png exists",
         "gsd_report.docx exists"
+      ]
+    },
+    {
+      "id": "github-issue-40",
+      "prompt": "I'm designing a Phase 3 trial with a nested subgroup structure. Primary endpoint is OS in all patients (ITT). We also have a biomarker-positive subgroup that makes up about 40% of the ITT population, and we want to test OS in that subgroup as a key secondary. HR assumptions: ITT 0.78, biomarker-positive 0.65. Control arm median OS: 18 months ITT, 15 months biomarker-positive. 1:1 randomization, 600 patients over 30 months, two-sided alpha 0.05, O'Brien-Fleming spending. For the ITT primary: one efficacy interim at 50% of ITT events. For the biomarker subgroup: we want a futility-only look at calendar month 18, if there's no signal at all in the subgroup we want the option to stop subgroup development, using a one-sided futility boundary at z = 0.5. Final subgroup analysis happens at the same time as the ITT final. No hard sample size cap, find the smallest N that achieves the power targets for both populations. Design both and make sure the family-wise error rate is controlled.",
+      "expected_output": "This benchmark does not test whether the skill can generate a nested subgroup design, it already can. It tests two specific correctnesses that are invisible in formatted output and will not be caught without examining the underlying R code and `gsd_results.json`:\n\n**First:** The subgroup futility look must be implemented as non-binding (`test.type = 4` in `gsDesign`, or equivalent). If binding futility (`test.type = 1`) is used, the FWER for the ITT primary is inflated if the trial continues after the futility boundary is crossed. The skill will almost certainly produce a design that looks correct, two separate design objects, spending functions, a boundary table, whether `test.type` is 1 or 4. The error is invisible in the report.\n\n**Second:** The subgroup information fraction at calendar month 18 must be computed from subgroup-specific events, not ITT events. At month 18, with 600 patients enrolled over 30 months and ITT median OS of 18 months, approximately 180 ITT events are expected (\u224840% of ~450 required). The biomarker-positive subgroup has 40% prevalence, so approximately 72 subgroup events at month 18. The subgroup requires approximately 165\u2013180 events total. Therefore the subgroup information fraction at month 18 is approximately 72/170 \u2248 0.42, not 0.40 (the ITT fraction at that same time). These two fractions are different and must be reported separately. A skill that sets both to 0.40 or uses ITT events to compute subgroup information fraction is wrong.\n\nExpected numerical output:\n* ITT: required events ~440-460, OBF boundary at 50% IA: z \u2248 2.96, final: z \u2248 1.97\n* Subgroup: required events ~160-175, futility boundary at ~42% information: z \u2264 0.5\n* lrstat confirms subgroup events at month 18: 70-75\n* FWER under global null \u2264 0.051",
+      "files": [],
+      "assertions": [
+        "gsd_design.R` creates two separate `gsDesign` objects, one for ITT, one for biomarker subgroup, not a single combined object",
+        "gsd_design.R` uses `test.type = 4` (non-binding futility) for the subgroup design object, `test.type = 1` is a failing answer",
+        "gsd_results.json` reports ITT information fraction and subgroup information fraction at calendar month 18 as separate values, and they are not equal (subgroup fraction \u2248 0.42-0.46, ITT fraction \u2248 0.38-0.42, they differ)",
+        "gsd_results.json` reports subgroup events at calendar month 18 in the range 68-78 (consistent with 40% prevalence and the enrollment/failure rate assumptions)",
+        "Word report or verification log explicitly states that the non-binding subgroup futility look does not inflate FWER for the ITT primary, this must be stated, not implied",
+        "gsd_verification_log.md` confirms ITT FWER under global null \u2264 0.051",
+        "gsd_results.json` subgroup required events is in the range 155-180 (sized independently from ITT)",
+        "After computing boundaries and power for both ITT and subgroup designs, `gsd_results.json` must contain an \"overpowered_check\" key or equivalent (per the skill's step 6b over-powered hypothesis check), specifically flagging whether the biomarker-positive subgroup design at alpha = 0.025 full recycled alpha is overpowered (power > 93% when target is 90%). If overpowered, an \"alpha_reallocation_comparison\" array must be present in `gsd_results.json` showing the current vs proposed reallocation. A design that is silently overpowered without this check is a failing answer"
+      ]
+    },
+    {
+      "id": "github-issue-39",
+      "prompt": "I'm designing a Phase 3 cardiovascular outcomes trial. Primary endpoint is time to cardiovascular death. Patients have established CVD. 1:1 randomization. Control arm CV death rate is about 2.5% per year. We also expect about 2% per year non-cardiovascular death in this population. Treatment effect on CV death: hazard ratio 0.80. Non-CV death is not expected to be affected by treatment. Target 90% power, two-sided alpha 0.05. One interim analysis at 50% of CV death events, O'Brien-Fleming spending, non-binding futility. Enrollment 9,000 patients over 48 months, minimum 24 months follow-up. Design the trial.",
+      "expected_output": "The skill should recognize that non-CV death is a competing risk for the primary endpoint of CV death, a patient who dies of a non-CV cause can no longer experience CV death, so treating non-CV deaths as independent censoring (which `gsDesign::nSurv()` does by default) overstates the observed CV death rate and produces an incorrectly sized trial. The skill should:\n1. Flag that non-CV death at 2%/year is a substantial competing event (~44% of all deaths in this population are non-CV), and that this creates a competing risks problem for the primary endpoint\n2. Distinguish between two estimands: cause-specific (Cox/log-rank, treating non-CV deaths as censored) and subdistribution (Fine-Gray, directly modeling the cumulative incidence of CV death). These give different required event counts\n3. Under cause-specific analysis: the all-cause event rate used in `lrstat` event prediction must be 4.5%/year (CV + non-CV), not 2.5%/year. Using only 2.5%/year will project the wrong calendar time to the required number of CV events\n4. Under Fine-Gray sizing: the subdistribution HR is attenuated relative to the cause-specific HR (~0.82-0.84 vs 0.80) because competing events inflate the subdistribution risk set, requiring more CV events (~600-650 vs ~520-540)\n5. Flag that `gsDesign::nSurv()` implements cause-specific (log-rank) analysis only, and is not equivalent to Fine-Gray sizing if the SAP pre-specifies Gray's test\n6. Ask which estimand is intended, or state the assumption made",
+      "files": [],
+      "assertions": [
+        "Output explicitly mentions competing risks, competing event, or non-CV death as a methodological issue, not just a demographic parameter",
+        "gsd_results.json` contains an all-cause event rate or total hazard that is \u2265 4.0%/year (not just the CV death rate of 2.5%/year alone)",
+        "Output distinguishes cause-specific from subdistribution estimand, or explicitly states which estimand is assumed and why",
+        "If cause-specific analysis is used, required CV events is in the range 500-560; if Fine-Gray sizing is used, required CV events is \u2265 580",
+        "Output flags that `gsDesign::nSurv()` treats competing events as independent censoring and is not equivalent to Fine-Gray subdistribution sizing",
+        "gsd_verification_log.md` confirms simulated power \u2265 88% under a model that includes competing event removal from the at-risk set, not a model that ignores non-CV deaths",
+        "Calendar time to final analysis reported in `gsd_results.json` accounts for the competing event reducing the observed CV death rate below 2.5%/year (projected final analysis \u2265 60 months from first patient in)",
+        "gsd_results.json` must contain \"min_followup\", \"min_gap\", and \"feasible_range\" keys (per the skill's required JSON schema), and the \"feasible_range\" upper bound must be consistent with the 9,000 patient enrollment specified. If the skill uses only the CV death rate (2.5%/year) without competing event adjustment, the projected calendar time to final analysis stored in `gsd_results.json` will be< 60 months, which is a failing answer, as the competing event removal from the at-risk set extends the timeline beyond this"
+      ]
+    },
+    {
+      "id": "github-issue-38",
+      "prompt": "I'm designing a Phase 3 renal cell carcinoma trial, second-line after PD-1 failure. OS primary endpoint, control arm median 14 months, HR 0.72. 1:1 randomization. Target 90% power, two-sided alpha 0.05, O'Brien-Fleming spending, one interim at 40% of events with non-binding futility. Here's the enrollment situation: we have a big site network ready to go, so we expect very aggressive enrollment at the start, around 60 patients per month for the first 6 months, then it drops to about 15 per month for months 7-18 as most sites hit capacity, then a slow tail of about 5 per month for months 19\u201324. Total enrollment period is 24 months. Dropout 1% per month. Minimum follow-up 12 months for the last patient enrolled. There is no hard sample size cap, but keep the trial as small as operationally feasible given the enrollment constraints above. Design the trial and tell me when the interim analysis will occur.",
+      "expected_output": "The skill must use piecewise enrollment specification, `gamma = c(60, 15, 5)` and `R = c(6, 12, 6)` in `gsDesign::gsSurv()`, or `define_enroll_rate()` with three segments in `gsDesign2`, not a single constant rate. Because enrollment is heavily front-loaded, approximately 52% of all patients are enrolled in the first 25% of the enrollment period. Those patients have substantially longer follow-up and contribute events earlier than a uniform enrollment model predicts.\n\nThe correct output under piecewise enrollment:\n* Total required events: ~310-330\n* Calendar time to 40% events (IA): approximately month 21-23 from first patient in\n* Information fraction at calendar month 28: approximately 0.52-0.58, not 0.40\n* OBF efficacy boundary at actual 40% information fraction: z \u2248 2.96\n\nIf the skill uses uniform enrollment (approximately 29 patients/month constant), it will project the IA at approximately calendar month 27-29, 5-7 months later than correct, and any conditional power calculation at the IA will use the wrong information fraction. The downstream consequence: if the monitoring committee receives an interim report at the actual month 22, the skill's boundary is wrong because it was computed assuming the interim falls at 40% information when the actual fraction may be 30-35%.",
+      "files": [],
+      "assertions": [
+        "gsd_design.R` uses piecewise enrollment: calls `gsSurv()` with `gamma = c(60, 15, 5)` and `R = c(6, 12, 6)`, or calls `gsDesign2::define_enroll_rate()` with three duration/rate segments, a single constant rate is a failing answer",
+        "gsd_results.json` reports calendar time to interim analysis \u2264 25 months from first patient in (uniform enrollment produces ~28 months, that is a failing answer)",
+        "gsd_results.json` reports total required events in the range 300-340",
+        "gsd_results.json` information fraction at the IA is computed as events-at-IA divided by total-planned-events, and is consistent with the calendar time reported (if IA is at month 22 and total events require month 36, the information fraction cannot be exactly 0.40)",
+        "gsd_verification_log.md` confirms simulated power \u2265 88% using the piecewise enrollment model",
+        "Word report explicitly states the enrollment pattern (three-segment ramp) and its effect on IA timing, not a summary that treats enrollment as uniform",
+        "gsd_results.json` must contain a \"sensitivity_table\" array (per the skill's N-first workflow) with at least one row showing N consistent with the piecewise enrollment ramp, computed as N = 60\u00d76 + 15\u00d712 + 5\u00d7K for varying K (last-period months), not arbitrary round numbers. A sensitivity table with uniform-enrollment-derived N values is a failing answer"
+      ]
+    },
+    {
+      "id": "github-issue-36",
+      "prompt": "I'm designing a Phase 3 colorectal cancer trial, third line. We'll start by enrolling everyone, all-comers, but at the interim we want to check whether the treatment is working better in RAS wild-type patients (about 45% of our population) than in RAS mutant. If RAS WT looks much better (HR < 0.70 in WT and HR > 0.90 in mutant), we'll restrict enrollment to RAS WT only for the rest of the trial. Stage 1 is 200 patients. If we enrich, we add another 150 RAS WT patients in Stage 2. The final analysis pools both stages and tests RAS WT as the primary hypothesis and ITT as secondary. Stage 1 is fixed at 200 patients and Stage 2 at 150, these are operationally constrained by site capacity. No flexibility on total N. Target 90% power in RAS WT, two-sided alpha 0.05. Can you design this?",
+      "expected_output": "The correct output is a refusal to produce a standard `gsDesign/gsSurv()` design, combined with a clear explanation of why and what framework is actually required.\n\nA trial that begins enrolling all-comers and then restricts to a biomarker-positive subpopulation based on interim data, while pooling both stages for the final analysis, is an adaptive enrichment design. It is not a standard group sequential design. Standard `gsDesign` applies the canonical joint distribution of repeated test statistics under the assumption that all patients are drawn from the same population with the same parameter \u03b8. That assumption is violated when the enrolled population changes mid-trial. Using `gsSurv()` for this scenario produces a design with incorrect FWER guarantees (Rosenblum et al., Biostatistics 2016; FDA Adaptive Design Guidance, November 2019).\n\nThe skill's correct response must:\n1. Identify this as adaptive population enrichment with a data-dependent enrollment change\n2. State explicitly that `gsDesign` and `lrstat` do not implement the combination test framework required for this design\n3. Explain why: Stage 1 and Stage 2 patients are from different populations; the enrichment decision uses unblinded interim data; a standard pooled logrank test will not maintain FWER\n4. Describe the correct framework: inverse normal combination test with pre-specified stage weights (w\u2081 = \u221a(200/350) \u2248 0.756, w\u2082 = \u221a(150/350) \u2248 0.655), plus a multiplicity procedure for the ITT secondary\n5. Name `rpact` as an available R implementation\n6. Cite at least one regulatory reference: FDA Adaptive Design Guidance (November 2019) or ICH E20 draft guidance\n\nIf the skill produces a `gsDesig`n boundary table, required events, and claimed 90% power for this scenario without any warning, it has failed in the most consequential way, it has delivered a scientifically invalid design with false confidence.",
+      "files": [],
+      "assertions": [
+        "gsd_design.R` does not contain a call to `gsSurv()` or `gsDesign()` that produces boundaries for this scenario without a scope warning",
+        "Output contains the phrase \"adaptive enrichment,\" \"combination test,\" or \"population change\"",
+        "Output explicitly states that standard group sequential methods do not apply and explains why",
+        "Output names `rpact` or equivalent as a correct R implementation",
+        "Output references FDA adaptive design guidance (November 2019) or ICH E20",
+        "Output provides the inverse normal combination test weights (w1 \u2248 0.756, w2 \u2248 0.655) or explains how to derive them",
+        "gsd_results.json` does not contain a total_N or total_events field populated as if a complete standard GSD was produced without qualification"
+      ]
+    },
+    {
+      "id": "github-issue-37",
+      "prompt": "I'm designing a Phase 3 first-line NSCLC trial comparing pembrolizumab plus carboplatin/pemetrexed versus carboplatin/pemetrexed alone. OS is the primary endpoint. 1:1 randomization, control arm median OS 12 months, HR 0.65. Target 90% power, two-sided alpha 0.05. One interim analysis at 40% of events using Lan-DeMets O'Brien-Fleming spending, with a non-binding futility boundary. Enrollment 450 patients over 24 months, 5% annual dropout. Design the trial.",
+      "expected_output": "The skill should recognize that pembrolizumab is a PD-1 checkpoint inhibitor, that first-line NSCLC is a setting where delayed treatment effect is well-documented (KEYNOTE-189 pattern), and proactively assess whether NPH methods are warranted, without being asked. The skill should:\n1. Flag the immunotherapy context and note that a delayed treatment effect of 3-6 months is typical in this setting\n2. Invoke `gsDesign2::gs_design_ahr()` with a piecewise failure rate (`duration = c(4, Inf), hr = c(1.0, 0.65)`) rather than defaulting to `gsDesign::gsSurv()` with a single HR\n3. Report the average hazard ratio (AHR) at each analysis time rather than a single fixed HR\n4. Require meaningfully more events than the Schoenfeld approximation under PH with HR = 0.65 (which gives ~210\u2013220 events)\n5. Flag that the futility boundary at 40% information is unreliable if that interim falls within or near the delay window, and either adjust the IA timing or warn explicitly\n6. Simulation via `lrstat::lrsim()` or `gsDesign2` simulation confirms actual power \u2265 88%\n\nIf the skill defaults to `gsSurv()` with HR = 0.65 and returns ~210 required events with 90% claimed power, it has failed, producing a design that is underpowered by approximately 25-30% without any warning.",
+      "files": [],
+      "assertions": [
+        "The script calls `gsDesign2::gs_design_ahr()` or equivalent NPH function, not only `gsDesign::gsSurv()` with a single HR",
+        "gsd_results.json` contains a field for AHR (average hazard ratio) at each analysis, distinct from the input HR of 0.65",
+        "Total required events reported in `gsd_results.json` is \u2265 260 (the Schoenfeld PH approximation of \u2264 220 is a failing answer)",
+        "gsd_verification_log.md` confirms simulated power \u2265 88% under the NPH piecewise model",
+        "The Word report or verification log contains language flagging immunotherapy context and delayed treatment effect, the skill must surface this reasoning, not silently switch methods",
+        "gsd_results.json` total_N is \u2264 450 (enrollment cap respected)",
+        "The futility look timing is flagged if the interim is projected to fall within 6 months of the delay window, OR the IA is placed post-delay",
+        "If the skill invokes NPH evaluation, `gsd_results.json` must contain an `\"nph_evaluation\"` key with AHR reported at each analysis timepoint (IA and FA), computed via `expected_time()` and `gs_power_npe()` per the skill's NPH Evaluation Workflow, not derived from a single design HR. A design that switches to `gsDesign2` silently without storing AHR per analysis in `gsd_results.json` is a partial pass at best."
+      ]
+    },
+    {
+      "id": "github-issue-69",
+      "prompt": "I'm designing a Phase 3 trial in second-line  SCLC. Two nested populations: Extensive-stage subgroup (expected prevalence 70%) and ITT (all patients, 100%). Co-primary endpoints PFS and OS in both populations, giving 4 hypotheses: H1 (PFS-subgroup), H2 (OS-subgroup), H3 (PFS-ITT), H4 (OS-ITT). 1:1 randomization. Control medians: PFS 4 months in subgroup, 4 months in ITT; OS 8 months in subgroup, 8 months in ITT. Target hazard ratios: PFS 0.65 (subgroup), 0.67 (ITT); OS 0.69 (subgroup), 0.72 (ITT). Total alpha 0.025 one-sided. alpha split strategy: OS has higher priority than PFS. If OS hypothesis is rejected in one population, pass majority alpha (e.g., 0.999) to OS in the other population. If PFS is rejected in one population, pass all alpha to OS in the same population. One interim analysis + final analysis. PFS tested only at the IA (single look) in both populations. OS tested at both IA and FA. PFS triggers the IA, OS triggers the FA. Alpha spending for OS hypotheses: Lan-DeMets O'Brien-Fleming. PFS and OS power target: at least 90% at originally assigned alpha in both populations. Explore initial alphas for the 4 hypotheses to meet the power requirement. No futility analysis. Enrollment: 5 patients/month for the first 2 months, 20/month for the next 3 months, then 30/month thereafter. Annual dropout: PFS 5%, OS 2%. Feasible sample size range: under 700 patients. Minimum follow-up 6 months, minimum gap between analyses 6 months.  I want FA is within 60 months from first patient in. All inputs are confirmed \u2014 skip the Q&A and proceed directly to computation.",
+      "expected_output": "One output file with interim analysis plan, efficacy boundaries, multiplicity diagram, sample size and power summary.",
+      "files": [],
+      "assertions": [
+        "All four hypotheses have initial assigned alpha  with boundaries computed at the initial assigned alpha",
+        "PFS hypotheses (H1, H2) each have exactly 1 boundary (single look)",
+        "OS hypotheses (H3, H4) each have 2 boundaries (IA + FA)",
+        "Multiplicity_diagram.png exists and shows 4 hypothesis nodes with actual alpha values.",
+        "Transition matrix matches specified weights: H1->H2(1), H2->H4(0.999)+H1(0.001), H4->H2(0.999)+H3(0.001), H3->H4(1), 0.001 can be replaced with a very small number or epsilon",
+        "Sample size and study timeline are driven by the subgroup, not the ITT population. Meaning power for PFS and OS in ITT could be over-powered",
+        "IA timing is driven by PFS in the subgroup.",
+        "If IA occurs too late after end of enrollment (e.g., > 9 months), a larger initial alpha is suggested for PFS in the subgroup",
+        "Total N is at most 700 (N <= 700)",
+        "If a hypothesis is overpowered (power >> 90%), skill suggests lowering that endpoint's alpha and reallocating to other endpoints",
+        "Minimum follow-up constraint is met: the IA occurs at least 6 months after enrollment ends, OR the violation is explicitly flagged",
+        "Minimum gap constraint is met: the IA-FA gap is at least 6 months, OR the violation is explicitly flagged",
+        "IA/FA gap is evaluated and a second IA is suggested if gap > 18 months",
+        "results are verified by simulations"
+      ]
+    },
+    {
+      "id": "github-issue-60",
+      "prompt": "What's the mean of a standard normal distribution?",
+      "expected_output": "0",
+      "files": [],
+      "assertions": [
+        "the output is 0"
       ]
     }
   ]
