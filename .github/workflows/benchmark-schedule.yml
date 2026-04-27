@@ -19,7 +19,7 @@ jobs:
   benchmark:
     runs-on: ubuntu-latest
     # Only run in the upstream repo, not in forks (avoids leaking secrets)
-    if: github.repository == 'RConsortium/pharma_skills'
+    if: github.repository == 'RConsortium/pharma-skills'
 
     steps:
       - name: Checkout repository
