@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GSDBench Intake</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..600&display=swap">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+
+<body>
+  <header class="app-header">
+    <div class="app-bar">
+      <p class="wordmark"><span class="wordmark-dot" aria-hidden="true"></span>GSDBench</p>
+      <div class="header-actions">
+        <button type="button" class="secondary" id="loadExample">Load synthetic example</button>
+        <button type="button" class="secondary danger" id="clearDraft">Clear draft</button>
+        <span id="saveStatus" class="save-status" aria-live="polite">Draft ready</span>
+      </div>
+    </div>
+    <div class="app-hero">
+      <p class="eyebrow">RConsortium/pharma-skills</p>
+      <h1>GSDBench <em>intake form</em>.</h1>
+      <p class="lead">Collect one standardized group sequential design benchmark example per GitHub issue. The form
+        prepares a human-readable GitHub issue body and a machine-readable JSON block. Nothing leaves your browser.</p>
+    </div>
+  </header>
+
+  <main class="layout">
+    <form id="intakeForm" class="intake-form" novalidate>
+      <div id="topStatus" class="form-status" aria-live="polite"></div>
+
+      <section class="form-section" aria-labelledby="governance-heading">
+        <h2 id="governance-heading">Submission Governance</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="contributorName">Contributor name or initials <span class="optional">optional</span></label>
+            <input id="contributorName" name="contributorName" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="githubUsername">GitHub username <span class="required">required</span></label>
+            <input id="githubUsername" name="githubUsername" autocomplete="username" required
+              aria-describedby="githubUsername-error">
+            <p class="error" id="githubUsername-error"></p>
+          </div>
+          <div class="field">
+            <label for="contributorRole">Contributor role</label>
+            <select id="contributorRole" name="contributorRole">
+              <option>Industry statistician</option>
+              <option>Academic statistician</option>
+              <option>Regulatory statistician</option>
+              <option>Clinical trialist</option>
+              <option>Methodologist</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="organizationType">Organization type <span class="optional">optional</span></label>
+            <select id="organizationType" name="organizationType">
+              <option value="">Select if applicable</option>
+              <option>Pharma</option>
+              <option>Biotech</option>
+              <option>CRO</option>
+              <option>Academic</option>
+              <option>Regulatory</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sourceType">Source type <span class="required">required</span></label>
+            <select id="sourceType" name="sourceType" required aria-describedby="sourceType-error">
+              <option value="">Select source type</option>
+              <option>Synthetic</option>
+              <option>Literature-inspired</option>
+              <option>Public protocol/public CSR-inspired</option>
+              <option>De-identified internal example</option>
+              <option>Other</option>
+            </select>
+            <p class="error" id="sourceType-error"></p>
+          </div>
+        </div>
+        <fieldset class="check-group" aria-describedby="confidentiality-error">
+          <legend>Confidentiality confirmations <span class="required">all required</span></legend>
+          <label><input type="checkbox" name="confidentiality" value="no_phi"> I confirm this submission contains no
+            PHI, patient-level data, confidential protocol text, trade secrets, or proprietary company
+            information.</label>
+          <label><input type="checkbox" name="confidentiality" value="permission"> I confirm I have permission to share
+            this example in a public GitHub issue, or I have sufficiently generalized/de-identified it.</label>
+          <label><input type="checkbox" name="confidentiality" value="revisions"> I understand that maintainers may
+            request revisions before accepting this case.</label>
+          <p class="error" id="confidentiality-error"></p>
+        </fieldset>
+      </section>
+
+      <section class="form-section" aria-labelledby="identity-heading">
+        <h2 id="identity-heading">Case Identity</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="shortTitle">Short case title <span class="required">required</span></label>
+            <input id="shortTitle" name="shortTitle" required aria-describedby="shortTitle-error">
+            <p class="error" id="shortTitle-error"></p>
+          </div>
+          <div class="field">
+            <label for="caseId">Case ID <span class="required">required</span></label>
+            <input id="caseId" name="caseId" required aria-describedby="caseId-help caseId-error">
+            <p class="help" id="caseId-help">Example: gsdb-20260430-pfs-os-alpha-split</p>
+            <p class="error" id="caseId-error"></p>
+          </div>
+          <div class="field">
+            <label for="benchmarkProject">Benchmark project name</label>
+            <input id="benchmarkProject" name="benchmarkProject" value="GSDBench" readonly>
+          </div>
+          <div class="field">
+            <label for="suggestedSplit">Suggested benchmark split</label>
+            <select id="suggestedSplit" name="suggestedSplit">
+              <option>Public/dev</option>
+              <option>Private heldout</option>
+              <option>Hard/adversarial</option>
+              <option>Unsure</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="difficulty">Difficulty</label>
+            <select id="difficulty" name="difficulty">
+              <option>Basic</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+              <option>Expert</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="casePriority">Case priority</label>
+            <select id="casePriority" name="casePriority">
+              <option>Routine design</option>
+              <option>Common real-world complexity</option>
+              <option>Known model failure mode</option>
+              <option>Frontier stress test</option>
+            </select>
+          </div>
+        </div>
+        <fieldset class="check-grid" aria-describedby="tags-error">
+          <legend>Tags <span class="required">select at least one</span></legend>
+          <label><input type="checkbox" name="tags" value="single-endpoint survival GSD"> single-endpoint survival
+            GSD</label>
+          <label><input type="checkbox" name="tags" value="event-driven design with pre-specified events"> event-driven
+            design with pre-specified events</label>
+          <label><input type="checkbox" name="tags" value="gsSurv sizing"> gsSurv sizing</label>
+          <label><input type="checkbox" name="tags" value="gsDesign known events"> gsDesign known events</label>
+          <label><input type="checkbox" name="tags" value="rpact acceptable alternative"> rpact acceptable
+            alternative</label>
+          <label><input type="checkbox" name="tags" value="co-primary endpoints"> co-primary endpoints</label>
+          <label><input type="checkbox" name="tags" value="fixed-sequence testing"> fixed-sequence testing</label>
+          <label><input type="checkbox" name="tags" value="graphical multiplicity"> graphical multiplicity</label>
+          <label><input type="checkbox" name="tags" value="alpha splitting"> alpha splitting</label>
+          <label><input type="checkbox" name="tags" value="multi-population/subgroup"> multi-population/subgroup</label>
+          <label><input type="checkbox" name="tags" value="non-inferiority"> non-inferiority</label>
+          <label><input type="checkbox" name="tags" value="NPH evaluation"> NPH evaluation</label>
+          <label><input type="checkbox" name="tags" value="IA timing constraints"> IA timing constraints</label>
+          <label><input type="checkbox" name="tags" value="enrollment/event prediction"> enrollment/event
+            prediction</label>
+          <label><input type="checkbox" name="tags" value="simulation verification"> simulation verification</label>
+          <label><input type="checkbox" name="tags" value="adversarial gotcha"> adversarial gotcha</label>
+          <label><input type="checkbox" name="tags" value="protocol-ready reporting"> protocol-ready reporting</label>
+          <p class="error" id="tags-error"></p>
+        </fieldset>
+      </section>
+
+      <section class="form-section" aria-labelledby="prompt-heading">
+        <h2 id="prompt-heading">Benchmark Prompt to Give the AI Agent</h2>
+        <div class="field">
+          <label for="agentPrompt">User-facing design request <span class="required">required</span></label>
+          <textarea id="agentPrompt" name="agentPrompt" rows="8" required
+            aria-describedby="agentPrompt-help agentPrompt-error"></textarea>
+          <p class="help" id="agentPrompt-help">Write the prompt exactly as the evaluated AI agent should see it.
+            Include only information that should be available to the agent.</p>
+          <p class="error" id="agentPrompt-error"></p>
+        </div>
+        <div class="field">
+          <label for="priorContext">Optional prior conversation/context</label>
+          <textarea id="priorContext" name="priorContext" rows="4"></textarea>
+        </div>
+        <fieldset class="check-grid" aria-describedby="deliverables-error">
+          <legend>Expected deliverable type <span class="required">select at least one</span></legend>
+          <label><input type="checkbox" name="expectedDeliverables" value="Design summary"> Design summary</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Executable R code"> Executable R code</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Boundary table"> Boundary table</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Event/sample size/timing outputs">
+            Event/sample size/timing outputs</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Multiplicity strategy"> Multiplicity
+            strategy</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Simulation verification"> Simulation
+            verification</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="NPH evaluation"> NPH evaluation</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Protocol-ready language"> Protocol-ready
+            language</label>
+          <label><input type="checkbox" name="expectedDeliverables" value="Error diagnosis / critique only"> Error
+            diagnosis / critique only</label>
+          <p class="error" id="deliverables-error"></p>
+        </fieldset>
+        <fieldset class="check-grid">
+          <legend>Allowed or expected tools/packages</legend>
+          <label><input type="checkbox" name="allowedTools" value="gsDesign"> gsDesign</label>
+          <label><input type="checkbox" name="allowedTools" value="rpact"> rpact</label>
+          <label><input type="checkbox" name="allowedTools" value="gsDesign2"> gsDesign2</label>
+          <label><input type="checkbox" name="allowedTools" value="lrstat"> lrstat</label>
+          <label><input type="checkbox" name="allowedTools" value="eventPred"> eventPred</label>
+          <label><input type="checkbox" name="allowedTools" value="graphicalMCP"> graphicalMCP</label>
+          <label><input type="checkbox" name="allowedTools" value="Other"> Other</label>
+        </fieldset>
+      </section>
+
+      <section class="form-section" aria-labelledby="design-heading">
+        <h2 id="design-heading">Trial Design Content</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="diseaseSetting">Disease/setting <span class="optional">optional</span></label>
+            <input id="diseaseSetting" name="diseaseSetting">
+          </div>
+          <div class="field">
+            <label for="phase">Phase</label>
+            <select id="phase" name="phase">
+              <option>Phase 2</option>
+              <option>Phase 2/3</option>
+              <option selected>Phase 3</option>
+              <option>Other/unspecified</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="endpointStructure">Endpoint structure <span class="required">required</span></label>
+            <select id="endpointStructure" name="endpointStructure" required aria-describedby="endpointStructure-error">
+              <option value="">Select endpoint structure</option>
+              <option>Single primary endpoint</option>
+              <option>Co-primary endpoints</option>
+              <option>Primary + key secondary</option>
+              <option>Multi-arm / multi-population</option>
+              <option>Other</option>
+            </select>
+            <p class="error" id="endpointStructure-error"></p>
+          </div>
+          <div class="field">
+            <label for="endpointNames">Endpoint names <span class="required">required</span></label>
+            <input id="endpointNames" name="endpointNames" required aria-describedby="endpointNames-error">
+            <p class="error" id="endpointNames-error"></p>
+          </div>
+          <div class="field">
+            <label for="randomizationRatio">Randomization ratio <span class="optional">optional</span></label>
+            <input id="randomizationRatio" name="randomizationRatio" placeholder="1:1">
+          </div>
+        </div>
+        <div class="field">
+          <label for="populationHypothesis">Population/hypothesis structure</label>
+          <textarea id="populationHypothesis" name="populationHypothesis" rows="4"></textarea>
+        </div>
+        <details open>
+          <summary>Advanced design details</summary>
+          <div class="field-stack">
+            <div class="field">
+              <label for="alphaMultiplicity">Alpha/multiplicity strategy</label>
+              <textarea id="alphaMultiplicity" name="alphaMultiplicity" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="analysesInformation">Number of analyses / information fractions</label>
+              <textarea id="analysesInformation" name="analysesInformation" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="spendingFutility">Spending functions / futility rules</label>
+              <textarea id="spendingFutility" name="spendingFutility" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="survivalAssumptions">Survival assumptions</label>
+              <textarea id="survivalAssumptions" name="survivalAssumptions" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="enrollmentDropout">Enrollment/dropout assumptions</label>
+              <textarea id="enrollmentDropout" name="enrollmentDropout" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="operationalConstraints">Operational constraints</label>
+              <textarea id="operationalConstraints" name="operationalConstraints" rows="4"
+                aria-describedby="operationalConstraints-help"></textarea>
+              <p class="help" id="operationalConstraints-help">Examples: minimum follow-up, minimum gap between
+                analyses, max N, feasibility range, data-cleaning buffer assumptions.</p>
+            </div>
+            <div class="field">
+              <label for="nphAssumptions">NPH assumptions <span class="optional">optional</span></label>
+              <textarea id="nphAssumptions" name="nphAssumptions" rows="4"></textarea>
+            </div>
+            <div class="field">
+              <label for="otherDesignAssumptions">Other design assumptions <span
+                  class="optional">optional</span></label>
+              <textarea id="otherDesignAssumptions" name="otherDesignAssumptions" rows="4"></textarea>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section class="form-section" aria-labelledby="truth-heading">
+        <h2 id="truth-heading">Reference Ground Truth</h2>
+        <fieldset class="check-grid" aria-describedby="truthTypes-error">
+          <legend>Reference truth type <span class="required">select at least one</span></legend>
+          <label><input type="checkbox" name="truthTypes" value="Locked reference R script"> Locked reference R
+            script</label>
+          <label><input type="checkbox" name="truthTypes" value="Expected numerical outputs"> Expected numerical
+            outputs</label>
+          <label><input type="checkbox" name="truthTypes" value="Expert textual standard"> Expert textual
+            standard</label>
+          <label><input type="checkbox" name="truthTypes" value="Rubric-only open-ended assessment"> Rubric-only
+            open-ended assessment</label>
+          <label><input type="checkbox" name="truthTypes" value="Simulation verification"> Simulation
+            verification</label>
+          <label><input type="checkbox" name="truthTypes" value="To be developed by maintainers"> To be developed by
+            maintainers</label>
+          <p class="error" id="truthTypes-error"></p>
+        </fieldset>
+        <div class="field">
+          <label for="referenceScriptSummary">Reference script summary or link/path</label>
+          <textarea id="referenceScriptSummary" name="referenceScriptSummary" rows="3"></textarea>
+        </div>
+        <div class="field">
+          <label for="referenceCodeSnippet">Reference R code snippet <span class="optional">optional</span></label>
+          <textarea id="referenceCodeSnippet" name="referenceCodeSnippet" rows="6" spellcheck="false"></textarea>
+        </div>
+        <div class="dynamic-section">
+          <div class="section-toolbar">
+            <div>
+              <h3>Numerical checks</h3>
+              <p class="help">Power tolerance often uses percentage points. Type I error tolerance often uses percentage
+                points. Event/timing checks may use relative percent or months.</p>
+            </div>
+            <button type="button" class="secondary" id="addNumericalCheck">Add numerical check</button>
+          </div>
+          <div id="numericalChecks" class="dynamic-list" aria-describedby="numericalChecks-error"></div>
+          <p class="error" id="numericalChecks-error"></p>
+        </div>
+        <div class="field">
+          <label for="textualGroundTruth">Textual ground truth / expected reasoning</label>
+          <textarea id="textualGroundTruth" name="textualGroundTruth" rows="5"></textarea>
+        </div>
+        <div class="field">
+          <label for="simulationRequirements">Simulation requirements</label>
+          <textarea id="simulationRequirements" name="simulationRequirements" rows="5"
+            placeholder="Verify type I error under H0.&#10;Verify power under H1.&#10;Verify IA/FA event counts and timing.&#10;Use independent simulation where applicable."></textarea>
+        </div>
+        <fieldset class="check-grid">
+          <legend>Known gotchas tested by this case</legend>
+          <label><input type="checkbox" name="knownGotchas" value="Incorrect use of gsSurv object field x$N"> Incorrect
+            use of gsSurv object field x$N</label>
+          <label><input type="checkbox" name="knownGotchas"
+              value="Incorrect delta = log(HR0 / HR) instead of log(HR0 / HR) / 2"> Incorrect delta = log(HR0 / HR)
+            instead of log(HR0 / HR) / 2</label>
+          <label><input type="checkbox" name="knownGotchas"
+              value="Manual HR-boundary calculation when package output should be used"> Manual HR-boundary calculation
+            when package output should be used</label>
+          <label><input type="checkbox" name="knownGotchas" value="Mis-handling non-binding futility in simulation">
+            Mis-handling non-binding futility in simulation</label>
+          <label><input type="checkbox" name="knownGotchas"
+              value="Designing directly under NPH instead of designing under PH and evaluating under NPH"> Designing
+            directly under NPH instead of designing under PH and evaluating under NPH</label>
+          <label><input type="checkbox" name="knownGotchas" value="Incorrect eventPred time units"> Incorrect eventPred
+            time units</label>
+          <label><input type="checkbox" name="knownGotchas" value="Missing accrualDuration in lrstat simulation">
+            Missing accrualDuration in lrstat simulation</label>
+          <label><input type="checkbox" name="knownGotchas" value="Uncontrolled multiplicity/type I error"> Uncontrolled
+            multiplicity/type I error</label>
+          <label><input type="checkbox" name="knownGotchas"
+              value="IA occurs before enrollment completion or operationally infeasible analysis timing"> IA occurs
+            before enrollment completion or operationally infeasible analysis timing</label>
+          <label><input type="checkbox" name="knownGotchas" value="Other"> Other</label>
+        </fieldset>
+      </section>
+
+      <section class="form-section" aria-labelledby="rubric-heading">
+        <h2 id="rubric-heading">Rubric Criteria</h2>
+        <p class="section-help">At least four criteria are required. Include numerical/statistical correctness and at
+          least one penalty or fatal gate.</p>
+        <div class="button-row wrap">
+          <button type="button" class="secondary" id="addRubric">Add rubric criterion</button>
+          <button type="button" class="secondary fatal-template"
+            data-template="Fails to control one-sided type I error or ignores multiplicity.">Type I error gate</button>
+          <button type="button" class="secondary fatal-template"
+            data-template="Produces non-executable or materially incorrect code.">Code gate</button>
+          <button type="button" class="secondary fatal-template"
+            data-template="Invents package behavior or cites functions/outputs that do not exist.">Package behavior
+            gate</button>
+          <button type="button" class="secondary fatal-template"
+            data-template="Fails to ask for or state a critical missing assumption.">Missing assumption gate</button>
+          <button type="button" class="secondary fatal-template"
+            data-template="Uses confidential or patient-identifiable information.">Confidentiality gate</button>
+        </div>
+        <div id="rubricRows" class="dynamic-list" aria-describedby="rubric-error"></div>
+        <p class="error" id="rubric-error"></p>
+      </section>
+
+      <section class="form-section" aria-labelledby="review-heading">
+        <h2 id="review-heading">Reviewer and Curation Notes</h2>
+        <fieldset class="check-grid">
+          <legend>Suggested reviewer expertise</legend>
+          <label><input type="checkbox" name="reviewerExpertise" value="Survival/GSD"> Survival/GSD</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="Multiplicity"> Multiplicity</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="Oncology"> Oncology</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="Non-inferiority"> Non-inferiority</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="NPH methods"> NPH methods</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="Simulation"> Simulation</label>
+          <label><input type="checkbox" name="reviewerExpertise" value="Regulatory/statistical review">
+            Regulatory/statistical review</label>
+        </fieldset>
+        <div class="field">
+          <label for="whyCaseMatters">Why this case matters</label>
+          <textarea id="whyCaseMatters" name="whyCaseMatters" rows="4"></textarea>
+        </div>
+        <div class="field">
+          <label for="expectedFailureModes">Expected failure modes for current AI agents</label>
+          <textarea id="expectedFailureModes" name="expectedFailureModes" rows="4"></textarea>
+        </div>
+        <div class="field">
+          <label for="maintainerNotes">Additional notes to maintainers</label>
+          <textarea id="maintainerNotes" name="maintainerNotes" rows="4"></textarea>
+        </div>
+      </section>
+    </form>
+
+    <aside class="preview-panel" aria-labelledby="preview-heading">
+      <div class="preview-sticky">
+        <div class="preview-header">
+          <div>
+            <p class="eyebrow">Generated GitHub Issue</p>
+            <h2 id="preview-heading">Preview</h2>
+          </div>
+          <span id="validityBadge" class="badge">Draft</span>
+        </div>
+
+        <div id="validationSummary" class="validation-summary" aria-live="polite"></div>
+
+        <div class="field">
+          <label for="issueTitle">Issue title</label>
+          <textarea id="issueTitle" readonly rows="2"></textarea>
+        </div>
+
+        <div class="button-row">
+          <button type="button" id="copyTitle">Copy title</button>
+          <button type="button" id="copyBody">Copy body</button>
+          <button type="button" id="copyBoth">Copy both</button>
+        </div>
+        <div class="button-row">
+          <button type="button" id="downloadMarkdown">Download issue Markdown</button>
+          <button type="button" id="copyJson">Copy machine-readable JSON</button>
+        </div>
+
+        <div class="field">
+          <label for="issueBody">Issue body</label>
+          <textarea id="issueBody" readonly rows="28" spellcheck="false"></textarea>
+        </div>
+        <p id="copyStatus" class="copy-status" aria-live="polite"></p>
+      </div>
+    </aside>
+  </main>
+
+  <template id="numericalCheckTemplate">
+    <div class="dynamic-card numerical-card">
+      <div class="card-title-row">
+        <h4>Numerical check</h4>
+        <button type="button" class="secondary remove-row">Remove</button>
+      </div>
+      <div class="grid-3">
+        <div class="field">
+          <label>Metric name <span class="required">required</span><input name="metric_name"
+              data-field="metric_name"></label>
+        </div>
+        <div class="field">
+          <label>Expected value <span class="required">required</span><input name="expected_value"
+              data-field="expected_value"></label>
+        </div>
+        <div class="field">
+          <label>Tolerance type <span class="required">required</span>
+            <select name="tolerance_type" data-field="tolerance_type">
+              <option>absolute</option>
+              <option>relative_percent</option>
+              <option>percentage_points</option>
+              <option>exact</option>
+              <option>range</option>
+            </select>
+          </label>
+        </div>
+        <div class="field">
+          <label>Tolerance value <span class="required">required</span><input name="tolerance_value"
+              data-field="tolerance_value"></label>
+        </div>
+        <div class="field">
+          <label>Units <span class="optional">optional</span><input name="units" data-field="units"></label>
+        </div>
+        <div class="field">
+          <label>Notes <span class="optional">optional</span><input name="notes" data-field="notes"></label>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="rubricTemplate">
+    <div class="dynamic-card rubric-card">
+      <div class="card-title-row">
+        <h4><span class="rubric-id-label">R1</span></h4>
+        <button type="button" class="secondary remove-row">Remove</button>
+      </div>
+      <div class="grid-3">
+        <div class="field">
+          <label>ID<input name="rubric_id" data-field="id" readonly></label>
+        </div>
+        <div class="field">
+          <label>Axis <span class="required">required</span>
+            <select name="rubric_axis" data-field="axis">
+              <option>numerical/statistical correctness</option>
+              <option>design judgment</option>
+              <option>executable reproducibility</option>
+              <option>verification/simulation</option>
+              <option>operational/protocol readiness</option>
+              <option>communication/safety</option>
+            </select>
+          </label>
+        </div>
+        <div class="field">
+          <label>Criterion type <span class="required">required</span>
+            <select name="criterion_type" data-field="criterion_type">
+              <option>reward</option>
+              <option>penalty</option>
+              <option>fatal_gate</option>
+            </select>
+          </label>
+        </div>
+        <div class="field">
+          <label>Points <span class="required">required</span><input name="points" data-field="points" type="number"
+              min="-10" max="10" step="1"></label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" name="machine_checkable" data-field="machine_checkable"> Machine
+            checkable?</label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Criterion text <span class="required">required</span><textarea name="criterion_text"
+            data-field="criterion" rows="3"></textarea></label>
+      </div>
+      <div class="field">
+        <label>Grading hint <span class="optional">optional</span><textarea name="grading_hint"
+            data-field="grading_hint" rows="2"></textarea></label>
+      </div>
+      <div class="field">
+        <label>Reviewer notes <span class="optional">optional</span><textarea name="reviewer_notes"
+            data-field="reviewer_notes" rows="2"></textarea></label>
+      </div>
+    </div>
+  </template>
+
+  <script src="assets/app.js"></script>
+</body>
+
+</html>
