@@ -5,6 +5,19 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# 0. Preflight checks — warn about missing env vars that will cause failures
+#    later in the workflow, but do not abort (R setup is still useful).
+# ---------------------------------------------------------------------------
+if [ -z "${GH_TOKEN:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "[setup] WARNING: Neither GH_TOKEN nor GITHUB_TOKEN is set."
+  echo "[setup]   Without a token the workflow will:"
+  echo "[setup]     • treat all evals as pending (duplicate-run risk)"
+  echo "[setup]     • skip zip upload to the benchmark-results release"
+  echo "[setup]     • create a new GitHub comment instead of updating the existing one"
+  echo "[setup]   Set GH_TOKEN before running Step 1:  export GH_TOKEN=\$(gh auth token)"
+fi
+
+# ---------------------------------------------------------------------------
 # 1. Install R base if not present
 # ---------------------------------------------------------------------------
 if ! command -v R &>/dev/null; then
@@ -33,6 +46,10 @@ sudo apt-get install -y --no-install-recommends \
   libpng-dev \
   libjpeg-dev \
   libuv1-dev \
+  libglpk-dev \
+  libgmp-dev \
+  libigraph-dev \
+  zlib1g-dev \
   2>/dev/null || echo "[setup] Some system packages failed — continuing."
 
 # ---------------------------------------------------------------------------
@@ -192,13 +209,20 @@ automation_pkgs <- c(
 
 # Packages required by the group-sequential-design skill.
 # Pre-installing avoids mid-benchmark install delays that skew timing.
+# igraph: transitive dep of graphicalMCP (multiplicity diagrams) — must be
+#   listed explicitly; pak will build from source if not pre-installed,
+#   costing ~7 min of compilation inside the agent run.
+# officer + flextable: .docx report generation used by gsd_report.py/.Rmd.
 skill_pkgs <- c(
   "gsDesign",     # group sequential boundaries and sample size
   "gsDesign2",    # non-proportional hazards evaluation
   "lrstat",       # log-rank simulation for design verification
   "graphicalMCP", # Maurer-Bretz graphical multiplicity testing
   "eventPred",    # event prediction under non-proportional hazards
-  "ggplot2"       # visualisation used in skill outputs
+  "ggplot2",      # visualisation used in skill outputs
+  "igraph",       # transitive dep of graphicalMCP (multiplicity diagrams)
+  "officer",      # .docx report generation
+  "flextable"     # table formatting in Word/HTML reports
 )
 
 all_pkgs  <- unique(c(automation_pkgs, skill_pkgs))

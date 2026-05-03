@@ -23,10 +23,12 @@ bash _automation/benchmark-runner/scripts/setup_r_env.sh
 
 The script handles everything in one shot:
 
-1. **Installs R** (`r-base`) via `apt` if `R` is not on `PATH`.
-2. **Configures Posit Public Package Manager** for pre-compiled Linux binaries
+1. **Warns** if `GH_TOKEN`/`GITHUB_TOKEN` is unset (token is needed for comment
+   deduplication, zip upload, and upsert in Steps 4–6).
+2. **Installs R** (`r-base`) via `apt` if `R` is not on `PATH`.
+3. **Configures Posit Public Package Manager** for pre-compiled Linux binaries
    (dramatically faster than building from source).
-3. **Installs and verifies all required R packages:**
+4. **Installs and verifies all required R packages:**
 
    | Package | Purpose |
    |---|---|
@@ -38,6 +40,9 @@ The script handles everything in one shot:
    | `graphicalMCP` | Maurer-Bretz graphical multiplicity testing |
    | `eventPred` | Event prediction under non-proportional hazards |
    | `ggplot2` | Visualisation used in skill outputs |
+   | `igraph` | Transitive dep of `graphicalMCP` (multiplicity diagrams) — must be pre-installed to avoid ~7 min source compilation inside the agent run |
+   | `officer` | `.docx` report generation |
+   | `flextable` | Table formatting in Word/HTML reports |
 
 If the script exits with a non-zero status, **stop here and report the error**.
 Do not proceed to Step 1.
@@ -136,11 +141,27 @@ Text files are also embedded in `_common_task_prompt` under neutral names such a
 - `prompt_B.txt` contains only `_prompt_b`.
 - Do not include `_skill_content`, `_bundled_resources`, skill filenames, package hints, `_input_files.source`, raw eval file paths, or prior conversation context.
 
-Example launcher shape for each side:
+**Preferred: use the provided launcher script** (handles parallelism, rate-limit
+retry, and precise timestamp recording automatically):
 
 ```bash
-cd /tmp/benchmark_{id}/agent_A && cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob" --output-format json | tee agent_A_run.json
-cd /tmp/benchmark_{id}/agent_B && cat prompt_B.txt | claude -p --model "{CURRENT_MODEL_NAME}" --allowedTools "Bash,Read,Write,Edit,Glob" --output-format json | tee agent_B_run.json
+bash _automation/benchmark-runner/scripts/run_agents.sh \
+  {id} {CURRENT_MODEL_NAME} /tmp/benchmark_{id}
+```
+
+The script writes `agent_A/agent_A_run.json`, `agent_B/agent_B_run.json`,
+`run_timestamps.env`, and calls `record_run_result.py` with correct wall-clock
+`--start-ms`/`--end-ms` values.
+
+**Manual launcher shape** (use only when the script is unavailable):
+
+```bash
+cd /tmp/benchmark_{id}/agent_A && CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000 \
+  cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" \
+  --allowedTools "Bash,Read,Write,Edit,Glob" --output-format json | tee agent_A_run.json
+cd /tmp/benchmark_{id}/agent_B && CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000 \
+  cat prompt_B.txt | claude -p --model "{CURRENT_MODEL_NAME}" \
+  --allowedTools "Bash,Read,Write,Edit,Glob" --output-format json | tee agent_B_run.json
 ```
 
 `prompt_A.txt` contains only `_skill_content` + `_prompt_a`. `prompt_B.txt` contains only `_prompt_b`. The experimental contrast must be skill access, not launcher, model, cwd, file naming, or prior-session context.
@@ -153,7 +174,7 @@ Because there is no persistent HTTP stream, this format is not susceptible to st
 timeouts and is the correct choice for benchmark agents that may run for hours.
 `tee` writes this object to `agent_{X}_run.json`.
 
-**When the agents return:**
+**When the agents return** (skip if you used `run_agents.sh` — it handles this automatically):
 - Extract token counts from the JSON result object:
   ```bash
   python3 - <<'PY'
@@ -167,15 +188,37 @@ timeouts and is the correct choice for benchmark agents that may run for hours.
   ```
   Fall back to grepping `[USAGE: {n}]` from the `result` field if the JSON file is
   absent or the `usage` field is missing.
-- Run the recording script to capture duration and tokens:
+- Run the recording script, passing the wall-clock timestamps captured at agent
+  launch and completion so that `runs.json` reflects actual agent runtime rather
+  than orchestrator-session time:
   ```bash
-  python3 _automation/benchmark-runner/scripts/record_run_result.py --eval-id {id} --model {CURRENT_MODEL_NAME} --status completed --tokens-a {tokens_A} --tokens-b {tokens_B}
+  python3 _automation/benchmark-runner/scripts/record_run_result.py \
+    --eval-id {id} --model {CURRENT_MODEL_NAME} --status completed \
+    --tokens-a {tokens_A} --tokens-b {tokens_B} \
+    --start-ms {agent_start_epoch_ms} --end-ms {agent_end_epoch_ms}
   ```
 - Note any errors reported in the `is_error` field or `result` text of each JSON file.
 
 ---
 
 ## Step 3 — Score blinded outputs against assertions
+
+**Preferred: use the automated scorer** (runs a fast Haiku sub-agent, formats
+the report, and posts to GitHub in one call — covering Steps 3–6):
+
+```bash
+python3 _automation/benchmark-runner/scripts/score_and_post.py \
+  --eval-id {id} \
+  --model {CURRENT_MODEL_NAME} \
+  --base-dir /tmp/benchmark_{id} \
+  --eval-case /tmp/eval_case_{id}.json
+```
+
+Set `SCORER_MODEL` env var to override the scorer model (default:
+`claude-haiku-4-5-20251001`). If this script succeeds, **skip Steps 4–6** —
+it handles archiving context, report formatting, and GitHub posting internally.
+
+**Manual scoring** (use only when the script is unavailable):
 
 Before scoring, copy outputs according to `_blinded_scoring_map`:
 
@@ -401,16 +444,36 @@ always creates a new comment.
 
 ## Execution Flow
 
+**Fast path (recommended — uses the provided scripts):**
+
+```
+setup_r_env.sh              (Step 0 — idempotent, ~2 min if image pre-baked)
+  |
+get_next_eval.py            (Step 1 — selects next pending eval)
+  |-- STATUS: UP_TO_DATE -> Exit
+  |-- JSON eval case ->
+       |
+       run_agents.sh        (Step 2 — parallel A+B with retry + timestamp recording)
+         |-- agent_A_run.json
+         |-- agent_B_run.json
+         |-- run_timestamps.env
+         |-- record_run_result.py (called automatically)
+       |
+       score_and_post.py    (Steps 3–6 — Haiku scorer + report + GitHub upsert)
+```
+
+**Manual path (fallback — each step run by the orchestrator LLM):**
+
 ```
 Run get_next_eval.py (Detects composite skill SHA, model, and file order)
   |-- If STATUS: UP_TO_DATE -> Exit
   |-- If JSON ->
        |-- Agent A (with skill) ---+
-       |-- Agent B (without skill)-+--- run in parallel
-       |-- Score blinded candidates           (Step 3)
-       |-- Archive and upload detailed outputs (Step 4)
-       |-- Format Markdown report              (Step 5)
-       |-- Post comment to GitHub issue #{N}   (Step 6)
+       |-- Agent B (without skill)-+--- run in parallel        (Step 2)
+       |-- Score blinded candidates                            (Step 3)
+       |-- Archive and upload detailed outputs                 (Step 4)
+       |-- Format Markdown report                              (Step 5)
+       |-- Post comment to GitHub issue #{N}                   (Step 6)
 ```
 
 ## Notes on Model Name
