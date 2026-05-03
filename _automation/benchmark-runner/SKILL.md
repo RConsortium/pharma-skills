@@ -19,7 +19,7 @@ Create a single routine at [claude.ai/code/routines](https://claude.ai/code/rout
 |---|---|
 | **Prompt** | `Read _automation/benchmark-runner/SKILL.md and execute.` |
 | **Repository** | `RConsortium/pharma-skills` |
-| **Schedule** | `0 6,18 * * *` (6 AM and 6 PM UTC — 12 h apart) |
+| **Schedule** | `0 1,6 * * *` (1 AM and 6 AM UTC — 5 h gap, matches rolling usage window) |
 
 That is all. The skill determines its own phase on every invocation.
 
@@ -202,7 +202,7 @@ Write the partial comment body to `/tmp/partial_comment_{eval_id}.md`:
 | **Skill version** | `{_skill_sha[:7]}` |
 | **Phase** | 1 of 2 complete — Agent A (with skill) finished |
 
-Agent A has completed. Agent B (without skill) will run in the next scheduled window (~12 h).
+Agent A has completed. Agent B (without skill) will run in the next scheduled window (~5 h).
 Results will be updated here automatically.
 
 <!-- BENCHMARK_PARTIAL: {"eval_id":"{id}","model":"{CURRENT_MODEL_NAME}","skill_sha":"{_skill_sha}","issue_number":{N},"blinded_map":{_blinded_scoring_map},"agent_a_asset_url":"{asset_url}","run_date":"{ISO8601}","tokens_a":{tokens_a}} -->
