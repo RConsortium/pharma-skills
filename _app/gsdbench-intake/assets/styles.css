@@ -108,7 +108,6 @@ body {
   font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
-  font-feature-settings: "kern", "liga", "calt", "ss01";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
