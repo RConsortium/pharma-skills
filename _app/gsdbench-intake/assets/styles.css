@@ -49,6 +49,7 @@
     Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     "Liberation Mono", monospace;
+  --page-max-width: 1480px;
 }
 
 * {
@@ -154,7 +155,8 @@ a:hover {
 
 .app-hero {
   padding: clamp(2.75rem, 7vw, 5rem) clamp(1.25rem, 4vw, 3rem) clamp(2.25rem, 5vw, 3.75rem);
-  max-width: 64rem;
+  max-width: var(--page-max-width);
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -299,7 +301,7 @@ button.fatal-template {
   display: grid;
   grid-template-columns: minmax(0, 1.18fr) minmax(24rem, 0.82fr);
   gap: clamp(2rem, 4vw, 3.75rem);
-  max-width: 1480px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
   padding: clamp(2rem, 4vw, 3.5rem) clamp(1.25rem, 4vw, 3rem) 5rem;
   align-items: start;
