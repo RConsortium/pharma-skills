@@ -226,7 +226,7 @@ NEXT STEP — Phase 2 (Agent B + scoring):
   • If running as a scheduled routine: nothing to do. The next scheduled
     invocation (≥5 h from now, after the rolling usage window resets) will
     detect this partial state automatically and run Phase 2.
-  • If running manually: re-invoke this skill any time after 5 h. It will
+  • If running manually: re-invoke this skill any time. It will
     detect the BENCHMARK_PARTIAL marker on issue #{N} and run Phase 2 to
     completion.
 ```
