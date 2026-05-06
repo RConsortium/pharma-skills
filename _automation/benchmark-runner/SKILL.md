@@ -130,11 +130,14 @@ with open(os.path.join(agent_a_dir, "prompt_A.txt"), "w", encoding="utf-8") as f
 **Launch Agent A:**
 
 ```bash
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 cd /tmp/benchmark_{id}/agent_A && \
   cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" \
   --allowedTools "Bash,Read,Write,Edit,Glob" \
   --output-format json > agent_A_run.json 2>&1
 ```
+
+> **Note:** `export` is required — a prefix (`VAR=val cat ... | claude`) only sets the variable for `cat`, not for the `claude` process receiving the pipe.
 
 `--output-format json` emits a single JSON object when the agent finishes — resilient to long-running agents and session timeouts.
 
@@ -295,6 +298,7 @@ with open("/tmp/benchmark_{id}/agent_B/prompt_B.txt", "w") as f:
 Launch Agent B:
 
 ```bash
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 cd /tmp/benchmark_{id}/agent_B && \
   cat prompt_B.txt | claude -p --model "{state['model']}" \
   --allowedTools "Bash,Read,Write,Edit,Glob" \
