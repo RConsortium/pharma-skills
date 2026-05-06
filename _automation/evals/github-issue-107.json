@@ -1,0 +1,19 @@
+{
+  "id": "github-issue-107",
+  "prompt": "Phase 3 oncology trial.\n\nClinical context:\n- Primary endpoint: overall survival (OS).\n- Randomization: 1:1.\n- Overall one-sided type I error: 0.025.\n\nPopulations to consider:\n- Biomarker-high population.\n- Biomarker medium+high population.\n- ITT population.\n- These populations are nested:\n  biomarker-high ⊂ biomarker medium+high ⊂ ITT.\n\nApproximate population proportions:\n- Biomarker-high: ~25% of ITT.\n- Biomarker medium+high: ~65% of ITT.\n- ITT: 100%.\n\nControl median OS assumptions:\n- Biomarker-high: 10.5 months.\n- Biomarker medium+high: 8.5 months.\n- ITT: 7.8 months.\n\nTarget treatment effects:\n- Biomarker-high HR: 0.78.\n- Biomarker medium+high HR: 0.80.\n- ITT HR: 0.82.\n\nAim for approximately 80% power for the primary recommended formal hypothesis.\n\nDesign task:\n- Recommend an appropriate group sequential design for OS.\n- Determine the required sample size and OS event targets.\n- Determine whether the design should use ITT-first testing, biomarker-first testing, parallel alpha split, graphical alpha recycling, or another multiplicity strategy.\n- Justify the recommended testing strategy based on statistical power, robustness, and risk of losing a favorable ITT result behind a failed biomarker gate.\n- Include 1 interim analysis and 1 final analysis unless a different number of analyses is strongly justified.\n- Use a conservative efficacy spending approach such as O’Brien-Fleming or Lan-DeMets O’Brien-Fleming.\n- Consider non-binding futility guidance if appropriate.\n- Enrollment may be assumed to occur over approximately 12–18 months, with final OS analysis event-driven.",
+  "expected_output": "1. Recommended multiplicity strategy across biomarker-high, biomarker medium+high, and ITT.\n2. Rationale for the chosen testing order or alpha allocation.\n3. Sample size and OS event targets.\n4. IA and FA timing, information fractions, alpha spent, Z/p-value boundaries, and approximate HR boundaries if possible.\n5. Power and type I error verification by calculation or simulation.\n6. Decision rules for each population.\n7. A stress-test interpretation for the following outcome pattern:\n   - Biomarker-high HR ≈ 0.87 and not significant.\n   - Biomarker medium+high HR ≈ 0.87.\n8. A comparison against at least one alternative multiplicity strategy.\n9. Final recommendation on whether the proposed design is robust to uncertainty in biomarker predictiveness.",
+  "files": [],
+  "assertions": [
+    "1. The skill recognizes biomarker-high, biomarker medium+high, and ITT as nested populations.",
+    "2. The skill compares at least two plausible strategies, such as ITT-first, biomarker-first, and parallel alpha split with recycling.",
+    "3. The skill proposes and justifies a multiplicity strategy rather than blindly using a biomarker-first fixed sequence.",
+    "4. The skill reports IA and FA information fractions, alpha spent, Z or p-value boundaries, and approximate HR boundaries if possible.",
+    "5. The skill shows how the overall one-sided alpha 0.025 is controlled across populations and interim/final analyses.",
+    ". The skill includes analytical or simulation-based verification of type I error control.",
+    "6. The skill recognizes that smaller biomarker-defined populations may have unstable HR estimates and wider confidence intervals.",
+    "7.  The skill explains how correlated nested populations affect multiplicity and interpretation."
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

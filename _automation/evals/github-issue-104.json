@@ -1,0 +1,23 @@
+{
+  "id": "github-issue-104",
+  "prompt": "I'm designing a simulation study for a Phase 3 trial. 1:1 randomization, N = 500 (250 per arm).\n\nCo-primary endpoints: PFS (time-to-event) and ORR (binary). Total alpha 0.025 one-sided, split as alpha_PFS = 0.024 and alpha_ORR = 0.001.\n\n**PFS design:**\n- Control median PFS: 20 months\n- Treatment median PFS: 30 months\n- Group sequential with 2 interim analyses + final: IFs = 0.49, 0.75, 1.00 \n- Lan-DeMets O'Brien-Fleming alpha spending\n- Non-binding futility\n\n**ORR:**\n- Control ORR: 45%\n- Treatment ORR: 65% \n- Tested once at IA1\n\n**Accrual:** 500 patients uniform ~20/month\n**Dropout:** 15% over 50 months.\n\nI need two simulation analyses:\n\nAnalysis 1: NPH Scenarios (delayed treatment effect)\n\nThe mechanism involves immune activation lag which may cause a delayed treatment effect. Simulate PFS power under multiple NPH scenarios\n\n\nUse piecewise-constant exponential for the treatment arm. Report power, P(stop at IA1/IA2/Final), median observed HR, and expected study duration for each scenario.\n\nAnalysis 2: SOC Sensitivity Grid (fixed treatment arm)\n\n\n- Control mPFS: 10 to 30 months in 2-month steps\n- Control ORR: 25%, 30%, 35%, 40%, 45%, 55%, 60%\n\nFor each cell: simulate PFS power (GSD log-rank), compute ORR power analytically (alpha = 0.001).\n\nUse 1000 replicates for NPH, 500 for the SOC grid. All inputs are confirmed — skip the Q&A and go straight to building the simulation.",
+  "expected_output": "Two simulation runs under `runs/` with the standard TrialSimulator output layout:\n\n1. NPH results with:\n   - R scripts following the build order\n   - Results table comparing power across all  NPH scenarios\n   - Report \n\n2. SOC sensitivity results with:\n   - R scripts using PFS simulation + analytical ORR power\n   - Combined grid table (PFS% / ORR%) across all cells\n   - Power curve showing the cliff where PFS power drops below 80%\n   - Event timing feasibility table\n   - Report",
+  "files": [],
+  "assertions": [
+    "All R scripts are stored",
+    "NPH scenarios include delayed/crossing hazard patterns",
+    "NPH Results table includes: power, P(IA1), P(IA2), P(Final), median observed HR, and expected study duration per scenario",
+    "SOC simulations: Treatment arm is FIXED at original mPFS and ORR across all grid cells",
+    "SOC simulations: Control arm varies: implied HR = mPFS_ctrl / 30; ORR delta = 65% - ORR_ctrl",
+    "SOC simulations: PFS power is simulated for each mPFS value; ORR power is computed analytically",
+    "SOC simulations: The grid covers mPFS = 10 to 30 in steps of at most 2 months (at least 11 mPFS values)",
+    "SOC simulations: The combined grid table shows both PFS power and ORR power per cell",
+    "The report identifies the approximate mPFS breakpoint where PFS power drops below 80%",
+    "The report flags ORR control values where ORR power drops below 80%",
+    "The report includes a risk assessment or recommendation section"
+  ],
+  "language": "R",
+  "target_skills": [
+    "clinical-trial-simulation"
+  ]
+}

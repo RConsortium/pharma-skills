@@ -1,0 +1,16 @@
+{
+  "id": "github-issue-109",
+  "prompt": "The sample size determination was based on a phase III, randomized, 1:1 parallel‑group design with progression‑free survival (PFS) as the primary time‑to‑event endpoint, defined as time from randomization to disease progression or death from any cause. The study was powered to detect a hazard ratio of 0.74 for experimental versus control treatment under the proportional hazards assumption using a stratified log‑rank test, with 80% power and a two‑sided overall Type I error rate of 5%. A group sequential design with O’Brien–Fleming–type alpha‑spending was employed, with interim analyses planned at approximately 30% and 67% of the total information, including a non‑binding futility analysis at the first interim look and efficacy monitoring at subsequent analyses. How many PFS events required? How many sample size needed? generate the summary report",
+  "expected_output": "Provide a human-readable description of what a successful output looks like.",
+  "files": [],
+  "assertions": [
+    "The output must include a Markdown table.",
+    "The script must use the `gsDesign` R package.",
+    "The calculated PFS events should be less than 400",
+    "It should ask the assumptions such as accrual intensity for final sample size determination"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "github-issue-103",
+  "prompt": "I want to design a HARMONi-inspired phase 3 oncology trial, where two geographic populations enroll on different timelines.\n\nThis is not intended to exactly reproduce the HARMONi SAP. Please treat it as a synthetic case study inspired by HARMONi.\n\nTrial setting:\n- Two-arm randomized phase 3 trial\n- Randomization: 1:1 treatment vs control\n- Endpoints: PFS and OS. Overall onesided alpha 0.025.  IA1: PFS primary analysis at one sided alpha = 0.0025. If passed, pass the 0.0025 alpha to OS as OS interim. FA: OS primary analysis\n- Primary analysis population: pooled Population A + Population B\n- Treatment effect may differ by population\n- Assume exponential PFS and OS distributions unless otherwise specified\n\n\nHARMONi-inspired enrollment assumptions:\n- Population A starts enrollment at month 0\n- Population A enrolls approximately 60% patients\n- Population A accrual duration is approximately 10–11 months\n- Population A accrual rate is approximately 25 patients/month\n- Population B starts enrollment at month 16\n- Population B enrolls approximately 40% patients\n- Population B accrual duration is approximately 17–18 months\n- Population B accrual rate is approximately 9–10 patients/month\n- Include 5% annual non-informative dropout for PFS and OS\n\n\nEndpoint assumptions:\n\nPopulation A:\n- Median PFS control = 4.8 months\n- Median PFS treatment = 7.1 months\n- Median OS control = 14.0 months\n- Median OS treatment = 17.0 months\n\nPopulation B:\n- Median PFS control = 3.8 months\n- Median PFS treatment = 6.2 months\n- Median OS control = 14.0 months\n- Median OS treatment = 17.0 months",
+  "expected_output": "The recommended design should have the following characteristics:\n- Achieves at least 80% power for PFS FA and OS FA\n- Also report joint probability of success for both PFS and OS\n- If it is difficult to achieve 80% joint power under the assumed OS effect size, show the sample size/event count needed and explain the trade-off\n- Ensures Population B has mature enough PFS follow-up by the PFS FA / OS IA readout\n- Ensures Population B has meaningful OS maturity by OS FA\n- Avoids a design where pooled OS success is driven almost entirely by early-enrolling Population A\n- Is robust to alternative staggered-enrollment patterns, including slower Population B accrual, earlier Population B activation",
+  "files": [],
+  "assertions": [
+    "PFS FA power >= 80%.",
+    "OS FA power >= 80%.",
+    "an approximate last-patient-in lag of 23 months between Population A and Population B",
+    "Population B median PFS follow-up >= 6 months AND at least 40% of expected Population B PFS events have occurred",
+    "Population B median OS follow-up >= 12 months AND at least 40% of expected Population B OS events have occurred",
+    "Population B contributes >=30% of total OS events at OS FA",
+    "IA timing should after LPI of population B. If not, explain.",
+    "The design is robust to weaker Western OS assumptions.",
+    "The design reports Population A and Population B follow-up separately."
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

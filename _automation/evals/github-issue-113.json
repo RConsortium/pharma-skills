@@ -1,0 +1,16 @@
+{
+  "id": "github-issue-113",
+  "prompt": "Important operational feature: this is a ctDNA-guided randomized trial, so randomized accrual is delayed by molecular screening.\n\nPatients enter STEP 1 ctDNA surveillance only after receiving first-line AI + CDK4/6 inhibitor for at least 6 months without radiographic progression. ctDNA testing for ESR1 mutation occurs every 2.5 months for simulation.\n\nUse the following SERENA-6-inspired assumptions:\n- About 3,300 patients may need to be screened to randomize about 300–315 patients.\n- Only about 10% of screened patients ultimately become randomized.\nFor patients who eventually become eligible for randomization, simulate time from AI + CDK4/6 initiation to ESR1m detection as a delayed event with:\n- minimum: 6 months, because ctDNA screening starts after at least 6 months on AI + CDK4/6;\n- median: 23 months;\n- approximately 17% detected before 12 months;\n- approximately 38% detected before 18 months;\n- approximately 62% detected at or after 18 months;\n- plausible range: 6 to 96 months.\n\nThe design skill should calculate trial duration using two clocks:\n1. Screening clock: from AI + CDK4/6 initiation or STEP 1 surveillance entry to ESR1m detection and randomization.\n2. Efficacy clock: from randomization at ESR1m detection to PFS, PFS2, and OS events.\n\nRandomization: 1:1 at the time of ESR1 mutation detection.\nArm A: switch aromatase inhibitor to investigational oral SERD while continuing the same CDK4/6 inhibitor.\nArm B: continue aromatase inhibitor + the same CDK4/6 inhibitor.\n\nPrimary endpoint: PFS from randomization.\nKey secondary endpoint: OS.\n\nAssumptions:\n- Randomized sample size around 300 patients.\n- Control median PFS from randomization: 7 months.\n- Target PFS HR: 0.61.\n- Control median OS: 35 months.\n- Target OS HR: 0.70.\n- Overall two-sided family-wise alpha: 0.05.\n- The sponsor wants an early PFS interim analysis but also wants to preserve the ability to test OS.",
+  "expected_output": "Propose a group sequential design, including event targets, timing of analyses, testing hierarchy, alpha-spending or stopping boundary approach, and what claims can be made at each look.",
+  "files": [],
+  "assertions": [
+    "Pass if the design separates screened patients from randomized patients and does not count nonrandomized screened patients in the primary randomized efficacy analysis (event < 300).",
+    "Pass if the design recognizes that PFS time zero is randomization at ESR1 mutation detection, not first-line treatment start.",
+    "Pass if the timeline reported by the design is based on first-line treatment start, and PFS calculation is based on randomization date",
+    "Pass if the group sequential plan preserves alpha across the selected primary and key secondary endpoints.",
+    "Pass if the audit identifies the risk that OS becomes underpowered or too late"
+  ],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}
