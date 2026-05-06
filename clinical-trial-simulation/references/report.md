@@ -111,19 +111,41 @@ this design.
 
 A single table that is the source of truth for every value used in
 the simulation. Subsequent sections reference this table rather than
-restating numbers. Include:
+restating numbers.
 
-- Endpoint distribution parameters per arm
-- Readout times for non-TTE endpoints
-- Correlation structure (and which generator implements it)
-- Sample size, duration, accrual schedule, dropout
-- Stratification factors
-- Milestone trigger thresholds
-- Helper-derived literals with the helper that produced them
-  (e.g., `h01 = 0.075` from `solveThreeStateModel(median_pfs=7, median_os=15, corr=0.68)`)
+**Required columns: three.** Every row must populate all three.
 
-If a parameter is a stub (dummy decision rule, placeholder for a
-combination test), mark it clearly in this table.
+| Column | What goes here |
+|---|---|
+| **Parameter** | Short name of the parameter, in clinical/statistical terms (not the R variable name unless they happen to match). |
+| **Value** | The exact value used in the simulation (number, expression, distribution + parameters, data.frame literal, helper-derived literal). |
+| **Source / Notes** | Where the value came from. Pick the most specific applicable category from the controlled vocabulary below. |
+
+**Source / Notes — controlled vocabulary** (use one; combine with a short explanation when needed):
+
+- **`user`** — copied verbatim from the user's spec.
+- **`user (translated)`** — user-provided in clinical terms, mechanically translated to a TS-compatible form. Show the translation, e.g. *"15% dropout by mo 50 → `rate = -log(0.85)/50`"*.
+- **`inferred`** — the user did not specify; the agent picked a sensible default. State the default and why in one phrase, e.g. *"inferred — ORR readout typical of solid-tumor trials"*. **Inferred values must be confirmed (or at least surfaced) with the user before expensive runs.**
+- **`derived`** — computed from other parameters in this table or from a helper. Cite the source, e.g. *"derived: `solveThreeStateModel(median_pfs=7, median_os=15, corr=0.68) → h01 = 0.0750`"*, or *"derived from `boundaries.R` (rpact)"*.
+- **`package convention`** — a default the package or skill prescribes (e.g., `seed = NULL`, `silent = TRUE`, `plot_event = FALSE`). Brief; no rationale needed.
+- **`stub`** / **`DUMMY`** — a placeholder decision rule, combination test, or boundary that needs replacement before the design is finalized. **Highlight prominently** (bold, prefix `STUB:`, or both) so reviewers cannot miss it.
+
+Always include rows for: endpoint distribution parameters per arm, readout times for non-TTE endpoints, correlation structure (and the generator implementing it), sample size, duration, accrual schedule, dropout, stratification factors, milestone trigger thresholds, and any helper-derived literals.
+
+**Worked example:**
+
+| Parameter | Value | Source / Notes |
+|---|---|---|
+| N (1:1) | 500 | user |
+| Accrual | uniform 20/mo (`StaggeredRecruiter`, `accrual_rate = data.frame(end_time=Inf, piecewise_rate=20)`) | user |
+| Dropout | exponential, `rate = -log(0.85)/50 = 0.003250` | user (translated): "15% by mo 50" |
+| ORR readout | 6 mo | inferred — typical solid-tumor first response assessment; confirm before production |
+| PFS — control | `rexp(rate = log(2)/20)` | user |
+| PFS — treatment, 6-mo delay scenario | `PiecewiseConstantExponentialRNG(risk = data.frame(end_time=c(6,1000), piecewise_risk=c(log(2)/20, 0.55*log(2)/20)))` | derived from user's NPH spec; `tail_end = 1000` per package gotcha |
+| GSD efficacy bounds (z) | (3.0204, 2.3762, 2.0303) at IF (0.49, 0.75, 1.00) | derived from `boundaries.R` (rpact, asOF, alpha=0.024) |
+| D_total | 269 events | derived from `boundaries.R` (rpact, 90% power assumption) |
+| Combination test alpha allocation | **STUB:** equal split | stub — placeholder; replace with the protocol's pre-specified allocation |
+| Seed | `NULL` (auto per replicate) | package convention |
 
 ### 2.5 Boundary computation (only if external tools were used)
 
@@ -244,16 +266,29 @@ For each operating characteristic the user asked about:
 - Cite which `trial$save()` call from §6 supplies the underlying
   value.
 
-Include `summarizeMilestoneTime(out)` output for milestone-time
-distributions when relevant. **When you do, add a one-line note
-that these times are non-binding** — they reflect when each
-milestone fired in the simulation, where every replicate runs to
-completion, not the actual stopping time under a binding-interim
-rule. If the design has early stopping, also report the binding-
-interim expected duration derived post-hoc from saved decision
-flags (per the "trials never stop early in simulation" principle in
-SKILL.md and helpers.md), and explain the difference. Do not let a
-reader confuse the two.
+**Milestone-time plots (`summarizeMilestoneTime(out)`) are
+opt-in, not default.** The precondition for calling the function
+is in `helpers.md` (post-simulation utilities) — read it before
+deciding. Quick decision tree once the precondition holds:
+
+1. **Include without asking** when the user's question is about
+   timing — phrasings like "expected duration," "when will the IA
+   fire," "study completion date," operational feasibility, or
+   binding-interim accounting.
+2. **Omit without asking** when the user's question is about
+   *power* under a sensitivity sweep (multi-scenario NPH,
+   parameter grids, dose–response screens) and the OC table
+   already lists IA/FA medians per scenario. A single plot from
+   one cherry-picked scenario is misleading; one plot per
+   scenario inflates the report.
+3. **Ask** when neither rule clearly applies. One sentence is
+   enough: *"Do you want milestone-time distributions in the
+   report (single panel, faceted by scenario, or omitted)?"*
+
+If the design has any binding early-stop rule, do **not** call
+`summarizeMilestoneTime`; report the binding-interim expected
+duration derived post-hoc from saved decision flags instead, and
+explain in the report why a milestone-time plot is omitted.
 
 If applicable, include Monte Carlo standard error estimates next to
 each OC so the reader can judge precision (e.g., for a power estimate

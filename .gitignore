@@ -25,3 +25,13 @@ clinical-trial-simulation/runs/
 clinical-trial-simulation/output/
 clinical-trial-simulation/**/*.html
 clinical-trial-simulation/**/.DS_Store
+.Rproj.user
+
+# /simulate output — repo-root runs/ folder per .claude/commands/simulate.md
+/runs/
+
+# RStudio project files (personal)
+*.Rproj
+
+# Local /simulate launcher (per-user; do not ship)
+/.claude/commands/simulate.md
