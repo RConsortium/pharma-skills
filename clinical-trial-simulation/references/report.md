@@ -16,6 +16,25 @@ The report is what the user reads. It serves three purposes:
 3. **Reproducibility.** The report plus the script is enough to rerun
    the simulation and get the same results.
 
+## Self-containment rule
+
+**Every report must be readable end-to-end without consulting any
+other report or external file.** When two simulation runs share
+design elements (boundaries, milestone triggers, accrual schedule,
+arm structure), each report **inlines the full code and literals
+itself** — never write "identical to the other run, see X" or
+"reuses the boundaries from run Y, see file Z".
+
+Cross-references are acceptable only for *narrative framing* (e.g.,
+"this run extends the question raised in the NPH report") — never
+for code, parameter values, boundary literals, or anything a
+reviewer would need to verify the design. If a reviewer can't
+reproduce the simulation from this report alone, the report has
+failed its QC purpose.
+
+This sometimes means duplicating a code block across reports.
+Duplication is fine; broken cross-references at audit time are not.
+
 ## Structure: build-order spine
 
 Mirror the build order in the report. The agent assembled the
