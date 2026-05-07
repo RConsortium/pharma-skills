@@ -269,7 +269,7 @@ trial(name, n_patients, duration, description = name, seed = NULL,
 | `duration` | numeric | yes | Trial timeframe; adjustable via `$set_duration()` |
 | `seed` | numeric/NULL | no | NULL = auto per-replicate |
 | `enroller` | function | yes | Returns enrollment time vector of length n; see built-in `StaggeredRecruiter` |
-| `dropout` | function | no | Returns dropout time vector of length n |
+| `dropout` | function | no | Returns dropout time vector of length n. **One global dropout function per trial — applies to ALL endpoints uniformly per patient.** Each patient draws a single dropout time; that time censors every TTE endpoint and zeroes out any non-TTE readouts whose readout-time exceeds it. There is no API for endpoint-specific dropout. See helpers.md "Global dropout — no per-endpoint variation". |
 | `stratification_factors` | character | no | Names of baseline endpoints (`readout = 0`); enables stratified randomization |
 | `silent` | logical | no | Suppress messages |
 | `...` | any | no | Passed to `enroller` and `dropout` |

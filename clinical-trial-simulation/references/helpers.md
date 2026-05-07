@@ -286,6 +286,33 @@ Canonical reference: the "Automatically Saved Results At Triggered
 Milestones" table in
 https://zhangh12.github.io/TrialSimulator/articles/actionFunctions.html.
 
+### Global dropout — no per-endpoint variation
+
+`trial(dropout = ...)` accepts **one** dropout function. It runs once
+per patient; the resulting dropout time censors every TTE endpoint
+and zeroes out any non-TTE readouts whose readout-time exceeds it.
+**There is no way to assign different dropout distributions or rates
+to different endpoints**, and the package does not validate against
+this confusion — silently mis-specifying it just won't fail.
+
+When the user requests endpoint-specific dropout (e.g., "5%/year for
+PFS, 2%/year for OS"), do not silently collapse to a single rate.
+Surface the limitation: explain that TS uses one dropout time per
+patient, ask the user which behavior they want, and offer the three
+practical options:
+
+1. **Use the most conservative single rate** across endpoints (most
+   common choice; mildly overcensors the longer-tailed endpoint).
+2. **Pick a clinically dominant endpoint** (e.g., the primary) and
+   use its rate as the global rate; document the approximation.
+3. **Use a custom dropout function** that draws a per-patient
+   dropout time from a mixture or compound distribution that
+   approximates the multi-endpoint behavior.
+
+Get the user's choice on record before writing the script. The
+parameter table's "Source / Notes" column should mark the resulting
+global rate as `user (translated)` or `derived` with the rationale.
+
 ### `add_regimen` must precede `add_arms`
 
 ```r
