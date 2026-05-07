@@ -1,6 +1,6 @@
 ---
 name: clinical-trial-simulation
-version: 0.2.3
+version: 0.2.4
 description: >
   Design and simulate clinical trials using the TrialSimulator R
   package and produce a QC-ready build-order-spine report that

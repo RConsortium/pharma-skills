@@ -45,6 +45,7 @@ parameters used, (c) caveats inline if any.
 
 ```
 0. Cost and token usage           — top of report; session-total tokens + cost
+0.5 Run artifacts                 — file tree + reproduction recipe
 1. Why this design                — opening rationale (thought trail)
 2. Confirmed parameters           — single source of truth (table)
 2.5 Boundary computation          — only if external tools (rpact /
@@ -114,6 +115,52 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
+
+### 0.5 Run artifacts
+
+A `tree`-style listing of every file produced by this run, each
+annotated with its size and a one-line purpose, followed by a 2–3
+line shell recipe to reproduce the outputs from the scripts. Keeps
+the reviewer oriented on *where to look* before diving into the
+design.
+
+Two parts:
+
+**File tree.** Each entry is `name` + `size` + brief description.
+Sizes are useful as a quick sanity check (a 0-byte `output.rds`
+signals a failed run; the rds size also conveys dimensionality).
+Filenames must match the `Output organization` section of `SKILL.md`
+exactly. Files that don't apply to a given design are omitted, not
+shown empty (no `actions.R` if no non-doNothing actions; no
+`boundaries.R` if no external boundary tool; etc.).
+
+**Reproduction recipe.** A short block of `Rscript` calls answering
+"if I delete the .rds files, can I recover them?" Order matters:
+boundaries first (if used) since they emit the literals that
+`main.R` hardcodes; then `main.R` to regenerate the simulation
+output; then the HTML re-render. Adapt the recipe to the files that
+exist for this run.
+
+**Worked example:**
+
+````
+runs/<trial_name>/
+├── scripts/
+│   ├── boundaries.R    1.5K   rpact / gsDesign boundary derivation (run once)
+│   ├── actions.R       7.8K   one entry per action function
+│   └── main.R          7.8K   endpoints, arms, trial, milestones,
+│                              listener, controller, run, OC summary
+├── output.rds          198K   raw controller$get_output() (1000 reps)
+├── oc_summary.rds      6.4K   OC list saved by main.R for the report
+├── report.md           21K    this document (source of truth)
+└── report.html         31K    rendered via markdown::mark_html
+````
+
+```sh
+Rscript scripts/boundaries.R          # once, to confirm boundary literals
+Rscript scripts/main.R                # regenerates output.rds, oc_summary.rds
+Rscript -e 'markdown::mark_html("report.md", output = "report.html")'
+```
 
 ### 1. Why this design
 
