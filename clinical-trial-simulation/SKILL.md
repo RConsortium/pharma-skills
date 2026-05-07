@@ -1,6 +1,6 @@
 ---
 name: clinical-trial-simulation
-version: 0.2.4
+version: 0.2.5
 description: >
   Design and simulate clinical trials using the TrialSimulator R
   package and produce a QC-ready build-order-spine report that
@@ -29,6 +29,16 @@ or when behavior contradicts these notes, consult `?<function>` in R
 or the package's pkgdown site at
 https://zhangh12.github.io/TrialSimulator/. Don't guess — the manual
 is the source of truth.
+
+## Package source
+
+Install TrialSimulator from GitHub HEAD, not CRAN — this skill tracks GitHub:
+
+```r
+remotes::install_github("zhangh12/TrialSimulator")
+```
+
+Capture `packageVersion("TrialSimulator")` in `main.R` and surface it in §0 of the report.
 
 ## Package philosophy
 

@@ -115,6 +115,8 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
+| TrialSimulator version | required; capture via `packageVersion("TrialSimulator")` |
+| R version | e.g., `4.5.2` |
 
 ### 0.5 Run artifacts
 
