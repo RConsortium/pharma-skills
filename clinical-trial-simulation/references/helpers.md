@@ -218,9 +218,15 @@ q_pfs <- function(p) {
 design <- simdesign_norta(
   dist             = list(q_pfs,
                           function(p) qexp(p, rate = log(2) / 18)),         # OS marginal
-  cor_target_final = matrix(c(1, 0.6, 0.6, 1), nrow = 2)
+  cor_target_final = matrix(c(1, 0.6, 0.6, 1), nrow = 2),
+  seed_initial     = sample(.Machine$integer.max, 1)                        # see seeds note in building_blocks.md
 )
 ```
+
+Inside the generator that wraps this design, also pass
+`seed = sample(.Machine$integer.max, 1)` to `simulate_data()` — distinct
+from `seed_initial`. See the NORTA worked example in `building_blocks.md`
+for the full seed convention.
 
 After defining the endpoint, validate that realized survival at the
 landmark times matches the input (small Monte Carlo check) — confirms
