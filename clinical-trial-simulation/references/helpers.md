@@ -180,13 +180,51 @@ generators need.
 |---|---|
 | Medians + Kendall's tau, Cox/LR planned | `CorrelatedPfsAndOs2` directly (no solver) |
 | Medians + Pearson correlation, non-Cox analysis | `solveThreeStateModel` → `CorrelatedPfsAndOs3` (hardcode literals) |
-| Survival probability at K landmarks | `solvePiecewiseConstantExponentialDistribution` → `PiecewiseConstantExponentialRNG` |
+| Survival probability at K landmarks, independent endpoint | `solvePiecewiseConstantExponentialDistribution` → `PiecewiseConstantExponentialRNG` |
+| Survival probability at K landmarks, correlated with other endpoints (NORTA) | `solvePiecewiseConstantExponentialDistribution` → `qPiecewiseExponential` (see recipe below) |
 | Marker subgroup medians + overall median (or vice versa) | `solveMixtureExponentialDistribution` → custom mixture generator |
 | Dropout at 2 landmarks | `weibullDropout` → `dropout = rweibull, scale, shape` |
 | Dropout at 1 landmark | exponential is the simple default: `dropout = rexp, rate = -log(1-p)/t`. If the user has a different model in mind (e.g., heavier early dropout, time-varying), build a custom dropout function whose first argument is `n` and pass it as `trial(dropout = my_fn, ...)`. |
 | Constant uniform accrual | none — `accrual_rate = data.frame(end_time = Inf, piecewise_rate = N)` |
 | Ramp-up accrual | none — multi-row `accrual_rate` |
 | Recruitment pause window | none — set `piecewise_rate` near zero for the pause window |
+
+### Bridge: piecewise-exp marginal in a NORTA copula
+
+Given landmark survival probabilities for one endpoint that needs to be
+correlated with others, the path is:
+`solvePiecewiseConstantExponentialDistribution` → `qPiecewiseExponential` →
+`simdata::simdesign_norta`. The non-obvious detail is the length mismatch:
+the solver returns K rows (one per landmark), but `qPiecewiseExponential`
+requires `length(piecewise_risk) == length(times) + 1` — so you must
+**append one tail hazard** for the interval beyond the last landmark.
+Common default: repeat the last hazard (smooth extrapolation).
+
+```r
+sched <- solvePiecewiseConstantExponentialDistribution(
+  surv_prob = c(0.80, 0.55, 0.30),
+  times     = c(6, 12, 24)
+)
+# sched: data.frame(end_time, piecewise_risk), K=3 rows.
+
+q_pfs <- function(p) {
+  qPiecewiseExponential(
+    p              = p,
+    times          = sched$end_time,                                       # K
+    piecewise_risk = c(sched$piecewise_risk, sched$piecewise_risk[nrow(sched)])  # K+1
+  )
+}
+
+design <- simdesign_norta(
+  dist             = list(q_pfs,
+                          function(p) qexp(p, rate = log(2) / 18)),         # OS marginal
+  cor_target_final = matrix(c(1, 0.6, 0.6, 1), nrow = 2)
+)
+```
+
+After defining the endpoint, validate that realized survival at the
+landmark times matches the input (small Monte Carlo check) — confirms
+both the length-bridge and the NORTA construction.
 
 ---
 
