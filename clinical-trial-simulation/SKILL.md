@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.7
+  version: 0.2.8
 ---
 
 # TrialSimulator Skill
@@ -194,12 +194,32 @@ mentioned X — I didn't use it; where does it fit?"), and ask for
 missing pieces with one sentence of why each matters. Silently
 dropping user-supplied information is a trust killer.
 
-### Plain language for argument collection
+### Plain language during interaction
 
-Every question is collecting an argument value for a building-block
-function — but ask in clinical terms, not as `n_patients = ?`. "How
-many patients do you plan to enroll?" gets the same value with less
-friction.
+Every question to the user is collecting an argument value for a
+building-block function — but ask in **clinical / statistical terms**,
+not in package vocabulary. The same applies when *confirming* the
+parameter table, the analysis plan, or the chosen design: describe
+what the design *does*, not how the code implements it. A
+biostatistician unfamiliar with TrialSimulator should be able to
+follow the conversation with no R reference open.
+
+| Avoid (package vocabulary) | Prefer (clinical / statistical terms) |
+|---|---|
+| "use `fitLogrank` for the OS test" | "OS is tested with a one-sided log-rank test" |
+| "milestone fires at `enrollment(n=500, min_treatment_duration=6)`" | "the analysis is performed 6 months after the last patient is enrolled" |
+| "we'll call `set_duration(54)` if pooled events < 220" | "the trial duration is extended from 48 to 54 months if pooled events at month 24 fall below 220" |
+| "boundary z = 2.523 from `asOF` spending" | "interim efficacy boundary z = 2.523 (Lan-DeMets O'Brien-Fleming spending, IF = 0.71)" |
+| "`StaggeredRecruiter` with `accrual_rate = data.frame(...)`" | "piecewise-constant accrual: 5/mo for the first 3 months, 15/mo for the next 3, then 25/mo until enrollment completes" |
+| "the action saves `gate_pass`" | "the gate decision is recorded for each replicate" |
+| "use `CorrelatedPfsAndOs2`" | "PFS and OS are modeled jointly via a Gumbel copula with Kendall's τ = 0.5 and exponential margins" |
+
+Code-level vocabulary is appropriate in **three contexts only**:
+implementation mode where the user pasted code, debugging an error
+together, or the report itself (whose audience is a QC reviewer who
+must verify the implementation). During design discovery, parameter
+confirmation, and progress updates, default to clinical /
+statistical language.
 
 ### Confirmation gates
 
