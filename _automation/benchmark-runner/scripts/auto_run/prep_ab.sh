@@ -6,6 +6,10 @@
 #   prep_ab.sh <eval-id> [--model M] [--runner-id R]
 #                        [--bench-root DIR] [--skip-preflight]
 #
+#   The eval ID can be passed positionally or via --priority-issue (alias:
+#   --priority_issue). Flags may appear in any order; only one eval ID may
+#   be supplied.
+#
 # Output:
 #   <bench-root>/benchmark_<eval-id>/
 #     ├── eval_case.json     full dispatcher payload
@@ -18,7 +22,7 @@
 
 set -euo pipefail
 
-eval_id=""
+priority_issue=""
 model="claude-sonnet-4-6"
 runner_id=""
 bench_root="/tmp"
@@ -26,14 +30,17 @@ skip_preflight=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --model)          model="$2"; shift 2 ;;
-    --runner-id)      runner_id="$2"; shift 2 ;;
-    --bench-root)     bench_root="$2"; shift 2 ;;
-    --skip-preflight) skip_preflight=1; shift ;;
-    -h|--help)        sed -n '2,18p' "$0"; exit 0 ;;
+    --model)                            model="$2"; shift 2 ;;
+    --runner-id)                        runner_id="$2"; shift 2 ;;
+    --bench-root)                       bench_root="$2"; shift 2 ;;
+    --skip-preflight)                   skip_preflight=1; shift ;;
+    --priority-issue|--priority_issue)
+      [[ -z "$priority_issue" ]] || { echo "duplicate eval id: $2" >&2; exit 2; }
+      priority_issue="$2"; shift 2 ;;
+    -h|--help)                          sed -n '2,21p' "$0"; exit 0 ;;
     *)
-      [[ -z "$eval_id" ]] || { echo "unexpected arg: $1" >&2; exit 2; }
-      eval_id="$1"; shift ;;
+      [[ -z "$priority_issue" ]] || { echo "unexpected arg: $1" >&2; exit 2; }
+      priority_issue="$1"; shift ;;
   esac
 done
 scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -41,17 +48,12 @@ mkdir -p "$bench_root"
 
 log() { echo "[prep] $*" >&2; }
 
-# Step 0 — R env preflight
-if (( skip_preflight == 0 )); then
-  log "step 0: R env preflight"
-  bash "$scripts_dir/setup_r_env.sh"
-fi
 
 # Step 1 — dispatch. If --eval-id was given, pin it; otherwise let
 # get_next_eval.py pick the next pending eval for this model.
-log "step 1: dispatch (model=$model${eval_id:+, eval=$eval_id})"
+log "step 1: dispatch (model=$model${priority_issue:+, eval=$priority_issue})"
 dispatch_args=(--model "$model")
-[[ -n "$eval_id" ]] && dispatch_args+=(--priority-issue "$eval_id")
+[[ -n "$priority_issue" ]] && dispatch_args+=(--priority-issue "$priority_issue")
 [[ -n "$runner_id" ]] && dispatch_args+=(--runner-id "$runner_id")
 dispatch_out=$(python3 "$scripts_dir/get_next_eval.py" "${dispatch_args[@]}")
 if [[ "$dispatch_out" == STATUS:\ UP_TO_DATE* ]]; then
@@ -59,20 +61,22 @@ if [[ "$dispatch_out" == STATUS:\ UP_TO_DATE* ]]; then
   exit 0
 fi
 
-# Resolve eval_id from the dispatcher payload (canonical source).
-eval_id=$(printf '%s' "$dispatch_out" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
-bench_dir="$bench_root/benchmark_${eval_id}"
+echo $dispatch_out
+
+# Resolve priority_issue from the dispatcher payload (canonical source).
+priority_issue=$(printf '%s' "$dispatch_out" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
+bench_dir="$bench_root/benchmark_${priority_issue}"
 mkdir -p "$bench_dir"
 eval_json="$bench_dir/eval_case.json"
 printf '%s' "$dispatch_out" > "$eval_json"
-log "  selected: $eval_id"
+log "  selected: $priority_issue"
 
 # Persist run metadata for downstream stages.
 python3 - "$eval_json" "$bench_dir/run_meta.json" "$model" <<'PY'
 import json, sys
 case = json.load(open(sys.argv[1]))
 meta = {
-    "eval_id": case["id"],
+    "priority_issue": case["id"],
     "model": sys.argv[3],
     "skill_name": case["_skill_name"],
     "skill_sha": case["_skill_sha"],
@@ -84,7 +88,7 @@ PY
 # Step 2 prep — Agent A bench dir (with skill)
 log "step 2 (prep): Agent A bench dir"
 agent_a="$bench_dir/agent_A"
-python3 "$scripts_dir/auto_run/prepare.py" --bench-dir "$agent_a" --mode bench --eval-id "$eval_id"
+python3 "$scripts_dir/auto_run/prepare.py" --bench-dir "$agent_a" --mode bench --eval-id "$priority_issue"
 
 log "  staging _bundled_resources"
 python3 - "$eval_json" "$agent_a" <<'PY'
@@ -109,7 +113,7 @@ PY
 # Step 6 prep — Agent B bench dir (without skill)
 log "step 6 (prep): Agent B bench dir"
 agent_b="$bench_dir/agent_B"
-python3 "$scripts_dir/auto_run/prepare.py" --bench-dir "$agent_b" --mode bench --eval-id "$eval_id"
+python3 "$scripts_dir/auto_run/prepare.py" --bench-dir "$agent_b" --mode bench --eval-id "$priority_issue"
 python3 - "$eval_json" "$agent_b/prompt.txt" <<'PY'
 import json, sys
 case = json.load(open(sys.argv[1]))
@@ -118,7 +122,7 @@ PY
 
 {
   echo
-  echo "==== prep complete: $eval_id ===="
+  echo "==== prep complete: $priority_issue ===="
   echo "  next: run_agents_ab.sh $bench_dir"
 } >&2
 

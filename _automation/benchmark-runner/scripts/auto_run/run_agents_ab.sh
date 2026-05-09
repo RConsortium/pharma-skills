@@ -88,6 +88,6 @@ m["model"] = sys.argv[4]
 json.dump(m, open(sys.argv[1], "w"), indent=2)
 PY
 
-echo
-echo "==== agents complete: $eval_id ($model) ===="
-echo "  next: evaluate_ab.sh $bench_dir"
+# echo
+# echo "==== agents complete: $eval_id ($model) ===="
+# echo "  next: evaluate_ab.sh $bench_dir"
