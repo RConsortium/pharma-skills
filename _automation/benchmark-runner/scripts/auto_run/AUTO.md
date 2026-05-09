@@ -1,25 +1,44 @@
-# auto_run
+# AUTO.md — Self-contained runbook for the local A/B benchmark
 
-## Run an eval end-to-end
+You are an agent. Read this file and execute the steps below. **You do not
+need to read the scripts in this directory unless you meet errors.** Their behavior, inputs, and
+outputs are documented here.
 
-Resolve the model from your agent's runtime context (the canonical API ID — e.g.
-`claude-sonnet-4-6`, `claude-opus-4-7`, `gemini-3-pro-preview`) and pass it via
-`--model`. Don't hardcode it.
+---
 
+## 1. Resolve inputs
+
+| Input | How to determine it |
+|---|---|
+| `MODEL` | Canonical API model ID for **your own runtime** (e.g. `claude-sonnet-4-6`, `claude-opus-4-7`, `gemini-3-pro-preview`). Read from your Runtime Context — never use a display name. |
+
+Verify the environment is provisioned:
+
+- `R --version` shows ≥ 4.4
+- `claude --version` works (Claude Code CLI on `PATH`)
+- Optional: `gh auth status` succeeds (needed for dedup, `--upload`, `--post`)
+
+If any prerequisite is missing, **stop and report** — do not install system
+packages without explicit user permission.
+
+---
+
+## 2. Stage — prep
+set EVAL_ID to github-issue-60 then run following
 ```bash
-MODEL="<canonical-model-id>"   # e.g. read from your agent's Runtime Context
-
-# Step 1: prep 
 bench_dir=$(_automation/benchmark-runner/scripts/auto_run/prep_ab.sh \
-              --model "$MODEL")
-
-# Step 2: run both agents 
-_automation/benchmark-runner/scripts/auto_run/run_agents_ab.sh "$bench_dir"
-
+              ${EVAL_ID:+"$EVAL_ID"} --model "$MODEL")
 ```
 
-Final report: `$bench_dir/benchmark_comment_<skill>_<eval-id>.md`.
+---
 
-The dispatcher dedups on `--model`, so the value must be the canonical API ID,
-not a display name. Phase 2 reuses Phase 1's model from `run_meta.json`, so you
-don't pass `--model` to `evaluate_ab.sh`.
+## 3. Stage — run agents
+
+Runs Agent A (with skill) and Agent B (without skill) in parallel via
+`claude -p`. Per-arm progress is redirected to `agent_{A,B}/runner.log`;
+JSON results land in `agent_{A,B}/run.json` and artifacts in
+`agent_{A,B}/output_{A,B}/`.
+
+```bash
+_automation/benchmark-runner/scripts/auto_run/run_agents_ab.sh "$bench_dir"
+```

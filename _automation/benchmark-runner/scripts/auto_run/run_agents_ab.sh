@@ -56,21 +56,27 @@ except Exception:
 " "$1"
 }
 
-log "Agent A (with skill)"
-bash "$runners_dir/run_claude.sh" "$bench_dir/agent_A" "$model"
-tokens_a=$(count_tokens "$bench_dir/agent_A/run.json")
-log "  tokens: $tokens_a"
-python3 "$scripts_dir/record_run_result.py" \
-  --eval-id "$eval_id" --model "$model" \
-  --status partial_a --tokens-a "$tokens_a" || true
+log "starting Agent A (with skill) and Agent B (without skill) in parallel"
 
-log "Agent B (without skill)"
-bash "$runners_dir/run_claude.sh" "$bench_dir/agent_B" "$model"
+bash "$runners_dir/run_claude.sh" "$bench_dir/agent_A" "$model" \
+  > "$bench_dir/agent_A/runner.log" 2>&1 &
+pid_a=$!
+
+bash "$runners_dir/run_claude.sh" "$bench_dir/agent_B" "$model" \
+  > "$bench_dir/agent_B/runner.log" 2>&1 &
+pid_b=$!
+
+wait "$pid_a" || true
+wait "$pid_b" || true
+
+tokens_a=$(count_tokens "$bench_dir/agent_A/run.json")
 tokens_b=$(count_tokens "$bench_dir/agent_B/run.json")
-log "  tokens: $tokens_b"
+log "Agent A tokens: $tokens_a"
+log "Agent B tokens: $tokens_b"
+
 python3 "$scripts_dir/record_run_result.py" \
   --eval-id "$eval_id" --model "$model" \
-  --status completed --tokens-b "$tokens_b" || true
+  --status completed --tokens-a "$tokens_a" --tokens-b "$tokens_b" || true
 
 # Persist tokens for the evaluate stage.
 python3 - "$meta" "$tokens_a" "$tokens_b" "$model" <<'PY'
