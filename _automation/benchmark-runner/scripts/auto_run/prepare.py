@@ -92,9 +92,6 @@ def stage_inputs(eval_case: dict, input_dir: Path) -> list[str]:
 def write_workspace(eval_case: dict, bench_dir: Path) -> None:
     bench_dir.mkdir(parents=True, exist_ok=True)
     (bench_dir / "output").mkdir(exist_ok=True)
-    (bench_dir / "eval.json").write_text(
-        json.dumps(eval_case, indent=2), encoding="utf-8"
-    )
     aliases = stage_inputs(eval_case, bench_dir / "input")
     prompt = build_prompt(eval_case, aliases)
     (bench_dir / "prompt.txt").write_text(prompt, encoding="utf-8")

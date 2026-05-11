@@ -14,7 +14,7 @@
 #   <bench-root>/benchmark_<eval-id>/
 #     ├── eval_case.json     full dispatcher payload
 #     ├── agent_A/           bench dir + prompt = _skill_content + _prompt_a
-#     │   ├── eval.json, input/, output/, prompt.txt
+#     │   ├── input/, output/, prompt.txt
 #     │   └── <bundled resources from skill dir>
 #     └── agent_B/           bench dir + prompt = _prompt_b (no skill)
 #
@@ -67,7 +67,11 @@ echo $dispatch_out
 priority_issue=$(printf '%s' "$dispatch_out" | python3 -c "import json,sys; print(json.load(sys.stdin)['id'])")
 bench_dir="$bench_root/benchmark_${priority_issue}"
 mkdir -p "$bench_dir"
-eval_json="$bench_dir/eval_case.json"
+# Stash the dispatcher payload (contains assertions) OUTSIDE bench_dir so
+# the agent — whose cwd is bench_dir/agent_X — can't reach it via `..`.
+# run_agents_ab.sh moves this back to $bench_dir/eval_case.json after
+# both agents finish.
+eval_json="$bench_root/.benchmark_${priority_issue}_eval_case.json"
 printf '%s' "$dispatch_out" > "$eval_json"
 log "  selected: $priority_issue"
 
@@ -76,7 +80,7 @@ python3 - "$eval_json" "$bench_dir/run_meta.json" "$model" <<'PY'
 import json, sys
 case = json.load(open(sys.argv[1]))
 meta = {
-    "priority_issue": case["id"],
+    "eval_id": case["id"],
     "model": sys.argv[3],
     "skill_name": case["_skill_name"],
     "skill_sha": case["_skill_sha"],

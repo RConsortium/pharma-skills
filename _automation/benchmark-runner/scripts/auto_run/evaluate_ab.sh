@@ -14,7 +14,7 @@
 set -euo pipefail
 
 bench_dir=""
-scorer_model=""
+scorer_model="claude-sonnet-4-6"
 do_upload=0
 do_post=0
 repo="${PHARMA_SKILLS_GITHUB_REPO:-RConsortium/pharma-skills}"
@@ -47,6 +47,20 @@ tokens_b=$(python3 -c "import json; print(json.load(open('$meta')).get('tokens_b
 [[ -z "$scorer_model" ]] && scorer_model="$model"
 
 log() { echo "[eval] $*"; }
+
+# Materialize eval_case.json (with assertions) now that the agents have
+# finished. prep_ab.sh stashed it OUTSIDE bench_dir so the agent — whose
+# cwd is bench_dir/agent_X — couldn't reach it via `..`. Move the stash
+# in, then fan out to each agent dir as eval.json so evaluate_ab.sh
+# finds it.
+bench_root="$(dirname "$bench_dir")"
+stash="$bench_root/.benchmark_${eval_id}_eval_case.json"
+eval_case="$bench_dir/eval_case.json"
+if [[ -f "$stash" ]]; then
+  mv "$stash" "$eval_case"
+elif [[ ! -f "$eval_case" ]]; then
+  log "WARNING: stash $stash missing — evaluate_ab.sh will fail to find eval_case.json"
+fi
 
 # Step 3 — archive Agent A output
 log "step 3: archive Agent A output"
@@ -111,78 +125,49 @@ from pathlib import Path
 bm = json.loads(sys.argv[1])
 bench_dir = Path(sys.argv[2])
 scoring_root = Path(sys.argv[3])
-src = {
-    "output_A": (bench_dir / "agent_A" / "output_A", bench_dir / "agent_A" / "eval.json"),
-    "output_B": (bench_dir / "agent_B" / "output_B", bench_dir / "agent_B" / "eval.json"),
-}
+# Agents never see assertions: eval.json is not in agent_A/ or agent_B/.
+# run_agents_ab.sh materializes bench_dir/eval_case.json from the stash
+# after the run. score.py now scores both candidates in one call from
+# the parent scoring dir, so stage eval.json once at scoring/eval.json
+# and mirror each arm's output + run metadata into a blinded
+# candidate_X/ subdir.
+shutil.copy(bench_dir / "eval_case.json", scoring_root / "eval.json")
+arm_dir = {"output_A": bench_dir / "agent_A", "output_B": bench_dir / "agent_B"}
+def has_files(p):
+    return p.exists() and any(p.iterdir())
 for cand, arm in bm.items():
-    out_src, eval_src = src[arm]
+    a = arm_dir[arm]
     d = scoring_root / cand
     d.mkdir(parents=True, exist_ok=True)
-    shutil.copy(eval_src, d / "eval.json")
+    for fname in ("run.json", "duration_sec"):
+        if (a / fname).exists():
+            shutil.copy(a / fname, d / fname)
     if (d / "output").exists():
         shutil.rmtree(d / "output")
-    if out_src.exists():
-        shutil.copytree(out_src, d / "output")
+    # Agents sometimes write to agent_X/output/ (per prompt) and
+    # sometimes to agent_X/output_A or agent_X/output_B; pick whichever
+    # actually has content.
+    src = next((p for p in (a / "output", a / arm) if has_files(p)), None)
+    if src is not None:
+        shutil.copytree(src, d / "output")
     else:
         (d / "output").mkdir()
 PY
-for cand in candidate_1 candidate_2; do
-  python3 "$scripts_dir/evaluate.py" --bench-dir "$scoring/$cand" --scorer-model "$scorer_model" || true
-done
+python3 "$scripts_dir/auto_run/evaluate.py" --bench-dir "$scoring" --scorer-model "$scorer_model" || true
 
-unblind_a=$(python3 -c "import json; m=json.loads('''$blinded_map'''); print([k for k,v in m.items() if v=='output_A'][0])")
-unblind_b=$(python3 -c "import json; m=json.loads('''$blinded_map'''); print([k for k,v in m.items() if v=='output_B'][0])")
-report_a="$scoring/$unblind_a/report.md"
-report_b="$scoring/$unblind_b/report.md"
-
-# Step 8 — full report
-log "step 8: full report"
-full_report="$bench_dir/benchmark_comment_${skill_name}_${eval_id}.md"
-{
-  cat <<EOF
-## Automated Benchmark Results — \`$skill_name\`
-
-| Field | Value |
-|---|---|
-| **Eval ID** | \`$eval_id\` |
-| **Run date** | $run_date |
-| **Model** | \`$model\` |
-| **Skill version** | \`${skill_sha:0:7}\` |
-
-### Token Usage
-
-| Arm | Tokens |
-|---|---|
-| With Skill (A) | $tokens_a |
-| Without Skill (B) | $tokens_b |
-
-### Arm A — With Skill
-
-EOF
-  [[ -f "$report_a" ]] && cat "$report_a" || echo "_(no report — scoring failed)_"
-  cat <<EOF
-
----
-
-### Arm B — Without Skill
-
-EOF
-  [[ -f "$report_b" ]] && cat "$report_b" || echo "_(no report — scoring failed)_"
-  cat <<EOF
-
----
-<!-- BENCHMARK_COMPLETE: {"eval_id":"$eval_id","model":"$model","skill_sha":"$skill_sha"} -->
-*Posted by \`evaluate_ab.sh\` · skill: \`$skill_name\`*
-EOF
-} > "$full_report"
-
-# Step 9 — full results comment
-log "step 9: full results comment"
-if (( do_post == 1 )) && [[ -n "$issue_number" ]] && command -v gh >/dev/null 2>&1; then
-  gh issue comment "$issue_number" --repo "$repo" --body-file "$full_report"
-  log "  posted full report to $repo#$issue_number"
+# Steps 8 + 9 — compose full report (SKILL.md side-by-side format) and
+# optionally post to the linked GitHub issue.
+if (( do_post == 1 )); then
+  log "steps 8+9: compose full report and post to $repo"
+else
+  log "steps 8+9: compose full report (skipping post — pass --post to enable)"
 fi
+post_args=(--bench-dir "$bench_dir" --repo "$repo")
+[[ "$asset_url" != "null" ]] && post_args+=(--asset-url "$asset_url")
+(( do_post == 1 )) && post_args+=(--post)
+python3 "$scripts_dir/auto_run/post_results.py" "${post_args[@]}"
+
+full_report="$bench_dir/benchmark_comment_${skill_name}_${eval_id}.md"
 
 echo
 echo "==== evaluate complete: $eval_id ($model) ===="
