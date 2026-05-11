@@ -14,7 +14,7 @@
 set -euo pipefail
 
 bench_dir=""
-scorer_model="claude-sonnet-4-6"
+scorer_model=""
 do_upload=0
 do_post=0
 repo="${PHARMA_SKILLS_GITHUB_REPO:-RConsortium/pharma-skills}"

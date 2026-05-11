@@ -21,9 +21,7 @@ The agent invocation is *not* part of this script. After preparing, run
 whatever agent you want against `prompt.txt` (working dir = bench_dir),
 then run `evaluate.py --bench-dir <dir>` to score.
 
-Usage:
-    python3 prepare.py --bench-dir bench_74/ --mode bench --eval-id github-issue-74
-    python3 prepare.py --bench-dir bench_next/ --mode issue --model claude-sonnet-4-6
+
 """
 
 from __future__ import annotations

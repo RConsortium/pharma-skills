@@ -15,8 +15,7 @@ this:
   1. Runs score.py once over both candidates → bench_dir/scores.json
   2. Runs render_report.py per candidate → bench_dir/<candidate>/report.md
 
-Usage:
-    python3 evaluate.py --bench-dir scoring/ --scorer-model claude-sonnet-4-6
+
 """
 
 from __future__ import annotations

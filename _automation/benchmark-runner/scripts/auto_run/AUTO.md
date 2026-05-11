@@ -33,7 +33,11 @@ Exits non-zero on failure — stop and report the error. Do not proceed.
 
 ## 2. Set up Next Eval
 
-`{CURRENT_MODEL_NAME}` is the model ID you want benchmarked (e.g. `claude-sonnet-4-6`, `claude-opus-4-7`). Capture the bench-dir path the script prints on its final stdout line — Steps 3 and 4 need it.
+**`{CURRENT_MODEL_NAME}` = the model ID of *the Claude agent currently executing this runbook* — not the example value, not the script default.** This ID is written into `run_meta.json` and reused by Steps 3 and 4, so getting it wrong here silently runs the whole pipeline on the wrong model.
+
+Known IDs: Opus 4.7 → `claude-opus-4-7` · Sonnet 4.6 → `claude-sonnet-4-6` · Haiku 4.5 → `claude-haiku-4-5-20251001`. If you are unsure, ask the user before running — do **not** fall back to the script default.
+
+Capture the bench-dir path the script prints on its final stdout line — Steps 3 and 4 need it.
 
 ```bash
 bench_dir=$(bash _automation/benchmark-runner/scripts/auto_run/prep_ab.sh --model {CURRENT_MODEL_NAME})

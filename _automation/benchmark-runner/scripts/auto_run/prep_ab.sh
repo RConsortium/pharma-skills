@@ -23,7 +23,7 @@
 set -euo pipefail
 
 priority_issue=""
-model="claude-sonnet-4-6"
+model=""
 runner_id=""
 bench_root="/tmp"
 skip_preflight=0
