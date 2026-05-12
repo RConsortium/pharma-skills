@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.9
+  version: 0.2.10
 ---
 
 # TrialSimulator Skill

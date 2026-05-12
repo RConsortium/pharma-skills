@@ -17,13 +17,13 @@ llms.txt
 # Benchmark run manifest — local only to avoid merge conflicts
 _automation/benchmark-runner/runs/runs.json
 
-group-sequential-design/evals/.DS_Store
+# macOS Finder metadata — anywhere in the tree
+.DS_Store
 
 # clinical-trial-simulation: per-trial run output and rendered HTML
 clinical-trial-simulation/runs/
 clinical-trial-simulation/output/
 clinical-trial-simulation/**/*.html
-clinical-trial-simulation/**/.DS_Store
 .Rproj.user
 
 # /simulate output — repo-root runs/ folder per .claude/commands/simulate.md

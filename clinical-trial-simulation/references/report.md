@@ -74,6 +74,7 @@ same sequence. Each section pairs (a) the relevant code snippet,
 parameters used, (c) caveats inline if any.
 
 ```
+   Table of Contents                  — clickable links to every section below
 0. Resource Utilization              — session tokens, cost, software versions
 0.5 Output Files and Reproduction    — file tree + reproduction recipe
 1. Design Rationale                  — context, alternatives considered, choices
@@ -96,6 +97,14 @@ each pair a code block with explanation. **The listener and the
 `controller(...) / controller$run()` calls are plumbing — omit them
 from the report.** They are identical across designs and add noise to
 the audit trail.
+
+### Table of Contents (required)
+
+Every report begins with a clickable ToC after the H1 title and
+before §0. Use GFM anchors (`markdown::mark_html` generates them).
+Include every section that exists in this report and nest §7
+subsections when present. Use a bold `**Table of Contents**` label
+(not an H2) so the ToC does not list itself.
 
 ### Code style in the report
 
