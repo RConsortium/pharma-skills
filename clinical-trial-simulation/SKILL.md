@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.10
+  version: 0.2.11
 ---
 
 # TrialSimulator Skill
@@ -417,25 +417,35 @@ a `scripts/` subfolder split by purpose:
 ```
 runs/<trial_name>/
   scripts/
-    main.R          ← building blocks: endpoint, arm, trial,
-                       milestone, listener, controller, run, OC summary
-    actions.R       ← action functions (omit if no non-doNothing actions)
-    generators.R    ← custom generator functions (omit if none)
-    helpers.R       ← helpers used by generators or actions (omit if none)
-    boundaries.R    ← external boundary computation via rpact /
-                       gsDesign (omit if not used). Run ONCE before
-                       main.R; the literal results are hardcoded in
-                       main.R or actions.R. Keeping it as its own
-                       file preserves a reproducible record of where
-                       the literals came from.
-  output.rds        ← raw controller$get_output(), saved by main.R
-  oc_summary.rds    ← post-processed OC list for the report, saved by main.R
-  report.md         ← the report
-  report.html       ← rendered via markdown::mark_html
-  milestone_times.png ← embedded in the report ONLY when the milestone-time
-                       precondition holds AND the decision tree in
-                       report.md §7 selects "include". Omitted otherwise.
+    main.R               ← building blocks: endpoint, arm, trial,
+                            milestone, listener, controller, run, OC summary
+    actions.R            ← action functions (omit if no non-doNothing actions)
+    generators.R         ← custom generator functions (omit if none)
+    helpers.R            ← helpers used by generators or actions (omit if none)
+    boundaries.R         ← external boundary computation via rpact /
+                            gsDesign (omit if not used). Run ONCE before
+                            main.R; the literal results are hardcoded in
+                            main.R or actions.R.
+    derivations/         ← one R script per non-trivial pre-simulation
+      <topic>.R             derivation (correlation fitting, NORTA
+                            feasibility, landmark-to-piecewise, gate-
+                            threshold calibration, etc.). Run ONCE
+                            before main.R; literals hardcoded forward.
+                            See report.md "Pre-simulation derivations
+                            and supplements".
+  supplements/           ← rendered supplement docs (one per
+    <topic>.md              derivations/<topic>.R). Each cross-
+    <topic>.html            referenced from §2 of report.md.
+  output.rds             ← raw controller$get_output(), saved by main.R
+  oc_summary.rds         ← post-processed OC list for the report, saved by main.R
+  report.md              ← the main report
+  report.html            ← rendered via markdown::mark_html
+  milestone_times.png    ← embedded in the report ONLY when the milestone-time
+                            precondition holds AND the decision tree in
+                            report.md §7 selects "include". Omitted otherwise.
 ```
+
+`scripts/derivations/` and `supplements/` are present only when the design has non-trivial pre-simulation derivations; omit when every derivation is trivial enough to stay inline in §2 of the main report.
 
 `main.R` sources whichever sibling files exist:
 

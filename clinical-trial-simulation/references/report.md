@@ -35,6 +35,74 @@ failed its QC purpose.
 This sometimes means duplicating a code block across reports.
 Duplication is fine; broken cross-references at audit time are not.
 
+**Carve-out for supplements (provenance).** The main report is
+self-contained for the **design specification, the simulation code,
+and the operating characteristics**. The *provenance* of derived
+parameters — how each non-trivial literal was obtained from the
+user's brief — may live in a supplement under `supplements/`. The
+main report shows the final literal and a clickable cross-reference
+to the supplement. Each supplement is itself self-contained for its
+own derivation. See "Pre-simulation derivations and supplements"
+below.
+
+## Pre-simulation derivations and supplements
+
+Many simulation parameters are derived from the user's brief before
+the simulation runs — boundary literals, distribution calibrations
+to match target medians or landmark survival, correlation parameter
+fitting, NORTA feasibility checks, gate thresholds matched to a
+desired pass probability. Surface these derivations transparently
+using the threshold below.
+
+| Complexity | Where it lives |
+|---|---|
+| **Trivial** — one-line algebra (median → rate, percentage → exponential rate, Bonferroni split, `log(2)/m`, HR × control median → treatment median). | Inline in §2 Source / Notes. Show the formula in the cell. |
+| **Non-trivial** — solver call, calibration loop, NORTA feasibility check, multi-line math, or any derivation whose literal a reviewer would want to recompute. | A supplement at `supplements/<topic>.md`, with its derivation script at `scripts/derivations/<topic>.R`. §2 cell shows the final literal plus a clickable link to the supplement. |
+
+**Boundary derivation (§2.5) is the canonical inline exception.** If
+`rpact` or `gsDesign` covers the GSD boundary computation directly
+(standard α-spending, single endpoint per look, deterministic
+information fractions), keep §2.5 inline as today. If the boundary
+derivation requires non-standard work — for example, IA event-
+triggered on PFS and FA event-triggered on OS with information
+fractions that need custom reasoning beyond what the package
+functions handle — move it to `supplements/boundaries.md` and
+leave a one-paragraph summary plus link in §2.5.
+
+**Every supplement contains, in this order:**
+
+1. **What is being derived** — one sentence stating the literal(s)
+   the supplement produces and where they are consumed in
+   `main.R` / `actions.R`.
+2. **The derivation script** — verbatim from
+   `scripts/derivations/<topic>.R`.
+3. **The verbatim output** of that script (R console capture). Same
+   convention as the existing §2.5 boundary output block.
+4. **Realized-feature verification** when the derivation aims to
+   match a clinical feature (median, landmark survival, correlation,
+   response rate). Use a small Monte Carlo draw and a target-vs-
+   realized table. The agent decides which features to verify based
+   on the endpoint's clinical meaning. Skip when the derivation is
+   purely algebraic.
+5. **The literal(s)** that flow forward, listed clearly so a
+   reviewer can spot-check that `main.R` matches.
+
+Literals stay **hardcoded** in `main.R` and `actions.R` for
+readability — an avg-biostatistician reviewer should see
+`D_total <- 269`, not `readRDS(...)$d_total`. The supplement is the
+audit artifact: its rendered output shows the same literals, and
+the reviewer compares the two. This is the existing `boundaries.R`
++ §2.5 pattern, generalized to all non-trivial derivations.
+
+**Cross-reference from §2.** The Source / Notes cell reads
+`derived — see [<topic>](supplements/<topic>.html)`. Use the `.html`
+link so a click renders the supplement. The `.md` source is what
+gets edited.
+
+**Toolchain.** Supplements are `.md` files rendered via
+`markdown::mark_html`, identical to the main report. No additional
+dependencies.
+
 ## Tone and voice
 
 The report is reviewed by a biostatistician for QC and audit. Write
@@ -317,6 +385,16 @@ Cross-reference §2 (Confirmed parameters) so the reviewer can
 verify the literals match.
 
 Skip this section entirely when no external boundary tool was used.
+
+**Inline vs supplement.** Keep §2.5 inline when `rpact` or
+`gsDesign` covers the boundary derivation directly. When the
+derivation needs custom work the packages do not handle (e.g., IA
+event-triggered on PFS, FA event-triggered on OS, with information
+fractions that require additional reasoning beyond what
+`getDesignGroupSequential` accepts), move the verbatim call,
+output, and any custom math to `supplements/boundaries.md` per the
+"Pre-simulation derivations and supplements" rules, and leave a
+one-paragraph summary plus link in §2.5.
 
 ### 3. Treatment Arms and Endpoints
 
