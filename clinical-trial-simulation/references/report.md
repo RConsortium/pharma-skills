@@ -169,10 +169,19 @@ the audit trail.
 ### Table of Contents (required)
 
 Every report begins with a clickable ToC after the H1 title and
-before §0. Use GFM anchors (`markdown::mark_html` generates them).
-Include every section that exists in this report and nest §7
-subsections when present. Use a bold `**Table of Contents**` label
-(not an H2) so the ToC does not list itself.
+before §0. Include every section that exists in this report and
+nest §7 subsections when present. Use a bold `**Table of Contents**`
+label (not an H2) so the ToC does not list itself.
+
+### Cross-references between sections (clickable)
+
+When one section refers to another, use a markdown anchor link —
+not bare prose. Applies inside the main report and between main
+and supplements.
+
+Before opening the HTML for the user, verify every cross-reference
+and ToC link resolves to an existing anchor in the rendered HTML.
+Fix any broken ones and re-render.
 
 ### Code style in the report
 
@@ -224,8 +233,11 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
-| TrialSimulator version | required; read from `oc_summary$ts_version` (written by `main.R` per SKILL.md §"Package source") — never hardcode the literal in the report |
-| R version | required; read from `oc_summary$r_version` |
+| TrialSimulator version | required; the value, not the mechanism that produced it |
+| R version | required |
+| Skill version | required (the `metadata.version` from `SKILL.md` at run time) |
+
+§0 shows the version *values*. Do not embed R chunks or code that loads the version strings — that is implementation detail. See SKILL.md §"Package source".
 
 ### 0.5 Output Files and Reproduction
 
@@ -278,10 +290,12 @@ Convention for the two `.rds` files:
 - **`oc_summary.rds`** is the post-processed list of operating
   characteristics that the report reads. Whatever summary the report
   cites (power, P(stop) per stage, MCSE, binding-aware expected
-  duration, `ts_version`, `r_version`, …) is computed in `main.R`
-  *after* the simulation and saved here. The report never recomputes
-  from `output.rds` — that would couple report rendering to the raw
-  schema and defeat the audit trail.
+  duration, …) is computed in `main.R` *after* the simulation and
+  saved here. The report never recomputes from `output.rds` — that
+  would couple report rendering to the raw schema and defeat the
+  audit trail. Environment / file metadata (R, TrialSimulator, skill
+  versions) is read at render time by the report script per SKILL.md
+  §"Package source", not persisted here.
 
 **Reproduction:**
 
@@ -535,11 +549,17 @@ auditability.
 ## Output format
 
 Default: write the report as Markdown, render it to HTML alongside,
-and open the HTML in the user's default browser when ready.
+and **open the main report HTML in the user's default browser as the
+final step of every run** — this is not optional.
 
 ```r
 Rscript -e 'markdown::mark_html("report.md", output = "report.html"); browseURL("report.html")'
 ```
+
+The agent runs this command after the report has been rendered and
+all artifacts are in place; the user should not have to manually
+open the HTML. Supplements are linked from the main report — the
+user clicks through if interested. Do not auto-open supplements.
 
 `markdown::mark_html()` is what RStudio's Markdown Preview button
 uses, so the rendered HTML matches the style the user is already

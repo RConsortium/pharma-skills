@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.12
+  version: 0.2.13
 ---
 
 # TrialSimulator Skill
@@ -39,14 +39,9 @@ Install TrialSimulator from GitHub HEAD, not CRAN — this skill tracks GitHub:
 remotes::install_github("zhangh12/TrialSimulator")
 ```
 
-Capture `packageVersion("TrialSimulator")` and `R.version.string` in `main.R` and write them into `oc_summary.rds` under fixed names (`ts_version`, `r_version`). §0 of the report reads them from there. Do not hardcode the version literal in the report — it must trace back to the actual run.
+Surface three versions in §0 of the report: TrialSimulator, R, and the skill. The §0 table shows the *values*. How the agent captures them — query the running R, parse `SKILL.md` once, snapshot into the report, whatever is simplest — is implementation detail and **does not appear in the report itself**. Do not embed R code chunks in the report that load or format the version strings.
 
-```r
-# in main.R, before saveRDS:
-oc_summary$ts_version <- as.character(packageVersion("TrialSimulator"))
-oc_summary$r_version  <- R.version.string
-saveRDS(oc_summary, file.path(out_dir, "oc_summary.rds"))
-```
+The running environment is assumed stable enough that slight staleness (e.g., a re-render after a TS update) is acceptable.
 
 ## Package philosophy
 
@@ -121,9 +116,23 @@ action_<name> <- function(trial, ...) {
 ```
 
 Signature is `function(trial, ...)`. Use distinct `name`s across
-`trial$save()` calls. For state between milestones use
-`trial$save_custom_data(..., overwrite = TRUE)` + `trial$get(name)`
-(see helpers.md gotchas).
+`trial$save()` calls.
+
+**Passing state between milestones — prefer `trial$save()` +
+`trial$get_output()` for scalars.** When milestone A computes a
+single value (number, flag, string, integer ID) that milestone B
+needs to read, save it with `trial$save(value, name)` at A and
+retrieve it at B with `trial$get_output()` (the in-progress
+per-replicate row, sanctioned for use inside actions). This keeps
+the value in the audit trail — it appears as a column in
+`controller$get_output()` after the run, useful for post-hoc
+analysis and report tables.
+
+Reserve `trial$save_custom_data(..., overwrite = TRUE)` +
+`trial$get(name)` for **non-tabular state**: a fitted model object,
+a list, a data frame — anything that does not fit cleanly as a
+column in the per-replicate output. See `helpers.md` gotchas for
+the namespace and `overwrite = TRUE` rules.
 
 ## R6 method visibility — only use the documented public methods
 
@@ -485,6 +494,19 @@ Read the message — TrialSimulator's are usually specific. Consult
 not work) or the pkgdown reference page. Vignettes live at
 https://zhangh12.github.io/TrialSimulator/articles/. Don't disable a
 check to make an error go away.
+
+## Final step — open the main report
+
+After the report and all supplements have been rendered, **open the
+main report HTML in the user's default browser**:
+
+```r
+Rscript -e 'browseURL("runs/<trial_name>/report.html")'
+```
+
+This is the last announced turn of the run, not the user's
+responsibility to remember. Only the main report opens; supplements
+are linked from it. Full guidance in `report.md` §"Output format".
 
 ## Iteration and runtime
 

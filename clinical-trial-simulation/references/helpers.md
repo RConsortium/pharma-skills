@@ -368,6 +368,19 @@ tr$add_arms(sample_ratio, ...)   # errors otherwise
 
 ### `save_custom_data` namespace + `overwrite`
 
+**Prefer `trial$save()` + `trial$get_output()` for scalar state.**
+When the value being passed between milestones is a single
+number, flag, string, or integer (e.g., the index of the selected
+arm, an interim p-value, a binary "gate passed" flag), use
+`trial$save(value, name)` at the saving milestone and
+`trial$get_output()` at the retrieving milestone — the scalar then
+also appears in `controller$get_output()` as a column, available
+to post-hoc analysis. `trial$save_custom_data()` is appropriate
+only when the value is **non-tabular** (a list, a fitted model
+object, a data frame) and would not fit cleanly as a column.
+
+For the cases where `save_custom_data()` is the right tool:
+
 `save()` and `save_custom_data()` share a name registry. Calling both
 with the same `name` errors with "X has been used to name something in
 custom data." Use **distinct** names.
@@ -378,16 +391,16 @@ replicate 2 errors on the duplicate name. **Always set
 `overwrite = TRUE` on `save_custom_data()`.**
 
 ```r
-trial$save_custom_data(value = best_arm, name = "selected", overwrite = TRUE)
-trial$save(value = best_arm, name = "selected_arm")
+# Non-tabular state: a fitted Cox model object passed to a later milestone.
+trial$save_custom_data(value = cox_fit, name = "cox_model", overwrite = TRUE)
 ```
 
 When retrieving in a later milestone, guard against `NULL` (the
 saving milestone may not have fired):
 
 ```r
-selected <- trial$get(name = "selected")
-if (is.null(selected)) selected <- "<fallback>"
+model <- trial$get(name = "cox_model")
+if (is.null(model)) model <- <fallback>
 ```
 
 ### Trials never stop early in simulation
