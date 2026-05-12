@@ -43,48 +43,25 @@ Use these inside `endpoint(generator = ...)`.
 
 ### endpoint() grouping rule
 
-Each `endpoint()` call defines **one set of endpoints generated
-together by a single generator function**. Endpoints across
-**separate** `endpoint()` calls are independent — the package
-invokes each set's generator independently.
+Endpoints that need to be correlated must share **one** `endpoint()`
+call (the joint generator returns one column per endpoint, plus
+`<name>_event` for TTE). Independent endpoints go in separate
+`endpoint()` calls. Single-endpoint calls can use a base-R RNG
+(`rexp`, `rnorm`, `rbinom`); multi-endpoint calls require a custom
+or built-in joint generator returning a `data.frame`.
 
-Two orthogonal decisions:
-
-- **How many endpoints per `endpoint()` call?** This is determined by
-  how endpoints group into independent vs. correlated sets. Endpoints
-  that need to be correlated must share one `endpoint()` call;
-  endpoints that are independent of each other can be split across
-  separate calls.
-- **Which generator to use?**
-  - If a call defines exactly **one** endpoint, the generator can be
-    a simple base-R RNG (`rexp`, `rnorm`, `rbinom`, ...) or a custom
-    function.
-  - If a call defines **two or more** endpoints together, the
-    generator MUST be a custom (or built-in) joint generator returning
-    a `data.frame` with one column per endpoint (plus `<name>_event`
-    columns for TTE endpoints). Base-R RNGs only emit one variable,
-    so they cannot be used for multi-endpoint calls.
-
-> **Custom data models — always on the table.** Whenever the user
-> has their own data model (a specific distribution, mechanistic
-> model, empirical resampling, a custom copula, NORTA, anything),
-> help implement it as a custom generator. Base-R RNGs and built-in
-> joint generators are convenient defaults, not the only options.
-> The contract: `function(n, ...)` returning a `data.frame` with one
-> column per endpoint name (plus `<name>_event` columns for TTE).
-> First argument must be `n` — wrap if it isn't (e.g., `base::sample`
-> uses `x`). See `?endpoint` and `building_blocks.md` for details.
+Custom generators are always on the table — any user-supplied data
+model (specific distribution, mechanistic, empirical, custom
+copula, NORTA) is a candidate. Contract: `function(n, ...)`
+returning a `data.frame` with one column per endpoint name (plus
+`<name>_event` for TTE). First argument must be `n` — wrap if it
+isn't (e.g., `base::sample` uses `x`).
 
 Examples:
 
-- PFS and OS, modeled as independent → two `endpoint()` calls, each
-  with `rexp`.
-- PFS and OS, modeled as correlated → one `endpoint()` call with
-  `CorrelatedPfsAndOs2` (or a custom joint generator).
-- PFS+OS correlated, plus three biomarkers correlated among
-  themselves but independent of PFS/OS → one `endpoint()` call for
-  {pfs, os} with a joint generator, and another `endpoint()` call for
-  the three biomarkers with a different joint generator.
+- PFS and OS, independent → two `endpoint()` calls, each with `rexp`.
+- PFS and OS, correlated → one `endpoint()` call with `CorrelatedPfsAndOs2` (or a custom joint generator).
+- PFS+OS correlated, plus three biomarkers correlated among themselves but independent of PFS/OS → one `endpoint()` call for {pfs, os}, another for the three biomarkers.
 
 ### TTE — piecewise / non-PH
 

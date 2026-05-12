@@ -83,29 +83,18 @@ ep_exp <- endpoint(
 
 # Correlated PFS + OS — CorrelatedPfsAndOs3 (3-state illness-death model, Pearson correlation)
 # WARNING: produces time-varying HR between arms — NOT compatible with Cox PH model.
-# Use solveThreeStateModel() to derive h01/h02/h12 from medians + target Pearson corr; run per arm.
+# Run solveThreeStateModel() per arm to derive h01/h02/h12 from medians + target Pearson corr;
+# only the control arm is shown below — repeat with the experimental arm's medians.
 pars_ctrl <- solveThreeStateModel(
   median_pfs = 8,  median_os = 18,
   corr = seq(0.55, 0.65, by = 0.01), h12 = seq(0.01, 0.50, length.out = 100)
 )
 best_ctrl <- pars_ctrl[which.min(pars_ctrl$error), ]
 
-pars_exp <- solveThreeStateModel(
-  median_pfs = 12, median_os = 24,
-  corr = seq(0.55, 0.65, by = 0.01), h12 = seq(0.01, 0.50, length.out = 100)
-)
-best_exp <- pars_exp[which.min(pars_exp$error), ]
-
 ep_ctrl <- endpoint(
   name      = c("pfs", "os"), type = c("tte", "tte"),
   generator = CorrelatedPfsAndOs3,
   h01 = best_ctrl$h01, h02 = best_ctrl$h02, h12 = best_ctrl$h12,
-  pfs_name  = "pfs", os_name = "os"
-)
-ep_exp <- endpoint(
-  name      = c("pfs", "os"), type = c("tte", "tte"),
-  generator = CorrelatedPfsAndOs3,
-  h01 = best_exp$h01, h02 = best_exp$h02, h12 = best_exp$h12,
   pfs_name  = "pfs", os_name = "os"
 )
 

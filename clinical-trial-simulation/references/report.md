@@ -71,21 +71,11 @@ leave a one-paragraph summary plus link in §2.5.
 
 **Every supplement contains, in this order:**
 
-1. **What is being derived** — one sentence stating the literal(s)
-   the supplement produces and where they are consumed in
-   `main.R` / `actions.R`.
-2. **The derivation script** — verbatim from
-   `scripts/derivations/<topic>.R`.
-3. **The verbatim output** of that script (R console capture). Same
-   convention as the existing §2.5 boundary output block.
-4. **Realized-feature verification** when the derivation aims to
-   match a clinical feature (median, landmark survival, correlation,
-   response rate). Use a small Monte Carlo draw and a target-vs-
-   realized table. The agent decides which features to verify based
-   on the endpoint's clinical meaning. Skip when the derivation is
-   purely algebraic.
-5. **The literal(s)** that flow forward, listed clearly so a
-   reviewer can spot-check that `main.R` matches.
+1. What is being derived, and where the literals are consumed.
+2. The derivation script verbatim from `scripts/derivations/<topic>.R`.
+3. The verbatim R console output of that script.
+4. A realized-feature verification (target-vs-realized table from a small Monte Carlo) when the derivation aims to match a clinical feature; skip for purely algebraic derivations.
+5. The forward literal(s), listed for spot-checking against `main.R`.
 
 Literals stay **hardcoded** in `main.R` and `actions.R` for
 readability — an avg-biostatistician reviewer should see
@@ -197,30 +187,15 @@ rules:
 
 ### 0. Resource Utilization (at the very top of the report)
 
-A small table reporting the total token usage and cost for the
-entire session — from the moment `/simulate` was invoked to the
-moment the report is generated. The user wants to see this without
-having to run any extra command.
+A small table reporting total token usage and cost for the entire
+session — from `/simulate` invocation to report generation. The
+user should not have to run an extra command.
 
-The agent retrieves these via whatever telemetry is available in the
-running environment. Likely paths in Claude Code:
-
-- **`/cost` slash command output** — if the agent can capture it
-  (read the conversation log, parse a recent `/cost` invocation).
-- **Session JSONL log** at `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl`
-  — each turn typically records `usage` with `input_tokens`,
-  `output_tokens`, `cache_creation_input_tokens`,
-  `cache_read_input_tokens`. Sum across turns; multiply by the
-  model's per-token rate.
-- **Telemetry directory** at `~/.claude/telemetry/` if usage events
-  are emitted there.
-
-Use the recorded model name to look up the rate. If multiple models
-were used in the session (rare), sum their costs.
-
-If automated retrieval genuinely isn't possible, leave the placeholder
-table and one line asking the user to run `/cost` and paste the
-numbers — but make a real effort first.
+Retrieve session usage via whatever telemetry the agent has access
+to (e.g., `/cost` output if capturable, session JSONL log, etc.).
+If automated retrieval truly isn't possible, leave a placeholder
+and ask the user to paste `/cost` numbers — but make a real effort
+first.
 
 Recommended format:
 
@@ -233,11 +208,11 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
-| TrialSimulator version | required; the value, not the mechanism that produced it |
+| TrialSimulator version | required |
 | R version | required |
-| Skill version | required (the `metadata.version` from `SKILL.md` at run time) |
+| Skill version | required |
 
-§0 shows the version *values*. Do not embed R chunks or code that loads the version strings — that is implementation detail. See SKILL.md §"Package source".
+§0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source".
 
 ### 0.5 Output Files and Reproduction
 

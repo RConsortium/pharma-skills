@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.13
+  version: 0.2.14
 ---
 
 # TrialSimulator Skill
@@ -39,9 +39,7 @@ Install TrialSimulator from GitHub HEAD, not CRAN — this skill tracks GitHub:
 remotes::install_github("zhangh12/TrialSimulator")
 ```
 
-Surface three versions in §0 of the report: TrialSimulator, R, and the skill. The §0 table shows the *values*. How the agent captures them — query the running R, parse `SKILL.md` once, snapshot into the report, whatever is simplest — is implementation detail and **does not appear in the report itself**. Do not embed R code chunks in the report that load or format the version strings.
-
-The running environment is assumed stable enough that slight staleness (e.g., a re-render after a TS update) is acceptable.
+Surface three versions in §0: TrialSimulator, R, and the skill. The agent looks each value up once before writing the report and pastes the literal string into the §0 table. No R chunks, no runtime lookup, no `readRDS`. Slight staleness on re-renders is acceptable; the running environment is assumed stable.
 
 ## Package philosophy
 
@@ -262,38 +260,20 @@ read narrowly to the cited section, then stop.
 ### First response is the plan
 
 The agent's first substantive response — before any R execution,
-before any derivation script, before any simulation — is **the
-plan**, not the result. Every prompt gets one, regardless of
-complexity. This is a soft expectation, not a hard timer: aim to
-have the plan in the user's hands within a couple of minutes of
-receiving the prompt, before any expensive computation begins.
+derivation script, or simulation — is **the plan**, not the result.
+Every prompt gets one. Aim to have it in the user's hands within a
+couple of minutes; soft expectation.
 
-The plan contains:
+The plan contains: a restate of the design; the §2 parameter table
+v0 with `protocol` / `assumed` / `derived (pending)` tags per
+`report.md`; a bullet list of intended supplements (or "no
+supplements needed"); the `assumed` rows called out for
+confirmation; and the next step with a rough time estimate.
 
-1. **Restate** — one short paragraph in the agent's own words
-   confirming what the design is.
-2. **Parameter table v0** — with `protocol` / `assumed` /
-   `derived (pending)` tags per `report.md` §2.
-   `derived (pending)` rows name the supplement that will resolve
-   them; `assumed` rows surface defaults the user can override.
-3. **Supplement plan** — bullet list of non-trivial derivations the
-   agent intends to write, per `report.md` "Pre-simulation
-   derivations and supplements". *"No supplements needed"* is a
-   valid plan; state it.
-4. **Open assumptions** — the `assumed` rows from the parameter
-   table, called out for confirmation, one line each.
-5. **Next step** — what the agent will do next, with a rough time
-   estimate.
-
-The cost is small (one short turn before work begins); the value is
-the user sees what's coming, can correct assumptions early, and can
-interrupt before twenty minutes of silent work.
-
-**Implementation-mode caveat.** When the user says "skip the Q&A"
-or "proceed directly to computation," the plan still gets posted —
-it condenses to a one-paragraph acknowledgment: *"Implementation
-mode. Plan: <N> supplements (<topics>) → main.R → sanity →
-production. Starting now."* Skipping Q&A is not skipping visibility.
+**Implementation-mode caveat.** When the user says "skip the Q&A,"
+the plan condenses to one paragraph (*"Implementation mode. Plan:
+<N> supplements → main.R → sanity → production. Starting now."*)
+but still posts. Skipping Q&A is not skipping visibility.
 
 ### Confirmation gates
 
@@ -319,25 +299,11 @@ the conversation.
 
 ### No silent work
 
-Each derivation supplement is its own visible turn, mirroring the
-"one artifact per turn" cadence the rest of the workflow follows:
-
-- Turn N: *"Writing `scripts/derivations/<topic>.R`."* → write file
-  → stop (let the tool result return).
-- Turn N+1: *"Running it."* → bash run → stop.
-- Turn N+2: *"Got [literals]. Verified [feature] against [target].
-  Rendering `supplements/<topic>.md`."* → write supplement → stop.
-
-Bundling multiple supplements (or multiple validation rounds) into
-a single silent stretch is a violation of this rule. The same
-applies to sanity → calibration → production: each is its own turn,
-and the agent announces what it is about to run before running it.
-
-If any tool call is expected to take more than ~60 seconds (large
-calibration sim, NORTA optimizer, slow `solveThreeStateModel` grid),
-announce it with a rough estimate before launching it (*"Calibration
-sim n=50 across 5 NPH scenarios, ~3 min"*). The user can then
-interrupt without wondering whether anything is happening.
+Each supplement and each validation round (sanity, calibration,
+production) is its own visible turn — write, run, render are
+separate announced turns, never bundled into a single silent
+stretch. Tool calls expected to take more than ~60 seconds get a
+one-line heads-up with a rough estimate before launching.
 
 ### Don't ask about internal workflow
 
