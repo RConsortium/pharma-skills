@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.11
+  version: 0.2.12
 ---
 
 # TrialSimulator Skill
@@ -228,17 +228,107 @@ must verify the implementation). During design discovery, parameter
 confirmation, and progress updates, default to clinical /
 statistical language.
 
+### Don't silently read referenced documents
+
+When a prompt references an external SAP, protocol, or other
+document, the prompt itself distills the relevant content — that
+is the prompt-writer's job. **Do not silently read or fetch the
+referenced document**: no unprompted `Read` on a local PDF, no
+`WebFetch`, no `curl`. A long SAP can cost minutes of context and
+time and may reintroduce ambiguity the prompt was written to
+resolve.
+
+If something the prompt does not cover would meaningfully change
+the plan and the referenced document plausibly holds the answer,
+**ask the user first**. Name the section or topic, explain why
+reading it would help, and let the user choose: authorize a narrow
+read, paraphrase from memory, or leave the value as `assumed` with
+a default. Reading is on the table when the user authorizes it —
+just never silently.
+
+When the prompt itself explicitly tells the agent to consult the
+source (e.g., "see Section 7.3 of the SAP for the boundary table"),
+read narrowly to the cited section, then stop.
+
+### First response is the plan
+
+The agent's first substantive response — before any R execution,
+before any derivation script, before any simulation — is **the
+plan**, not the result. Every prompt gets one, regardless of
+complexity. This is a soft expectation, not a hard timer: aim to
+have the plan in the user's hands within a couple of minutes of
+receiving the prompt, before any expensive computation begins.
+
+The plan contains:
+
+1. **Restate** — one short paragraph in the agent's own words
+   confirming what the design is.
+2. **Parameter table v0** — with `protocol` / `assumed` /
+   `derived (pending)` tags per `report.md` §2.
+   `derived (pending)` rows name the supplement that will resolve
+   them; `assumed` rows surface defaults the user can override.
+3. **Supplement plan** — bullet list of non-trivial derivations the
+   agent intends to write, per `report.md` "Pre-simulation
+   derivations and supplements". *"No supplements needed"* is a
+   valid plan; state it.
+4. **Open assumptions** — the `assumed` rows from the parameter
+   table, called out for confirmation, one line each.
+5. **Next step** — what the agent will do next, with a rough time
+   estimate.
+
+The cost is small (one short turn before work begins); the value is
+the user sees what's coming, can correct assumptions early, and can
+interrupt before twenty minutes of silent work.
+
+**Implementation-mode caveat.** When the user says "skip the Q&A"
+or "proceed directly to computation," the plan still gets posted —
+it condenses to a one-paragraph acknowledgment: *"Implementation
+mode. Plan: <N> supplements (<topics>) → main.R → sanity →
+production. Starting now."* Skipping Q&A is not skipping visibility.
+
 ### Confirmation gates
 
-Two confirmation gates before any expensive work:
+Three confirmation points across a run, posted in this order:
 
-1. **Parameter table.** Present every value (distribution parameters,
-   readout times, sample size, accrual, dropout, milestone triggers,
-   stratification factors, helper-derived literals). User confirms.
-2. **Save plan.** For every operating characteristic the user wants
-   to know, show which value will be saved in which action function.
-   Catches save↔OC mismatches that are expensive to fix
+1. **The plan** — see "First response is the plan" above. The first
+   gate is the plan, not a complete parameter table; the table is
+   v0 with `derived (pending)` rows for anything a supplement will
+   resolve.
+2. **The resolved parameter table.** After supplements have run and
+   the `pending` rows are filled in, present the final parameter
+   table. The user confirms the literals.
+3. **The save plan.** For every operating characteristic the user
+   asked about, show which value will be saved in which action
+   function. Catches save ↔ OC mismatches that are expensive to fix
    post-simulation.
+
+For implementation-mode prompts that say "skip Q&A," gates (2) and
+(3) collapse into visible turn-by-turn progress (see "No silent
+work" below) rather than explicit confirmation requests, but the
+artifacts (resolved parameter table, save plan) still appear in
+the conversation.
+
+### No silent work
+
+Each derivation supplement is its own visible turn, mirroring the
+"one artifact per turn" cadence the rest of the workflow follows:
+
+- Turn N: *"Writing `scripts/derivations/<topic>.R`."* → write file
+  → stop (let the tool result return).
+- Turn N+1: *"Running it."* → bash run → stop.
+- Turn N+2: *"Got [literals]. Verified [feature] against [target].
+  Rendering `supplements/<topic>.md`."* → write supplement → stop.
+
+Bundling multiple supplements (or multiple validation rounds) into
+a single silent stretch is a violation of this rule. The same
+applies to sanity → calibration → production: each is its own turn,
+and the agent announces what it is about to run before running it.
+
+If any tool call is expected to take more than ~60 seconds (large
+calibration sim, NORTA optimizer, slow `solveThreeStateModel` grid),
+announce it with a rough estimate before launching it (*"Calibration
+sim n=50 across 5 NPH scenarios, ~3 min"*). The user can then
+interrupt without wondering whether anything is happening.
 
 ### Don't ask about internal workflow
 
