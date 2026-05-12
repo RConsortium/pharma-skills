@@ -147,8 +147,8 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
-| TrialSimulator version | required; capture via `packageVersion("TrialSimulator")` |
-| R version | e.g., `4.5.2` |
+| TrialSimulator version | required; read from `oc_summary$ts_version` (written by `main.R` per SKILL.md §"Package source") — never hardcode the literal in the report |
+| R version | required; read from `oc_summary$r_version` |
 
 ### 0.5 Output Files and Reproduction
 
@@ -192,6 +192,20 @@ runs/<trial_name>/
 └── report.html         31K    rendered via markdown::mark_html
 ````
 
+Convention for the two `.rds` files:
+
+- **`output.rds`** is the raw per-replicate matrix returned by
+  `controller$get_output()`. One row per replicate, all auto-saved
+  milestone columns and all `trial$save()` columns present. Large,
+  reproduction artifact, not consumed directly by the report.
+- **`oc_summary.rds`** is the post-processed list of operating
+  characteristics that the report reads. Whatever summary the report
+  cites (power, P(stop) per stage, MCSE, binding-aware expected
+  duration, `ts_version`, `r_version`, …) is computed in `main.R`
+  *after* the simulation and saved here. The report never recomputes
+  from `output.rds` — that would couple report rendering to the raw
+  schema and defeat the audit trail.
+
 **Reproduction:**
 
 ```sh
@@ -232,7 +246,7 @@ restating numbers.
 **Source / Notes — controlled vocabulary** (use one; combine with a short justification when needed):
 
 - **`protocol`** — copied verbatim from the protocol or user-supplied specification.
-- **`protocol (transformed)`** — protocol-specified in clinical terms, mechanically transformed to a TS-compatible form. The transformation must be shown, e.g. *"15% dropout by mo 50 → `rate = -log(0.85)/50`"*.
+- **`protocol (derived)`** — protocol-specified in clinical terms, mechanically converted to a TS-compatible form. The conversion must be shown, e.g. *"15% dropout by mo 50 → `rate = -log(0.85)/50`"*.
 - **`assumed`** — not specified by the protocol; a default value was selected. The default and its basis must be stated in one phrase, e.g. *"assumed — 6-month ORR readout typical of solid-tumor trials"*. **Assumed values require explicit confirmation before the production simulation is executed.**
 - **`derived`** — computed from other parameters in this table or from a helper function. The computation must be cited, e.g. *"derived: `solveThreeStateModel(median_pfs=7, median_os=15, corr=0.68) → h01 = 0.0750`"*, or *"derived from `boundaries.R` (rpact)"*.
 - **`software default`** — a default prescribed by the package or skill convention (e.g., `seed = NULL`, `silent = TRUE`, `plot_event = FALSE`). No rationale required.
@@ -246,14 +260,16 @@ Always include rows for: endpoint distribution parameters per arm, readout times
 |---|---|---|
 | N (1:1) | 500 | protocol |
 | Accrual | uniform 20/mo (`StaggeredRecruiter`, `accrual_rate = data.frame(end_time=Inf, piecewise_rate=20)`) | protocol |
-| Dropout | exponential, `rate = -log(0.85)/50 = 0.003250` | protocol (transformed): "15% by mo 50" |
+| Dropout | exponential, `rate = -log(0.85)/50 = 0.003250` | protocol (derived): "15% by mo 50" |
 | ORR readout | 6 mo | assumed — first response assessment typical for solid-tumor trials; confirm before production |
 | PFS — control | `rexp(rate = log(2)/20)` | protocol |
 | PFS — treatment, 6-mo delay scenario | `PiecewiseConstantExponentialRNG(risk = data.frame(end_time=c(6,1000), piecewise_risk=c(log(2)/20, 0.55*log(2)/20)))` | derived from protocol NPH specification; `tail_end = 1000` per package convention |
 | GSD efficacy bounds (z) | (3.0204, 2.3762, 2.0303) at IF (0.49, 0.75, 1.00) | derived from `boundaries.R` (rpact, asOF, alpha=0.024) |
 | D_total | 269 events | derived from `boundaries.R` (rpact, 90% power assumption) |
-| Combination test alpha allocation | **PLACEHOLDER:** equal split | PLACEHOLDER — replace with the protocol's pre-specified allocation |
+| Combination test alpha allocation | equal split | PLACEHOLDER — replace with the protocol's pre-specified allocation |
 | Seed | `NULL` (auto per replicate) | software default |
+
+The `PLACEHOLDER` tag in the Source / Notes column is the single signal — do not also wrap the Value column with a `**PLACEHOLDER:**` prefix. One tag, one column.
 
 ### 2.5 Decision Boundary Derivation (only if external tools were used)
 
@@ -364,11 +380,12 @@ After (not before) the code block, add a short narrative covering:
 - **Data lock** — what `get_locked_data` returns at this point;
   which arms / endpoints are populated.
 - **Analysis** — which test, which wrapper, why this choice. **If
-  a stub for a combination/group-sequential test, flag it
-  prominently.**
+  a placeholder for a combination/group-sequential test, flag it
+  prominently using the `PLACEHOLDER` tag (same vocabulary as §2).**
 - **Adaptation** — which `trial$*()` methods are called, with the
-  rule. **If a dummy rule, flag it: "DUMMY: replace with actual
-  rule."**
+  rule. **If a placeholder rule, flag it as `# PLACEHOLDER: replace
+  with actual rule` in the code and as `PLACEHOLDER` in the §2 row
+  that captures the rule.**
 - **What gets saved** — each `trial$save()` mapped to which
   operating characteristic it supports.
 

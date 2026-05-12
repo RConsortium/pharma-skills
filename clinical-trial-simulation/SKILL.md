@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.8
+  version: 0.2.9
 ---
 
 # TrialSimulator Skill
@@ -39,7 +39,14 @@ Install TrialSimulator from GitHub HEAD, not CRAN — this skill tracks GitHub:
 remotes::install_github("zhangh12/TrialSimulator")
 ```
 
-Capture `packageVersion("TrialSimulator")` in `main.R` and surface it in §0 of the report.
+Capture `packageVersion("TrialSimulator")` and `R.version.string` in `main.R` and write them into `oc_summary.rds` under fixed names (`ts_version`, `r_version`). §0 of the report reads them from there. Do not hardcode the version literal in the report — it must trace back to the actual run.
+
+```r
+# in main.R, before saveRDS:
+oc_summary$ts_version <- as.character(packageVersion("TrialSimulator"))
+oc_summary$r_version  <- R.version.string
+saveRDS(oc_summary, file.path(out_dir, "oc_summary.rds"))
+```
 
 ## Package philosophy
 
@@ -273,12 +280,13 @@ decisions. Don't ask; just do.
   packages when both can do the job. See `helpers.md` for the
   catalog. The package's design intent is that you reach for its
   functions reflexively.
-- **Runnable dummies for unspecified decision rules.** When the user
-  says "we'll decide based on data" without specifying the rule,
-  write a small data-driven dummy and label it: `# DUMMY: replace
-  with actual rule`. Guard against edge cases (`length() > 0` before
-  `remove_arms`, etc.). A dummy that runs is better than a TODO that
-  blocks validation.
+- **Runnable placeholders for unspecified decision rules.** When the
+  user says "we'll decide based on data" without specifying the rule,
+  write a small data-driven placeholder and label it: `# PLACEHOLDER:
+  replace with actual rule`. Use the same `PLACEHOLDER` tag in the §2
+  parameter table (see `report.md`). Guard against edge cases
+  (`length() > 0` before `remove_arms`, etc.). A placeholder that
+  runs is better than a TODO that blocks validation.
 - **Comment action functions liberally.** Action functions encode
   the design's decision logic — the "why" of every threshold, fit,
   adaptation, and save call. Without comments, a QC reviewer has to
@@ -420,10 +428,13 @@ runs/<trial_name>/
                        main.R or actions.R. Keeping it as its own
                        file preserves a reproducible record of where
                        the literals came from.
-  output.rds        ← saved by main.R
+  output.rds        ← raw controller$get_output(), saved by main.R
+  oc_summary.rds    ← post-processed OC list for the report, saved by main.R
   report.md         ← the report
   report.html       ← rendered via markdown::mark_html
-  milestone_times.png ← embedded in the report
+  milestone_times.png ← embedded in the report ONLY when the milestone-time
+                       precondition holds AND the decision tree in
+                       report.md §7 selects "include". Omitted otherwise.
 ```
 
 `main.R` sources whichever sibling files exist:

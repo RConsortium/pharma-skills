@@ -355,7 +355,8 @@ practical options:
 
 Get the user's choice on record before writing the script. The
 parameter table's "Source / Notes" column should mark the resulting
-global rate as `user (translated)` or `derived` with the rationale.
+global rate as `protocol (derived)` or `derived` with the rationale,
+per the controlled vocabulary in `report.md` §2.
 
 ### `add_regimen` must precede `add_arms`
 
