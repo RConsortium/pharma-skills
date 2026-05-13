@@ -1,0 +1,36 @@
+{
+  "id": "github-issue-118",
+  "prompt": "Phase 3 trial in 1L metastatic NSCLC. 1:2 randomization (control :\n  experimental), 600 patients total.\n\n  Recruitment ramps up slowly: about 5 patients per month for the first\n  three months, 15 per month for the next three months, then 25 per\n  month until enrollment completes.\n\n  Endpoints:\n  - PFS and OS as time-to-event endpoints, correlated within patient.\n    Generate PFS and OS jointly per patient using\n    `TrialSimulator::CorrelatedPfsAndOs2(n, median_pfs, median_os,\n    kendall = 0.5, pfs_name = \"pfs\", os_name = \"os\")`. This is a\n    Gumbel-copula generator with exponential marginals; the package is\n    available from install_github(\"zhangh12/TrialSimulator\")\n  - ORR as a binary endpoint (Bernoulli), assessed at 6 months from\n    randomization, independent of PFS and OS.\n\n  Endpoint assumptions:\n  - Control median PFS 8 months, target hazard ratio 0.70 (i.e.,\n    experimental median PFS = 8 / 0.70 months).\n  - Control median OS 18 months, target hazard ratio 0.78 (i.e.,\n    experimental median OS = 18 / 0.78 months).\n  - Control ORR 25%, experimental ORR 40%.\n\n  Dropout: 5% per year, applied uniformly per patient (one global\n  dropout time per patient that censors all endpoints).\n\n  Three formal looks:\n\n  Look 1 is a binding go/no-go gate based on ORR. It happens at\n  calendar month 18. The gate uses a one-sided rate-difference test\n  (experimental minus control) on patients with observed 6-month ORR;\n  the gate passes if p < 0.10. If the gate fails, the trial stops\n  entirely. If it passes, the trial continues to look 2.\n\n  Look 2 is a PFS interim, fired at 65% of the planned PFS events.\n\n  Look 3 is the final analysis, fired by 340 OS events. PFS and OS are\n  both tested. The trial has a maximum calendar duration of 48 months\n  (extended to 54 if the operational checkpoint triggers \u2014 see below),\n  which acts as a hard cap on follow-up.\n\n  Multiplicity: alpha is split Bonferroni-style with PFS getting 0.015\n  and OS getting 0.010 (one-sided each, total 0.025). PFS uses\n  Lan-DeMets O'Brien-Fleming alpha-spending across looks 2 and 3 with\n  pre-specified information fractions (0.65, 1.00). OS is tested\n  single-stage at look 3 only. Compute the planned PFS event count\n  under 90% power for HR = 0.70 with 1:2 allocation; use whatever\n  external boundary tool you prefer (rpact / gsDesign).\n\n  Efficacy can be claimed for PFS, OS, or both \u2014 independent claims.\n  The trial wins if either endpoint rejects (and the ORR gate passed).\n\n  Separately, an operational, blinded checkpoint is performed at\n  calendar month 24 to monitor pooled (blinded) PFS event accrual.\n  If the pooled PFS event count at month 24 is less than 220, the\n  trial duration is extended from 48 to 54 months. No formal\n  hypothesis testing happens at this checkpoint. The checkpoint only\n  takes place in trials that did not stop at the look 1 ORR gate.\n\n  Operating characteristics I want, computed over 1000 replicates.\n  For each, treat the binding ORR gate as truly stopping the trial\n  at look 1 \u2014 replicates where the gate fails do not contribute to\n  any later look. Each OC is the number of qualifying replicates\n  divided by 1000 (unless stated otherwise):\n\n  1. P(ORR gate passes at look 1).\n  2. Marginal power for PFS: fraction of replicates where the gate\n     passes AND PFS is rejected at look 2 or look 3.\n  3. Marginal power for OS: fraction of replicates where the gate\n     passes AND OS is rejected at look 3.\n  4. P(any efficacy win): fraction of replicates where the gate\n     passes AND at least one of {PFS rejected at look 2 or look 3,\n     OS rejected at look 3} holds.\n  5. P(stop at look 1 for binding ORR futility): fraction of\n     replicates where the gate fails.\n  6. Expected trial duration in months: per-replicate trial-end time\n     (= month 18 if the gate fails; = the look-3 calendar firing time\n     otherwise), averaged over all 1000 replicates.\n  7. P(operational checkpoint triggers a duration extension): fraction\n     of replicates where the gate passes AND the checkpoint extends\n     the duration.\n  8. Median observed PFS hazard ratio at look 3, and median observed\n     OS hazard ratio at look 3, both computed over the subset of\n     replicates where the gate passed.\n\n  All inputs are confirmed \u2014 skip the Q&A and go straight to building\n  the simulation. Generate a report that documents the design and\n  presents all eight operating characteristics",
+  "expected_output": "A directory containing R scripts, saved simulation output, and a report \nthat documents the design and presents all eight operating characteristics.",
+  "files": [],
+  "assertions": [
+    "Design correctness:",
+    "PFS and OS are generated jointly with TrialSimulator::CorrelatedPfsAndOs2 per the query",
+    "ORR is independent of PFS and OS at the 6-month assessment",
+    "1:2 (control:experimental) allocation honored, including in the rpact/gsDesign sample-size call (allocationRatioPlanned = 2)",
+    "Dropout is one global rate of 5%/year applied uniformly per patient",
+    "TTE tests are one-sided in the direction \"treatment is better when hazard is lower\"; ORR rate-difference test is one-sided",
+    "favoring experimental",
+    "\u03b1 split: PFS gets 0.015 one-sided, OS gets 0.010 one-sided",
+    "PFS group-sequential boundaries computed with Lan-DeMets O'Brien-Fleming at IFs (0.65, 1.00); critical z values approximately",
+    "(2.80, 2.19); planned PFS events \u2248 425",
+    "OS tested single-stage at z \u2248 2.326",
+    "Binding ORR gate truly stops the trial at month 18 in failing replicates \u2014 they do not contribute to OC4, OC6, OC7, OC8",
+    "Look 3 fires by 340 OS events with the trial's calendar cap (48 or\u00a054) as the ceiling",
+    "Operational checkpoint extends 48 \u2192 54 only when pooled PFS events at month 24 < 220, and only in replicates that passed the gate",
+    "Operating-characteristics ground truth (1000 replicates; tolerance \u2248 \u00b12\u20133 MCSE):",
+    "OC1 \u2014 P(ORR gate passes) \u2248 0.82 (\u00b10.03)",
+    "OC2 \u2014 Marginal PFS power \u2248 0.77 (\u00b10.03)",
+    "OC3 \u2014 Marginal OS power \u2248 0.40 (\u00b10.04)",
+    "OC4 \u2014 P(any efficacy win) \u2248 0.78 (\u00b10.03)",
+    "OC5 \u2014 P(stop at L1) \u2248 0.18 (\u00b10.03)",
+    "OC6 \u2014 Expected trial duration \u2248 39.5 months (\u00b11.0)",
+    "OC7 \u2014 P(operational checkpoint extends) \u2248 0.10 (\u00b10.03)",
+    "OC8a \u2014 Median PFS HR at final, gate-pass replicates \u2248 0.70 (\u00b10.02)",
+    "OC8b \u2014 Median OS HR at final, gate-pass replicates \u2248 0.78 (\u00b10.02)"
+  ],
+  "language": "R",
+  "target_skills": [
+    "clinical-trial-simulation"
+  ]
+}
