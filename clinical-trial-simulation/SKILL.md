@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.14
+  version: 0.2.15
 ---
 
 # TrialSimulator Skill
@@ -17,6 +17,24 @@ a thinking framework, a cached API reference, a TrialSimulator-specific
 function catalog, and a report-writing guide. **It is not a script.**
 You bring general engineering, programming, and biostatistics
 knowledge; this skill adds what is specific to TrialSimulator.
+
+## Loading announcement
+
+Whenever this skill is loaded, the **first line of the agent's first
+response** must show the skill version and the running environment:
+
+> `clinical-trial-simulation v<metadata.version> loaded — TrialSimulator <ts_version>, R <r_version>`
+
+Substitute literal values:
+
+- `<metadata.version>` from this file's YAML frontmatter above.
+- `<ts_version>` from `packageVersion("TrialSimulator")` against the **currently-installed** package. The pre-flight install (see "Package source") has not run yet at this point; if it later updates the package, the agent announces the new version explicitly.
+- `<r_version>` from `R.version.string` (the `x.y.z` portion is fine).
+
+This applies on every fresh session and on every re-load; the user
+must always see which versions of the skill, the package, and R
+are in play. The announcement itself does not trigger any network
+call.
 
 ## Files in this skill
 
@@ -33,13 +51,36 @@ is the source of truth.
 
 ## Package source
 
-Install TrialSimulator from GitHub HEAD, not CRAN — this skill tracks GitHub:
+This skill tracks **GitHub HEAD** of TrialSimulator, not CRAN. **At
+the start of the first simulation request in a session — after the
+loading announcement, before any other simulation work — the agent
+runs the pre-flight install:**
 
 ```r
-remotes::install_github("zhangh12/TrialSimulator")
+Rscript -e 'remotes::install_github("zhangh12/TrialSimulator", upgrade = "never")'
 ```
 
-Surface three versions in §0: TrialSimulator, R, and the skill. The agent looks each value up once before writing the report and pastes the literal string into the §0 table. No R chunks, no runtime lookup, no `readRDS`. Slight staleness on re-renders is acceptable; the running environment is assumed stable.
+This is fast when the installed version's SHA matches HEAD (one
+GitHub API check, no download) and pulls HEAD when it lags. The
+pre-flight does not fire on skill load alone — only when the user
+makes a simulation request. Casual loads of the skill are free.
+
+Three outcomes the agent must handle visibly:
+
+- **Already at HEAD.** Proceed silently.
+- **Updated to HEAD.** Announce explicitly, e.g. *"TrialSimulator
+  updated from 1.17.1 to 1.17.2."* §0 of the report uses the new
+  version.
+- **Install failed** (network down, build error). Surface the
+  failure to the user — do not silently fall back to the
+  previously-installed version. The user decides whether to
+  proceed with the existing install or fix the problem.
+
+Surface three versions in §0: TrialSimulator, R, and the skill.
+The agent looks each value up once before writing the report and
+pastes the literal string into the §0 table. No R chunks, no
+runtime lookup, no `readRDS`. Slight staleness on re-renders is
+acceptable; the running environment is assumed stable.
 
 ## Package philosophy
 
@@ -316,6 +357,17 @@ decisions. Don't ask; just do.
   user doesn't decide whether to run a small sanity check before
   production — the agent does it as part of producing a working
   script. Don't ask.
+
+  **Carve-out — calibration that produces cited literals.** If a
+  calibration script computes a value that ends up in the §2
+  parameter table, in `main.R` / `actions.R`, or anywhere else
+  the report cites it, the script is a **citable artifact**, not
+  internal workflow. It follows the supplement rule (see
+  `report.md` "Derivations and supplements"): script in
+  `scripts/derivations/`, rendered doc in `supplements/`,
+  bidirectional cross-references with the main report. "Internal
+  workflow" applies only to the testing iteration on `main.R`
+  itself.
 - **Seed.** `seed = NULL` (auto per-replicate, recorded in the
   output) is the correct default for simulation studies. Don't ask
   the user about it. Use a fixed integer seed only if the user

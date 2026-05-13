@@ -42,17 +42,20 @@ parameters — how each non-trivial literal was obtained from the
 user's brief — may live in a supplement under `supplements/`. The
 main report shows the final literal and a clickable cross-reference
 to the supplement. Each supplement is itself self-contained for its
-own derivation. See "Pre-simulation derivations and supplements"
+own derivation. See "Derivations and supplements"
 below.
 
-## Pre-simulation derivations and supplements
+## Derivations and supplements
 
-Many simulation parameters are derived from the user's brief before
-the simulation runs — boundary literals, distribution calibrations
-to match target medians or landmark survival, correlation parameter
-fitting, NORTA feasibility checks, gate thresholds matched to a
-desired pass probability. Surface these derivations transparently
-using the threshold below.
+Many simulation parameters are derived from the user's brief —
+boundary literals, distribution calibrations to match target
+medians or landmark survival, correlation parameter fitting, NORTA
+feasibility checks, gate thresholds matched to a desired pass
+probability, information-fraction calibrations, and any other
+script-produced literal cited in the report. The rule applies
+regardless of when the derivation runs (before, during, or after
+the main simulation): any script producing a number that ends up
+in the report goes through the supplement contract below.
 
 | Complexity | Where it lives |
 |---|---|
@@ -166,12 +169,14 @@ label (not an H2) so the ToC does not list itself.
 ### Cross-references between sections (clickable)
 
 When one section refers to another, use a markdown anchor link —
-not bare prose. Applies inside the main report and between main
-and supplements.
-
-Before opening the HTML for the user, verify every cross-reference
-and ToC link resolves to an existing anchor in the rendered HTML.
-Fix any broken ones and re-render.
+not bare prose. `markdown::mark_html` generates anchors with a
+fixed prefix: `chp:<slug>` for the H1 and `sec:<slug>` for every
+H2 / H3. The slug is the heading text lowercased, with `§` dropped
+and every period + space replaced by `-`. Example:
+`## §0.5 Output Files and Reproduction` → `sec:0-5-output-files-and-reproduction`.
+Apply the same format in the ToC, in cross-references inside the
+main report, and in supplement-to-main back-references
+(`../report.html#sec:<slug>`).
 
 ### Code style in the report
 
@@ -193,9 +198,17 @@ user should not have to run an extra command.
 
 Retrieve session usage via whatever telemetry the agent has access
 to (e.g., `/cost` output if capturable, session JSONL log, etc.).
-If automated retrieval truly isn't possible, leave a placeholder
-and ask the user to paste `/cost` numbers — but make a real effort
-first.
+**If a value cannot be obtained automatically, the report shows a
+placeholder AND the agent's last announced turn before opening the
+HTML explicitly requests the value from the user**, e.g.
+*"Couldn't retrieve token / cost / session-duration from telemetry
+— please paste `/cost` output and I'll fill in §0."* A bare
+placeholder with no follow-up question is a violation.
+
+**Skill version is never a placeholder.** It is always a literal,
+looked up once from `SKILL.md`'s YAML frontmatter (`metadata.version`)
+before the report is written. The skill file is in the agent's
+context — there is no excuse for placeholder here.
 
 Recommended format:
 
@@ -382,7 +395,7 @@ event-triggered on PFS, FA event-triggered on OS, with information
 fractions that require additional reasoning beyond what
 `getDesignGroupSequential` accepts), move the verbatim call,
 output, and any custom math to `supplements/boundaries.md` per the
-"Pre-simulation derivations and supplements" rules, and leave a
+"Derivations and supplements" rules, and leave a
 one-paragraph summary plus link in §2.5.
 
 ### 3. Treatment Arms and Endpoints
