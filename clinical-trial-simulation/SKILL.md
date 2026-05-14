@@ -6,7 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.15
+  version: 0.2.16
+  trialsimulator_min_version: "1.18.4"
 ---
 
 # TrialSimulator Skill
@@ -20,21 +21,32 @@ knowledge; this skill adds what is specific to TrialSimulator.
 
 ## Loading announcement
 
-Whenever this skill is loaded, the **first line of the agent's first
-response** must show the skill version and the running environment:
+Whenever this skill is loaded, the agent calls
+`packageVersion("TrialSimulator")` (fast, local — no network) and
+compares the installed version against
+`metadata.trialsimulator_min_version` from the YAML frontmatter
+above. The first line of the agent's first response reports the
+result.
 
-> `clinical-trial-simulation v<metadata.version> loaded — TrialSimulator <ts_version>, R <r_version>`
+Three outcomes:
 
-Substitute literal values:
+- **Installed ≥ required** — `clinical-trial-simulation v<metadata.version> loaded — TrialSimulator <ts_version>, R <r_version>`. Proceed.
+- **Installed < required** — `clinical-trial-simulation v<metadata.version> loaded — TrialSimulator <ts_version> installed, **≥ <trialsimulator_min_version> required**. R <r_version>.` Then offer to update on the next turn: *"Want me to run `remotes::install_github('zhangh12/TrialSimulator')` now? (y/n)"* — on confirm, run it and re-check; on decline, stop until the user resolves. Do not begin any simulation work until the version requirement is met.
+- **Not installed** — `clinical-trial-simulation v<metadata.version> loaded — TrialSimulator not installed. R <r_version>.` Offer to install: *"Want me to run `remotes::install_github('zhangh12/TrialSimulator')` now? (y/n)"*
 
-- `<metadata.version>` from this file's YAML frontmatter above.
-- `<ts_version>` from `packageVersion("TrialSimulator")` against the **currently-installed** package. The pre-flight install (see "Package source") has not run yet at this point; if it later updates the package, the agent announces the new version explicitly.
-- `<r_version>` from `R.version.string` (the `x.y.z` portion is fine).
+Substitutions:
 
-This applies on every fresh session and on every re-load; the user
-must always see which versions of the skill, the package, and R
-are in play. The announcement itself does not trigger any network
-call.
+- `<metadata.version>` from this file's YAML frontmatter.
+- `<trialsimulator_min_version>` from this file's YAML frontmatter.
+- `<ts_version>` from `packageVersion("TrialSimulator")`.
+- `<r_version>` from `R.version.string` (the `x.y.z` portion).
+
+No network call fires on load. The only network use is the optional
+remediation install on user confirmation.
+
+After the announcement line, briefly greet the user and ask about
+the trial setting — never ask what design type, discover it through
+conversation (see "Two user modes" below).
 
 ## Files in this skill
 
@@ -51,35 +63,32 @@ is the source of truth.
 
 ## Package source
 
-This skill tracks **GitHub HEAD** of TrialSimulator, not CRAN. **At
-the start of the first simulation request in a session — after the
-loading announcement, before any other simulation work — the agent
-runs the pre-flight install:**
+This skill targets a known-good baseline of TrialSimulator declared
+in `metadata.trialsimulator_min_version` of the YAML frontmatter
+above. **At load, only a local `packageVersion("TrialSimulator")`
+check runs — no automatic `install_github`, no network call.** The
+load-time check + offer/auto behavior is specified in "Loading
+announcement".
+
+If TrialSimulator is missing or below the minimum, the canonical
+remediation is:
 
 ```r
-Rscript -e 'remotes::install_github("zhangh12/TrialSimulator", upgrade = "never")'
+remotes::install_github("zhangh12/TrialSimulator")
 ```
 
-This is fast when the installed version's SHA matches HEAD (one
-GitHub API check, no download) and pulls HEAD when it lags. The
-pre-flight does not fire on skill load alone — only when the user
-makes a simulation request. Casual loads of the skill are free.
+The agent offers to run this when the load-time check detects a
+shortfall and only runs it on user confirmation. The user can also
+update outside the session and reload the skill.
 
-Three outcomes the agent must handle visibly:
+When bumping `metadata.version`, audit whether
+`trialsimulator_min_version` also needs to move — e.g., if the
+skill adopts a TS feature or fix landed in a newer release.
 
-- **Already at HEAD.** Proceed silently.
-- **Updated to HEAD.** Announce explicitly, e.g. *"TrialSimulator
-  updated from 1.17.1 to 1.17.2."* §0 of the report uses the new
-  version.
-- **Install failed** (network down, build error). Surface the
-  failure to the user — do not silently fall back to the
-  previously-installed version. The user decides whether to
-  proceed with the existing install or fix the problem.
-
-Surface three versions in §0: TrialSimulator, R, and the skill.
-The agent looks each value up once before writing the report and
-pastes the literal string into the §0 table. No R chunks, no
-runtime lookup, no `readRDS`. Slight staleness on re-renders is
+Surface three versions in §0 of the report: TrialSimulator, R, and
+the skill. The agent looks each value up once before writing the
+report and pastes the literal string into the §0 table. No R chunks,
+no runtime lookup, no `readRDS`. Slight staleness on re-renders is
 acceptable; the running environment is assumed stable.
 
 ## Package philosophy
