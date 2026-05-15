@@ -1,0 +1,15 @@
+{
+  "id": "github-issue-124",
+  "prompt": "admiral-adsl/benchmarks/basic-two-arm/prompt.md",
+  "expected_output": "See pharmaverseadam::adsl",
+  "files": [
+    "Input pharmaversesdtm"
+  ],
+  "assertions": [
+    "admiral-adsl/benchmarks/basic-two-arm/rubric.md"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adsl"
+  ]
+}

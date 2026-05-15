@@ -1,0 +1,22 @@
+{
+  "id": "github-issue-128",
+  "prompt": "As a statistician, I want to use r2rtf package to create a baseline characteristics table. \n\nPlease first learn the r2rtf package grammar and logic before you start.\n\nGoal: create a table by treatment group for age, sex, race and BMI. \ndata: https://github.com/Merck/r2rtf/blob/master/data/r2rtf_adsl.rda \nexample: https://github.com/elong0527/r4csr/edit/main/tlf-baseline.qmd\n\nNote: the order of categorical variable should follow clinical convention instead of simple alphabetic.",
+  "expected_output": "A baseline characteristic table by treatment group like https://r4csr.org/tlf-baseline.html",
+  "files": [
+    "N/A"
+  ],
+  "assertions": [
+    "using r2rtf package",
+    "Identified correct age variable \"AGE\"",
+    "Identified correct sex variable \"SEX\"",
+    "Identified correct race variable \"RACE\"",
+    "Identified correct BMI variable \"BMI\"",
+    "Identified correct ethnicity variable \"ETHNIC\"",
+    "Identified one of the treatment group variable",
+    "Proper order variable following clinical convention. e.g. Other / Missing should be at the end."
+  ],
+  "language": "R",
+  "target_skills": [
+    "r2rtf"
+  ]
+}
