@@ -1,0 +1,25 @@
+{
+  "id": "github-issue-133",
+  "prompt": "Create R script to convert heart rate (in bpm) into RR intervals (in ms) using admiral::compute_rr function.\n\nInput: hr.tsv \nOutput: result.csv",
+  "expected_output": "A successful execution of the R script that cleanly reads the heart rate input, processes the conversion using `admiral::compute_rr()`, and generates the `result.csv` (`hr` and `result`)",
+  "files": [
+    "`inputs/hr.tsv`**",
+    "```tsv",
+    "hr",
+    "0.1",
+    "1.5",
+    "10.0",
+    "100.0",
+    "1000.0",
+    "```"
+  ],
+  "assertions": [
+    "The script must use the `admiral` R package and call `compute_rr()`.",
+    "The output CSV file `result.csv` must be successfully created.",
+    "The `result.csv` file must contain exactly 2 columns strictly named `hr` and `result`."
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adsl"
+  ]
+}
