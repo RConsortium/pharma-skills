@@ -1,6 +1,6 @@
 {
   "id": "github-issue-128",
-  "prompt": "Create a **baseline characteristics table** by treatment group. Load `library(r2rtf)`.\n\n**Inputs:** `r2rtf_adsl.rda` downloaded from `https://github.com/Merck/r2rtf/blob/master/data/r2rtf_adsl.rda`.\n\n**Computation:** Create a summary table for age (`AGE`), sex (`SEX`), race (`RACE`), ethnicity (`ETHNIC`), and BMI (`BMI`) stratified by a treatment group variable.\n- The order of categorical variables must follow clinical convention instead of simple alphabetic order (e.g., Other / Missing should be at the end).\n- Format the table following `r2rtf` package grammar. See example: `https://github.com/elong0527/r4csr/edit/main/tlf-baseline.qmd`.\n\n**Required outputs for grading (exact paths):**\n- `outputs/tlf_baseline.rtf`\n\nCreate `outputs/` with `dir.create('outputs', showWarnings=FALSE)` and write RTF with `write_rtf(...)`.",
+  "prompt": "As a statistician, I want to use r2rtf package to create a baseline characteristics table. \n\nPlease first learn the r2rtf package grammar and logic before you start.\n\nGoal: create a table by treatment group for age, sex, race, bmi and ethnicity. \nData: https://github.com/Merck/r2rtf/blob/master/data/r2rtf_adsl.rda \nExample: https://github.com/elong0527/r4csr/edit/main/tlf-baseline.qmd\n\nNote: the order of categorical variable should follow clinical convention instead of simple alphabetic.",
   "expected_output": "A baseline characteristic table by treatment group like https://r4csr.org/tlf-baseline.html",
   "files": [
     "N/A"

@@ -1,0 +1,27 @@
+{
+  "id": "github-issue-132",
+  "prompt": "Create R script to derive categorized `value` columns from numeric thresholds using the `admiral` package and `admiral::exprs()` for the dataset in the input.\n\n   - For `value >= 100`, assign `AVALCAT1` as `\">=100\"` and `AVALCA1N` as `1`.\n   - For `value < 100`, assign `AVALCAT1` as `\"<100\"` and `AVALCA1N` as `2`.\n   \nSave the output dataset as a CSV as `result.csv`.",
+  "expected_output": "An R script that executes successfully. The code should properly construct the conditions using `admiral::exprs()` without syntactical errors, apply the categorization function, and write the final populated dataframe out to a CSV.",
+  "files": [
+    "`inputs/datase.tsv`**",
+    "```tsv",
+    "id\tvalue\tgroup\tcategory",
+    "1\t10.5\tA\tType1",
+    "2\t20.3\tB\tType2",
+    "3\t30.7\tA\tType1",
+    "4\t40.2\tB\tType2",
+    "5\t50.9\tA\tType1",
+    "```"
+  ],
+  "assertions": [
+    "The script must use the `admiral` R package and call `derive_vars_cat()`.",
+    "The script use the `value` column as the source.",
+    "The script strictly uses `admiral::exprs()` to map the conditions.",
+    "The output CSV file `result.csv` must be successfully created.",
+    "The output CSV contains the newly categorized columns `AVALCAT1` and `AVALCA1N`."
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adsl"
+  ]
+}

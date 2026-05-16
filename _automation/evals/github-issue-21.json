@@ -1,6 +1,6 @@
 {
   "id": "github-issue-21",
-  "prompt": "Design a **Phase 3 group-sequential trial** and generate a summary report.\n\n**Inputs:** None.\n\n**Computation:** Design a trial in first-line metastatic NSCLC with the following parameters:\n- Single population, all-comers, 1:1 randomization.\n- Primary endpoint: overall survival (OS).\n- Control arm median OS: 14 months.\n- Target HR: 0.70.\n- Interim analysis: one IA at 70% of events using Lan-DeMets O'Brien-Fleming spending.\n- Futility boundary: non-binding using HSD gamma=-4.\n- Target power: 90%.\n- One-sided alpha: 0.025.\n- Enrollment ramp: 5 pts/month for 3 months, then 15/month for 3 months, then 30/month steady state.\n- Annual dropout: 5%.\n- Minimum follow-up after last patient in: 6 months.\n- Minimum gap between analyses: 6 months.\n- Constraint: Stay under 450 patients total.\n\n**Required outputs for grading (exact paths):**\n- `outputs/multiplicity_diagram.png`\n- `outputs/report.*` (document format such as pdf, html, docx, rtf)\n\nCreate `outputs/` with `dir.create('outputs', showWarnings=FALSE)` and save the summary report and multiplicity diagram there.",
+  "prompt": "I'm designing a Phase 3 trial in first-line metastatic NSCLC. Single population, all-comers. Primary endpoint is overall survival (OS). 1:1 randomization. Control arm median OS is 14 months, and we're powering for a hazard ratio of 0.70. Start with one interim analysis at 70% of events using Lan-DeMets O'Brien-Fleming spending. We also want a non-binding futility boundary using HSD gamma=-4. Target power is 90%, one-sided alpha 0.025. Enrollment ramp: 5 patients/month for 3 months, then 15/month for 3 months, then 30/month steady state. Annual dropout is 5%. Minimum follow-up after last patient in is 6 months, minimum gap between analyses is 6 months. We need to stay under 450 patients total. Generate a report to summarize the design\"",
   "expected_output": "A report summarize the design, with interim analysis plan, multiplicity diagram, boundaries across IAs and sample size and power assessments",
   "files": [
     "none"
@@ -8,8 +8,8 @@
   "assertions": [
     "sample N < 450, OR if N exceeds 450 the skill explicitly flags the constraint conflict and explains why (e.g., gap constraint required larger N)",
     "multiplicity_diagram.png exists",
-    "simulated power within ±2pp of 90%",
-    "simulated type I error within ±0.5pp of 0.025",
+    "simulated power within \u00b12pp of 90%",
+    "simulated type I error within \u00b10.5pp of 0.025",
     "a report document exists",
     "IA/FA gap is evaluated and a second IA is suggested if gap > 18 months",
     "In the recommended design, minimum follow-up after last patient in is 6 months",
