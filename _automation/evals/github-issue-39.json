@@ -5,16 +5,16 @@
   "files": [],
   "assertions": [
     "Output explicitly mentions competing risks, competing event, or non-CV death as a methodological issue, not just a demographic parameter",
-    "`gsd_results.json` contains an all-cause event rate or total hazard that is \u2265 4.0%/year (not just the CV death rate of 2.5%/year alone)",
+    "`gsd_results.json` contains an all-cause event rate or total hazard that is ≥ 4.0%/year (not just the CV death rate of 2.5%/year alone)",
     "Output distinguishes cause-specific from subdistribution estimand, or explicitly states which estimand is assumed and why",
-    "If cause-specific analysis is used, required CV events is in the range 500-560; if Fine-Gray sizing is used, required CV events is \u2265 580",
+    "If cause-specific analysis is used, required CV events is in the range 500-560; if Fine-Gray sizing is used, required CV events is ≥ 580",
     "Output flags that `gsDesign::nSurv()` treats competing events as independent censoring and is not equivalent to Fine-Gray subdistribution sizing",
-    "`gsd_verification_log.md` confirms simulated power \u2265 88% under a model that includes competing event removal from the at-risk set, not a model that ignores non-CV deaths",
-    "Calendar time to final analysis reported in `gsd_results.json` accounts for the competing event reducing the observed CV death rate below 2.5%/year (projected final analysis \u2265 60 months from first patient in)",
+    "`gsd_verification_log.md` confirms simulated power ≥ 88% under a model that includes competing event removal from the at-risk set, not a model that ignores non-CV deaths",
+    "Calendar time to final analysis reported in `gsd_results.json` accounts for the competing event reducing the observed CV death rate below 2.5%/year (projected final analysis ≥ 60 months from first patient in)",
     "`gsd_results.json` must contain \"min_followup\", \"min_gap\", and \"feasible_range\" keys (per the skill's required JSON schema), and the \"feasible_range\" upper bound must be consistent with the 9,000 patient enrollment specified. If the skill uses only the CV death rate (2.5%/year) without competing event adjustment, the projected calendar time to final analysis stored in `gsd_results.json` will be< 60 months, which is a failing answer, as the competing event removal from the at-risk set extends the timeline beyond this"
   ],
   "language": "R",
   "target_skills": [
-    "`group-sequential-design`"
+    "group-sequential-design"
   ]
 }
