@@ -63,12 +63,6 @@ admiral-adae/
 ├── references/
 │   ├── admiral-adae-functions.md     # Function selection guide for ADAE
 │   └── adae-conventions.md           # CDISC ADAE variable and CT conventions
-├── benchmarks/
-│   ├── basic-teae/                   # Standard TEAE derivation, complete data
-│   ├── sar-window/                   # Post-treatment window for SAEs
-│   ├── severity-mapping/             # AESEV / AETOXGR derivation
-│   ├── pre-existing/                 # PREFL derivation from MH
-│   └── smq-grouping/                 # SMQ and custom grouping flags
 └── LICENSE
 ```
 
@@ -89,20 +83,10 @@ library(pharmaversesdtm)  # SDTM input datasets for benchmarks
 library(pharmaverseadam)  # Reference ADaM outputs for benchmarks
 ```
 
-## Running Benchmarks
+## Benchmarks
 
-Each benchmark directory contains:
-
-- `input/` — SDTM datasets (derived from `pharmaversesdtm` or study-specific)
-- `prompt.md` — The natural language prompt given to the agent
-- `expected/` — Expected output variables and values for evaluation
-- `rubric.md` — Scoring criteria for evaluating agent output
-
-To run a benchmark manually:
-
-1. Give the agent the contents of `prompt.md` and the SKILL.md
-2. Execute the generated R code against the input datasets
-3. Compare output against `expected/` using the criteria in `rubric.md`
+Benchmarks are tracked as GitHub issues with the `benchmark` and `eval` labels at
+https://github.com/RConsortium/pharma-skills/issues.
 
 ## Evaluation Criteria
 

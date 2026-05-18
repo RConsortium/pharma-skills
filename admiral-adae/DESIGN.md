@@ -222,15 +222,10 @@ Current SKILL.md implements this correctly.
 
 ---
 
-## Planned Benchmarks
+## Benchmarks
 
-| Benchmark | What it tests | Status |
-|---|---|---|
-| `basic-teae` | Standard TEAE derivation, complete data, all required ADAE variables | In development |
-| `sar-window` | Post-treatment SAE window; end_window variation; annotation checking | Planned |
-| `severity-mapping` | AESEV/AESEVN derivation; correct `case_when()` mapping; numeric companion | Planned |
-| `pre-existing` | PREFL derivation from MH; exact-term vs body-system matching | Planned |
-| `smq-grouping` | SMQ flag derivation via `derive_vars_query()`; query dataset structure | Planned |
+Benchmarks are tracked as GitHub issues with the `benchmark` and `eval` labels at
+https://github.com/RConsortium/pharma-skills/issues.
 
 ---
 
