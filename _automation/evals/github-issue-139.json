@@ -1,0 +1,10 @@
+{
+  "id": "github-issue-139",
+  "prompt": "A PD-(L)1\u2013LAG Inspired Phase 3 Design\n\nClinical context:\n\nYou are a statistician in **January 2022** designing a Phase 3 trial for a novel **Drug A + Drug B** combination in **previously untreated unresectable locally advanced or metastatic melanoma**.\n\nThis is a **PD-(L)1\u2013LAG inspired** design.\n\n- **Drug A**: novel immune-checkpoint antibody targeting LAG biology.\n- **Drug B**: sponsor's PD-(L)1 backbone therapy.\n- **Drug C**: external standard-of-care PD-(L)1 active control.\n\nEarly single-arm Phase 1 data suggest promising activity for Drug A + Drug B, but evidence is limited. A competing PD-(L)1\u2013LAG regimen has shown positive randomized PFS data versus PD-(L)1 monotherapy, supporting the mechanism but raising the bar for differentiation.\n\nPrimary endpoint: **PFS by blinded independent central review**.\n\nOverall one-sided type I error: **0.025**.\n\nDo not use any future Phase 3 results or post-Jan 2022 information.",
+  "expected_output": "Provide:\n\n- Recommended randomization ratio and sample size by arm.\n- Recommended primary comparison strategy.\n- Multiplicity strategy and alpha allocation.\n- PFS event targets and timeline projection.\n- Approximate power under HR **0.70, 0.72, 0.75, 0.80, and 0.85**.\n- Sensitivity to Drug C median PFS assumptions.\n- IA/FA timing, information fractions, alpha spent, Z or p-value boundaries, and approximate HR boundaries if possible.\n- Final recommendation on whether approximately **1,500 patients** is sufficient.",
+  "files": [],
+  "assertions": [],
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}
