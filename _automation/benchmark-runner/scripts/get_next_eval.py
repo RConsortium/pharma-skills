@@ -1,5 +1,6 @@
 import hashlib
 import json
+import random
 import subprocess
 import argparse
 import sys
@@ -84,6 +85,11 @@ def has_matching_benchmark_comment(comments: list[dict], target_sha: str, target
     return False
 
 
+def count_benchmark_comments(comments: list[dict]) -> int:
+    """Count all benchmark result comments regardless of SHA or model."""
+    return sum(1 for c in comments if "Automated Benchmark Results" in c.get("body", ""))
+
+
 def get_issue_num(eval_id: str) -> int:
     match = re.search(r"(\d+)$", eval_id)
     return int(match.group(1)) if match else 0
@@ -123,11 +129,21 @@ def select_eval(
     selection_salt: str,
     now: datetime,
 ) -> dict:
+    def run_count_key(e: dict) -> int:
+        count = e.get("_prior_run_count")
+        if count is None:
+            # Fetch failed: place this issue at a stable-random position so issues
+            # with unknown history don't all cluster at the front or the back.
+            rng = random.Random(f"{e.get('id', '')}:{selection_salt}")
+            return rng.randint(0, 999)
+        return count
+
     if selection_mode == "daily":
         today_last_digit = int(str(now.day)[-1])
         return min(
             eligible_evals,
             key=lambda e: (
+                run_count_key(e),
                 abs((get_issue_num(e["id"]) % 10) - today_last_digit),
                 get_issue_num(e["id"])
             )
@@ -137,6 +153,7 @@ def select_eval(
         return min(
             eligible_evals,
             key=lambda e: (
+                run_count_key(e),
                 distributed_selection_score(e, model, runner_id, selection_salt),
                 get_issue_num(e["id"]),
             )
@@ -174,12 +191,22 @@ def get_skill_content_sha(skill_path: Path) -> str:
     return h.hexdigest()
 
 
-def check_github_comments(issue_id: str, target_sha: str, target_model: str) -> bool:
-    """Return True if a matching benchmark comment already exists (fix 1.1 + 1.3)."""
+def fetch_and_check_comments(
+    issue_id: str, target_sha: str, target_model: str
+) -> tuple[bool, Optional[int]]:
+    """Fetch issue comments once and return (already_done, prior_run_count).
+
+    already_done: True if a benchmark comment matching the current SHA+model exists.
+    prior_run_count: total count of all benchmark result comments regardless of SHA/model,
+                     or None when the fetch failed (caller should treat the issue as
+                     having an unknown run history).
+    """
     match = re.search(r"(\d+)$", issue_id)
     if not match:
-        return False
+        return False, None
     issue_number = match.group(1)
+
+    comments: Optional[list[dict]] = None
 
     try:
         result = subprocess.run(
@@ -191,9 +218,8 @@ def check_github_comments(issue_id: str, target_sha: str, target_model: str) -> 
             capture_output=True, text=True, check=True,
         )
         data = json.loads(result.stdout)
-        return has_matching_benchmark_comment(data.get("comments", []), target_sha, target_model)
+        comments = data.get("comments", [])
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        # If gh is unavailable or unauthenticated, try the REST API fallback.
         err_msg = e.stderr if isinstance(e, subprocess.CalledProcessError) else str(e)
         print(
             f"Warning: gh failed checking comments for issue {issue_id} — "
@@ -207,16 +233,20 @@ def check_github_comments(issue_id: str, target_sha: str, target_model: str) -> 
             file=sys.stderr,
         )
 
-    try:
-        comments = fetch_issue_comments_via_api(issue_number)
-    except (RuntimeError, OSError, urllib.error.URLError, urllib.error.HTTPError) as e:
-        print(
-            f"Warning: GitHub REST API fallback failed checking comments for issue "
-            f"{issue_id} — treating as pending (may cause a duplicate if transient): {e}",
-            file=sys.stderr,
-        )
-        return False
-    return has_matching_benchmark_comment(comments, target_sha, target_model)
+    if comments is None:
+        try:
+            comments = fetch_issue_comments_via_api(issue_number)
+        except (RuntimeError, OSError, urllib.error.URLError, urllib.error.HTTPError) as e:
+            print(
+                f"Warning: GitHub REST API fallback failed checking comments for issue "
+                f"{issue_id} — treating as pending with unknown run count: {e}",
+                file=sys.stderr,
+            )
+            return False, None
+
+    already_done = has_matching_benchmark_comment(comments, target_sha, target_model)
+    prior_count = count_benchmark_comments(comments)
+    return already_done, prior_count
 
 
 def build_agent_prompts(eval_case: dict) -> None:
@@ -407,7 +437,9 @@ def main() -> None:
 
         skill_sha = get_skill_content_sha(skill_path)
 
-        if not check_github_comments(eval_id, skill_sha, args.model):
+        already_done, prior_run_count = fetch_and_check_comments(eval_id, skill_sha, args.model)
+        if not already_done:
+            eval_case["_prior_run_count"] = prior_run_count
             eval_case["_skill_name"] = primary_skill_name
             eval_case["_skill_sha"] = skill_sha
             eval_case["_skill_dir"] = str(skill_path.relative_to(REPO_ROOT))
