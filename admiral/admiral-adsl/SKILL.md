@@ -11,6 +11,7 @@ metadata:
   author: Navitas Data Sciences
   version: "0.2"
   pharmaverse: "true"
+  parent: admiral
 compatibility: >
   Requires R with admiral, dplyr, lubridate, and pharmaversesdtm installed.
   Designed for use in a GxP-compliant environment with access to SDTM datasets
@@ -18,6 +19,10 @@ compatibility: >
 ---
 
 # admiral-adsl
+
+> Shared conventions (library setup, pipe style, date rules, flag convention,
+> `# REVIEW:` annotations, `stopifnot()` patterns) are defined in the parent
+> [`../SKILL.md`](../SKILL.md). The workflow below is ADSL-specific.
 
 Derives a CDISC-conformant ADSL dataset using {admiral}. Outputs executable,
 QC-ready R code with derivation logic traceable to the ADaM specification.

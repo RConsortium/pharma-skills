@@ -8,10 +8,14 @@ This repository is a collection of agent skills for pharmaceutical R&D, built fo
 
 ```
 pharma_skills/
-├── group-sequential-design/   ← Main clinical trial design skill
+├── group-sequential-design/   ← Clinical trial design skill
 │   ├── SKILL.md               ← Agent workflow instructions
 │   ├── evals/evals.json       ← Benchmark test cases
 │   └── scripts/               ← Supporting R and Python scripts
+├── admiral/                   ← admiral ADaM derivation skill family
+│   ├── SKILL.md               ← Shared conventions (date rules, flags, QC)
+│   ├── admiral-adsl/          ← Subject-level dataset (ADSL)
+│   └── admiral-bds/           ← BDS findings datasets (ADVS, ADLB)
 ├── _automation/               ← Automation skills (see below)
 │   ├── benchmark-runner/      ← A/B benchmark orchestration
 │   ├── issue-to-eval/         ← GitHub Issue → evals.json converter
@@ -26,6 +30,8 @@ pharma_skills/
 | Skill | When to invoke |
 |---|---|
 | `group-sequential-design` | "design a Phase 3 trial", "group sequential design", "alpha spending", "interim analysis planning" |
+| `admiral/admiral-adsl` | "derive ADSL", "create subject-level dataset", "admiral ADSL" |
+| `admiral/admiral-bds` | "derive ADVS", "derive ADLB", "vital signs dataset", "lab dataset", "BDS findings", "admiral BDS" |
 | `benchmark-runner` | "run benchmarks", "compare skill performance", "eval the skills" |
 | `benchmark-summary` | "update the benchmark summary", "generate benchmark analysis", "summarize skill vs no-skill results", "add failure patterns", produce `benchmark_analysis_*.md` |
 | `issue-to-eval` | "parse this issue into a benchmark", "sync all benchmark issues" |

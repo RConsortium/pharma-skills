@@ -51,20 +51,22 @@ Use `admiral-adsl` when you need to:
 ## Skill Files
 
 ```
-admiral-adsl/
-├── SKILL.md                          # Core agent instructions and workflow
-├── DESIGN.md                         # Scope, constraints, design decisions
-├── README.md                         # This file
-├── references/
-│   ├── admiral-functions.md          # Function selection guide
-│   └── adsl-conventions.md           # CDISC variable and CT conventions
-├── benchmarks/
-│   ├── basic-two-arm/                # Simple parallel-group study
-│   ├── multi-arm/                    # Three or more treatment arms
-│   ├── missing-dates/                # Partial --DTC imputation
-│   ├── early-discontinuation/        # Subjects who did not complete
-│   └── screen-failure/               # Subjects who never received treatment
-└── LICENSE
+admiral/
+├── SKILL.md                          # Shared conventions (parent)
+└── admiral-adsl/
+    ├── SKILL.md                      # Core agent instructions and workflow
+    ├── DESIGN.md                     # Scope, constraints, design decisions
+    ├── README.md                     # This file
+    ├── references/
+    │   ├── admiral-functions.md      # Function selection guide
+    │   └── adsl-conventions.md       # CDISC variable and CT conventions
+    ├── benchmarks/
+    │   ├── basic-two-arm/            # Simple parallel-group study
+    │   ├── multi-arm/                # Three or more treatment arms
+    │   ├── missing-dates/            # Partial --DTC imputation
+    │   ├── early-discontinuation/    # Subjects who did not complete
+    │   └── screen-failure/           # Subjects who never received treatment
+    └── LICENSE
 ```
 
 ## Dependencies
@@ -132,11 +134,11 @@ Agent output is evaluated against the following dimensions:
 This skill is the first in a planned family of admiral ADaM derivation skills:
 
 ```
-admiral-adsl        ← this skill (subject-level foundation)
-admiral-adae        ← adverse events (OCCDS)
-admiral-adtte       ← time-to-event (BDS-TTE)
-admiral-adex        ← exposure (BDS)
-admiral-bds         ← general BDS (findings, efficacy)
+admiral/
+├── SKILL.md          ← shared conventions (parent)
+├── admiral-adsl/     ← this skill (subject-level foundation)
+├── admiral-bds/      ← BDS findings: ADVS, ADLB
+└── admiral-adae/     ← adverse events, OCCDS (planned)
 ```
 
 ADSL must be derived before any other ADaM dataset, as population flags and
@@ -154,7 +156,7 @@ treatment variables from ADSL are merged into all downstream datasets.
 
 Benchmark additions and refinements to SKILL.md are welcome. Please open an
 issue before submitting a PR to discuss the proposed change. See the repo-level
-[LIFECYCLE.md](../LIFECYCLE.md) for the skill development process.
+[LIFECYCLE.md](../../LIFECYCLE.md) for the skill development process.
 
 ## Author
 

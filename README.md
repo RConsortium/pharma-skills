@@ -8,7 +8,8 @@ A collection of agent skills for pharmaceutical R&D.
 |-------|-------------|
 | [group-sequential-design](group-sequential-design/) | Design group sequential clinical trials for survival endpoints (OS, PFS, DFS) with interim analyses, spending functions, multiplicity, and event/enrollment prediction |
 | [clinical-trial-simulation](clinical-trial-simulation/) | Design and simulate clinical trials using the TrialSimulator R package and produce a QC-ready build-order-spine report. Design-agnostic: composes from independent building blocks (endpoints, arms, milestones, regimens) rather than following a fixed catalog of design templates. |
-| [admiral-adsl](admiral-adsl/) | Derive ADaM Subject-Level Analysis Datasets (ADSL) from SDTM domains using the {admiral} R package. Encodes the workflow, function selection logic, and CDISC conventions for QC-ready, submission-traceable R code. |
+| [admiral/admiral-adsl](admiral/admiral-adsl/) | Derive ADaM Subject-Level Analysis Datasets (ADSL) from SDTM domains using the {admiral} R package. Encodes the workflow, function selection logic, and CDISC conventions for QC-ready, submission-traceable R code. |
+| [admiral/admiral-bds](admiral/admiral-bds/) | Derive ADaM BDS findings datasets (ADVS, ADLB) from SDTM VS/LB domains. Covers parameter assignment, baseline flagging, change from baseline, visit windowing, and ADLB normal range derivations. |
 
 ## Usage
 
