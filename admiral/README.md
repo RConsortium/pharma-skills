@@ -9,7 +9,7 @@ R package and the pharmaverse ecosystem.
 |---|---|---|---|
 | [admiral-adsl](admiral-adsl/) | Subject-Level Analysis Dataset | ADSL | Available |
 | [admiral-bds](admiral-bds/) | BDS Findings (ADVS, ADLB) | BDS | Available |
-| admiral-adae | Adverse Events | OCCDS | Planned |
+| [admiral-adae](admiral-adae/) | Adverse Events | OCCDS | Available |
 | admiral-adtte | Time to Event | BDS-TTE | Planned |
 
 ## Structure
@@ -25,7 +25,13 @@ admiral/
 │   ├── README.md
 │   ├── references/
 │   └── benchmarks/
-└── admiral-bds/          ← BDS findings skill (ADVS, ADLB)
+├── admiral-bds/          ← BDS findings skill (ADVS, ADLB)
+│   ├── SKILL.md
+│   ├── DESIGN.md
+│   ├── README.md
+│   ├── references/
+│   └── benchmarks/
+└── admiral-adae/         ← Adverse events skill (ADAE)
     ├── SKILL.md
     ├── DESIGN.md
     ├── README.md
