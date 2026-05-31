@@ -45,14 +45,33 @@ class TestNormalizeModelName(unittest.TestCase):
 
 
 class TestEvalSelection(unittest.TestCase):
-    def _eval_cases(self):
+    def _eval_cases(self, prior_run_count=0):
+        # Equal prior run counts so the secondary tie-break (day-digit /
+        # distributed hash) governs selection. select_eval now prioritizes
+        # the least-benchmarked issue first (#140), so the run count is the
+        # primary sort key.
         return [
-            {"id": "github-issue-21", "_skill_sha": "sha21"},
-            {"id": "github-issue-22", "_skill_sha": "sha22"},
-            {"id": "github-issue-23", "_skill_sha": "sha23"},
-            {"id": "github-issue-24", "_skill_sha": "sha24"},
-            {"id": "github-issue-27", "_skill_sha": "sha27"},
+            {"id": "github-issue-21", "_skill_sha": "sha21", "_prior_run_count": prior_run_count},
+            {"id": "github-issue-22", "_skill_sha": "sha22", "_prior_run_count": prior_run_count},
+            {"id": "github-issue-23", "_skill_sha": "sha23", "_prior_run_count": prior_run_count},
+            {"id": "github-issue-24", "_skill_sha": "sha24", "_prior_run_count": prior_run_count},
+            {"id": "github-issue-27", "_skill_sha": "sha27", "_prior_run_count": prior_run_count},
         ]
+
+    def test_least_benchmarked_issue_selected_first(self):
+        # The primary sort key is _prior_run_count: the issue with the fewest
+        # prior benchmark runs wins regardless of the secondary tie-break.
+        cases = self._eval_cases(prior_run_count=5)
+        cases[2]["_prior_run_count"] = 0  # github-issue-23 has been run the least
+        selected = gne.select_eval(
+            cases,
+            "test-model",
+            "distributed",
+            "alice",
+            "2026-04-21",
+            datetime(2026, 4, 21, tzinfo=timezone.utc),
+        )
+        self.assertEqual(selected["id"], "github-issue-23")
 
     def test_daily_selection_preserves_day_digit_logic(self):
         selected = gne.select_eval(
@@ -111,6 +130,11 @@ class TestEvalSelection(unittest.TestCase):
 
 
 class TestCheckGithubComments(unittest.TestCase):
+    """fetch_and_check_comments returns (already_done, prior_run_count).
+
+    These tests assert on the already_done flag (the first element).
+    """
+
     def _make_comment(self, sha, model_display):
         return {
             "body": (
@@ -128,7 +152,9 @@ class TestCheckGithubComments(unittest.TestCase):
             stdout=json.dumps({"comments": [self._make_comment(sha, model)]}),
             returncode=0,
         )
-        self.assertTrue(gne.check_github_comments("github-issue-21", sha, model))
+        already_done, prior_count = gne.fetch_and_check_comments("github-issue-21", sha, model)
+        self.assertTrue(already_done)
+        self.assertEqual(prior_count, 1)
 
     @patch("get_next_eval.subprocess.run")
     def test_variant_model_name_still_matches(self, mock_run):
@@ -140,7 +166,9 @@ class TestCheckGithubComments(unittest.TestCase):
             returncode=0,
         )
         # Pass with hyphens — should still match after normalisation
-        self.assertTrue(gne.check_github_comments("github-issue-21", sha, "claude-sonnet-4-6"))
+        self.assertTrue(
+            gne.fetch_and_check_comments("github-issue-21", sha, "claude-sonnet-4-6")[0]
+        )
 
     @patch("get_next_eval.subprocess.run")
     def test_different_sha_returns_false(self, mock_run):
@@ -150,24 +178,35 @@ class TestCheckGithubComments(unittest.TestCase):
             ),
             returncode=0,
         )
-        self.assertFalse(
-            gne.check_github_comments("github-issue-21", "new-sha", "claude-sonnet-4-6")
+        already_done, prior_count = gne.fetch_and_check_comments(
+            "github-issue-21", "new-sha", "claude-sonnet-4-6"
         )
+        self.assertFalse(already_done)
+        # A benchmark comment exists (for the old sha) so the prior run count is 1.
+        self.assertEqual(prior_count, 1)
 
     @patch("get_next_eval.subprocess.run")
     def test_no_comments_returns_false(self, mock_run):
         mock_run.return_value = MagicMock(stdout=json.dumps({"comments": []}), returncode=0)
-        self.assertFalse(
-            gne.check_github_comments("github-issue-21", "abc123", "claude-sonnet-4-6")
+        already_done, prior_count = gne.fetch_and_check_comments(
+            "github-issue-21", "abc123", "claude-sonnet-4-6"
         )
+        self.assertFalse(already_done)
+        self.assertEqual(prior_count, 0)
 
+    @patch("get_next_eval.fetch_issue_comments_via_api")
     @patch("get_next_eval.subprocess.run")
-    def test_gh_failure_returns_false_with_warning(self, mock_run):
+    def test_gh_failure_returns_false_with_warning(self, mock_run, mock_api):
         import subprocess
         mock_run.side_effect = subprocess.CalledProcessError(1, "gh", stderr="auth error")
-        # Should not raise — returns False and prints warning
-        result = gne.check_github_comments("github-issue-21", "abc123", "claude-sonnet-4-6")
-        self.assertFalse(result)
+        mock_api.side_effect = RuntimeError("GH_TOKEN or GITHUB_TOKEN is not set")
+        # Should not raise — API fallback fails, so the run history is
+        # unknown: (False, None).
+        already_done, prior_count = gne.fetch_and_check_comments(
+            "github-issue-21", "abc123", "claude-sonnet-4-6"
+        )
+        self.assertFalse(already_done)
+        self.assertIsNone(prior_count)
 
     @patch("get_next_eval.fetch_issue_comments_via_api")
     @patch("get_next_eval.subprocess.run")
@@ -177,18 +216,26 @@ class TestCheckGithubComments(unittest.TestCase):
         model = "claude-sonnet-4-6"
         mock_run.side_effect = subprocess.CalledProcessError(1, "gh", stderr="auth error")
         mock_api.return_value = [self._make_comment(sha, model)]
-        self.assertTrue(gne.check_github_comments("github-issue-21", sha, model))
+        self.assertTrue(gne.fetch_and_check_comments("github-issue-21", sha, model)[0])
         mock_api.assert_called_once_with("21")
 
+    @patch("get_next_eval.fetch_issue_comments_via_api")
     @patch("get_next_eval.subprocess.run")
-    def test_gh_missing_returns_false_with_warning(self, mock_run):
+    def test_gh_missing_returns_false_with_warning(self, mock_run, mock_api):
         mock_run.side_effect = FileNotFoundError(2, "No such file or directory", "gh")
-        # Should not raise when gh binary is absent — returns False and prints warning
-        result = gne.check_github_comments("github-issue-21", "abc123", "claude-sonnet-4-6")
-        self.assertFalse(result)
+        mock_api.side_effect = RuntimeError("GH_TOKEN or GITHUB_TOKEN is not set")
+        # Should not raise when gh binary is absent — API fallback fails, so the
+        # run history is unknown: (False, None).
+        already_done, prior_count = gne.fetch_and_check_comments(
+            "github-issue-21", "abc123", "claude-sonnet-4-6"
+        )
+        self.assertFalse(already_done)
+        self.assertIsNone(prior_count)
 
     def test_invalid_issue_id_returns_false(self):
-        self.assertFalse(gne.check_github_comments("not-a-valid-id", "sha", "model"))
+        already_done, prior_count = gne.fetch_and_check_comments("not-a-valid-id", "sha", "model")
+        self.assertFalse(already_done)
+        self.assertIsNone(prior_count)
 
 
 class TestGetSkillContentSha(unittest.TestCase):
