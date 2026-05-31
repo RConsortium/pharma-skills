@@ -1,0 +1,27 @@
+{
+  "id": "github-issue-137",
+  "prompt": "I need to build an ADAE dataset for a Phase 3 safety analysis. I have the\nstandard pharmaverse SDTM AE domain and a completed ADSL. Please derive all\nrequired analysis variables: analysis dates, study days, the treatment-emergent\nflag, severity, seriousness, causality, and outcome. Use a 30-day post-treatment\nwindow for TRTEMFL.",
+  "expected_output": "Executable R script using `{admiral}` that produces a valid ADAE dataset from\n`pharmaversesdtm::ae` and `pharmaverseadam::adsl`. The script should execute\nwithout errors and produce an output dataset with one record per AE per subject.\n\nKey variables expected in the output:\n\n| Variable | Source / derivation |\n|---|---|\n| ASTDT, ASTDTF | `derive_vars_dt()` from AESTDTC, imputation = \"first\" |\n| AENDT, AENDTF | `derive_vars_dt()` from AEENDTC, imputation = \"last\" |\n| ASTDY, AENDY | `derive_vars_dy()` relative to TRTSDT |\n| TRTEMFL | `derive_var_trtemfl()`, end_window = 30 (annotated) |\n| AESEV | Carried from AE.AESEV |\n| AESEVN | Integer 1/2/3 via `case_when()` |\n| AESER, AESDTH | Recoded to \"Y\"/NA |\n| AEOUT, AEREL, AEACN | Carried from AE with controlled terminology alignment |\n\nThe script must end with a check that all required variables are present and\nthat the output row count is at least equal to the input AE row count.",
+  "files": [],
+  "assertions": [
+    "`library()` calls include at minimum `admiral`, `dplyr`, and `lubridate`",
+    "DOMAIN is removed from AE before any merge or derivation step",
+    "ADSL is merged using `derive_vars_merged()` with an explicit `select()` limiting to required variables \u2014 not `select(everything())`",
+    "ASTDT and AENDT are derived via `derive_vars_dt()`, not `as.Date()` applied directly to a DTC variable",
+    "ASTDTF and AENDTF are present in the output dataset",
+    "ASTDY and AENDY are derived via `derive_vars_dy()`, not manual arithmetic (`ASTDT - TRTSDT + 1` or similar)",
+    "TRTEMFL is derived via `derive_var_trtemfl()` \u2014 not a manual `if_else()` or `case_when()` date comparison",
+    "The `end_window` argument in `derive_var_trtemfl()` is accompanied by a `# REVIEW:` comment",
+    "TRTEMFL values are \"Y\" or NA \u2014 no \"N\" values present",
+    "AESER and AESDTH values are \"Y\" or NA \u2014 no \"N\" values present",
+    "AESEVN is derived as an integer via `case_when()` from character AESEV \u2014 not by coercing AESEV directly to numeric",
+    "A `stopifnot(nrow(ae) > 0)` or equivalent assertion is present at data load",
+    "A required-variable presence check using `stop()` or `stopifnot()` is present before the final dataset",
+    "`nrow(adae) >= nrow(ae)` \u2014 output row count is at least equal to input AE row count",
+    "The script runs end-to-end without errors against `pharmaversesdtm::ae` and `pharmaverseadam::adsl`"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adae"
+  ]
+}
