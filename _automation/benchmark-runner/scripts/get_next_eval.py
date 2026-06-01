@@ -67,20 +67,42 @@ def fetch_issue_comments_via_api(issue_number: str, repo: str = GITHUB_REPO) -> 
 
 
 def has_matching_benchmark_comment(comments: list[dict], target_sha: str, target_model: str) -> bool:
-    """Return True when comments contain a benchmark result for this SHA/model."""
+    """Return True when comments contain a benchmark result for this SHA/model.
+
+    Checks three formats:
+    1. BENCHMARK_COMPLETE HTML marker (full SHA in JSON payload) — canonical check.
+       Present in all comments produced by the current runner. This is the only
+       format that is both unambiguous and machine-readable.
+    2. Skill version table row with full SHA — used by early runner versions before
+       the display was shortened to 7 chars.
+    3. Skill version table row with 7-char prefix — used by runners that truncate
+       the SHA for display. Matched against the first 7 hex chars only.
+    """
     norm_target = normalize_model_name(target_model)
+    short_sha = target_sha[:7]
 
     for comment in comments:
         body = comment.get("body", "")
+        # Normalize the entire comment body so variant spellings still match (fix 1.3)
+        if norm_target not in normalize_model_name(body):
+            continue
+
+        # Format 1 — BENCHMARK_COMPLETE marker (most reliable)
+        if f'"skill_sha":"{target_sha}"' in body:
+            return True
+
         if "Automated Benchmark Results" not in body:
             continue
+
+        # Format 2 — full SHA in skill-version table (early runner format)
+        # Format 3 — 7-char truncated SHA in skill-version table (current runner format)
         has_sha = (
             f"Skill version: `{target_sha}`" in body
             or f"**Skill version** | `{target_sha}`" in body
+            or f"Skill version: `{short_sha}`" in body
+            or f"**Skill version** | `{short_sha}`" in body
         )
-        # Normalize the entire comment body so variant spellings still match (fix 1.3)
-        has_model = norm_target in normalize_model_name(body)
-        if has_sha and has_model:
+        if has_sha:
             return True
     return False
 
@@ -398,6 +420,16 @@ def main() -> None:
             "Set explicitly to reproduce a prior dispatch order."
         ),
     )
+    parser.add_argument(
+        "--completed-issues",
+        default="",
+        help=(
+            "Comma-separated eval IDs already confirmed complete by an external "
+            "Phase Detection scan (e.g. from MCP-based comment inspection). "
+            "These are skipped without calling gh or the REST API, so the caller "
+            "can inject known-done issues when neither gh nor GH_TOKEN is available."
+        ),
+    )
     args = parser.parse_args()
 
     # Discover evals from the centralized evals directory
@@ -411,6 +443,18 @@ def main() -> None:
     selection_salt = args.selection_salt or get_default_selection_salt(dispatch_now)
     eligible_evals: list[dict] = []
 
+    # Pre-confirmed complete IDs injected by the caller (e.g. from MCP Phase Detection).
+    # These are skipped without hitting gh or the REST API.
+    externally_completed: set[str] = {
+        x.strip() for x in args.completed_issues.split(",") if x.strip()
+    }
+    if externally_completed:
+        print(
+            f"[get_next_eval] Skipping {len(externally_completed)} externally-confirmed "
+            f"complete issue(s): {', '.join(sorted(externally_completed))}",
+            file=sys.stderr,
+        )
+
     for eval_file in sorted(evals_dir.glob("*.json")):
         try:
             with open(eval_file, encoding="utf-8") as f:
@@ -421,6 +465,10 @@ def main() -> None:
 
         eval_id = eval_case.get("id")
         if args.priority_issue and eval_id != args.priority_issue:
+            continue
+
+        # Skip issues already confirmed complete by Phase Detection.
+        if eval_id in externally_completed:
             continue
 
         target_skills = eval_case.get("target_skills", [])
