@@ -1,0 +1,9 @@
+{
+  "eval_id": "github-issue-141",
+  "model": "claude-sonnet-4-6",
+  "skill_sha": "818ce387b22476327af40b475875bb6adf7fa8b33d69ac92a2459422ef4cf252",
+  "status": "partial_a",
+  "tokens_a": 252973,
+  "run_date": "2026-06-01T18:55Z",
+  "partial_comment_id": 4595566884
+}
