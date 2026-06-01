@@ -184,6 +184,27 @@ def select_eval(
     raise ValueError(f"Unsupported selection mode: {selection_mode}")
 
 
+def find_skill_path(skill_name: str, repo_root: Path) -> Optional[Path]:
+    """Resolve a skill name to its directory, handling nested layouts.
+
+    Tries in order:
+      1. REPO_ROOT/<skill_name>          (e.g. group-sequential-design)
+      2. Any sub-directory of REPO_ROOT named <skill_name> that contains SKILL.md
+         (e.g. admiral/admiral-adsl → matched when skill_name='admiral-adsl')
+
+    Returns None if no match is found.
+    """
+    direct = repo_root / skill_name
+    if (direct / "SKILL.md").exists():
+        return direct
+
+    for candidate in repo_root.rglob(skill_name):
+        if candidate.is_dir() and (candidate / "SKILL.md").exists():
+            return candidate
+
+    return None
+
+
 def get_skill_content_sha(skill_path: Path) -> str:
     """SHA256 over the actual content of bundled skill files (.md, .py), excluding evals/.
 
@@ -430,6 +451,18 @@ def main() -> None:
             "can inject known-done issues when neither gh nor GH_TOKEN is available."
         ),
     )
+    parser.add_argument(
+        "--phase-detection-cache",
+        metavar="PATH",
+        help=(
+            "Path to a JSON cache file produced by scan_phase_detection.py --scan-dir. "
+            "When provided, issues marked COMPLETE or PARTIAL in the cache are skipped "
+            "without touching gh or the REST API. Issues marked UNDONE skip the "
+            "fetch_and_check_comments call entirely (trusted as pending). "
+            "This is the preferred path when gh and GH_TOKEN are both unavailable "
+            "and Phase Detection was done via MCP tools."
+        ),
+    )
     args = parser.parse_args()
 
     # Discover evals from the centralized evals directory
@@ -443,15 +476,47 @@ def main() -> None:
     selection_salt = args.selection_salt or get_default_selection_salt(dispatch_now)
     eligible_evals: list[dict] = []
 
-    # Pre-confirmed complete IDs injected by the caller (e.g. from MCP Phase Detection).
-    # These are skipped without hitting gh or the REST API.
+    # --- Build skip / trust sets from Phase Detection cache or --completed-issues ---
+    #
+    # phase_cache_statuses maps eval_id → "COMPLETE" | "PARTIAL" | "UNDONE"
+    # from scan_phase_detection.py --scan-dir output.  When present it is the
+    # authoritative source and overrides --completed-issues for any issue it covers.
+    #
+    phase_cache_statuses: dict[str, str] = {}
+    if args.phase_detection_cache:
+        try:
+            with open(args.phase_detection_cache, encoding="utf-8") as f:
+                cache = json.load(f)
+            phase_cache_statuses = cache.get("statuses", {})
+            n_complete = sum(1 for s in phase_cache_statuses.values() if s == "COMPLETE")
+            n_partial  = sum(1 for s in phase_cache_statuses.values() if s == "PARTIAL")
+            n_undone   = sum(1 for s in phase_cache_statuses.values() if s == "UNDONE")
+            print(
+                f"[get_next_eval] Phase Detection cache loaded from {args.phase_detection_cache}: "
+                f"{n_complete} COMPLETE, {n_partial} PARTIAL (skipped), {n_undone} UNDONE",
+                file=sys.stderr,
+            )
+        except (OSError, json.JSONDecodeError) as e:
+            print(
+                f"Warning: could not read --phase-detection-cache "
+                f"{args.phase_detection_cache}: {e} — ignoring cache",
+                file=sys.stderr,
+            )
+
+    # --completed-issues provides additional confirmed-complete IDs (e.g. passed
+    # inline when a cache file was not written).
     externally_completed: set[str] = {
         x.strip() for x in args.completed_issues.split(",") if x.strip()
     }
+    # Merge cache COMPLETE entries into the externally_completed set.
+    for eid, status in phase_cache_statuses.items():
+        if status == "COMPLETE":
+            externally_completed.add(eid)
+
     if externally_completed:
         print(
-            f"[get_next_eval] Skipping {len(externally_completed)} externally-confirmed "
-            f"complete issue(s): {', '.join(sorted(externally_completed))}",
+            f"[get_next_eval] Skipping {len(externally_completed)} confirmed-complete "
+            f"issue(s): {', '.join(sorted(externally_completed))}",
             file=sys.stderr,
         )
 
@@ -467,8 +532,16 @@ def main() -> None:
         if args.priority_issue and eval_id != args.priority_issue:
             continue
 
-        # Skip issues already confirmed complete by Phase Detection.
+        # Skip issues confirmed complete (from cache or --completed-issues).
         if eval_id in externally_completed:
+            continue
+
+        # Skip issues the cache marks as PARTIAL — those need Phase 2, not Phase 1.
+        if phase_cache_statuses.get(eval_id) == "PARTIAL":
+            print(
+                f"[get_next_eval] Skipping {eval_id}: Phase 2 pending (PARTIAL in cache)",
+                file=sys.stderr,
+            )
             continue
 
         target_skills = eval_case.get("target_skills", [])
@@ -479,13 +552,23 @@ def main() -> None:
         if args.priority_skill and primary_skill_name != args.priority_skill:
             continue
 
-        skill_path = REPO_ROOT / primary_skill_name
-        if not (skill_path / "SKILL.md").exists():
+        skill_path = find_skill_path(primary_skill_name, REPO_ROOT)
+        if skill_path is None:
+            print(
+                f"[get_next_eval] Skipping {eval_id}: skill '{primary_skill_name}' "
+                "not found (no SKILL.md in any matching directory)",
+                file=sys.stderr,
+            )
             continue
 
         skill_sha = get_skill_content_sha(skill_path)
 
-        already_done, prior_run_count = fetch_and_check_comments(eval_id, skill_sha, args.model)
+        # If the cache already confirmed this issue is UNDONE, skip the GitHub
+        # comment fetch entirely — the cache is the authoritative source.
+        if phase_cache_statuses.get(eval_id) == "UNDONE":
+            already_done, prior_run_count = False, None
+        else:
+            already_done, prior_run_count = fetch_and_check_comments(eval_id, skill_sha, args.model)
         if not already_done:
             eval_case["_prior_run_count"] = prior_run_count
             eval_case["_skill_name"] = primary_skill_name

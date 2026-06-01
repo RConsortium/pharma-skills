@@ -44,20 +44,62 @@ For release-asset upload there is currently no MCP tool — use `gh release uplo
 
 ## Phase Detection — Run Before Any Other Step
 
-Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B + scoring) **for the model you are running**:
+Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B + scoring) **for the model you are running**.
 
-1. List all eval files: `ls _automation/evals/*.json` — extract each `id` field (e.g. `github-issue-27` → issue **#27**).
+### Phase Detection via MCP (preferred — no gh or token required)
 
-2. For each issue number, fetch comments using whichever GitHub access method is available (see above). Scan each comment body for a `<!-- BENCHMARK_PARTIAL:` marker.
+Use `mcp__github__issue_read` to fetch comments for each issue, save results to files, then classify them with the helper script. This works in any environment where MCP GitHub tools are available.
 
-3. Filter and evaluate each `BENCHMARK_PARTIAL` marker found:
-   - **Skip if `state.model` does not match `{CURRENT_MODEL_NAME}`.** This is critical: a partial run by another user on a different model belongs to that user. Only pick up partials matching your current model.
-   - Skip if a later comment on the same issue contains a matching `<!-- BENCHMARK_COMPLETE: {"eval_id":"{same}","model":"{same}"` — Phase 2 already finished for that combination.
-   - Otherwise → **Phase 2 candidate**. Extract the JSON from the marker (see format below) and note the partial comment `id`.
+```bash
+# 1. Create a staging directory for MCP result files
+mkdir -p /tmp/phase_detection
 
-4. **Decision:**
-   - One or more Phase 2 candidates found → pick the **oldest** (earliest `created_at`) → **enter Phase 2** with that state.
-   - No candidates for your model → **enter Phase 1**.
+# 2. For each eval ID (from ls _automation/evals/*.json | xargs ...):
+#    Call mcp__github__issue_read(method="get_comments", owner="rconsortium",
+#    repo="pharma_skills", issue_number=N, perPage=100)
+#    Save the result to /tmp/phase_detection/<eval_id>.json
+#    (MCP results that exceed the inline token limit are auto-saved to files;
+#     copy them into /tmp/phase_detection/<eval_id>.json)
+
+# 3. Classify all issues and write the cache
+SKILL_SHA=$(python3 -c "
+from _automation.benchmark_runner.scripts.get_next_eval import get_skill_content_sha
+# or compute directly:
+import hashlib, os
+from pathlib import Path
+" 2>/dev/null)
+# Easier: let get_next_eval.py compute the SHA; or hard-code the current SHA
+# from a recent run (printed in BENCHMARK_PARTIAL comments as 'skill_sha').
+
+python3 _automation/benchmark-runner/scripts/scan_phase_detection.py \
+  --scan-dir /tmp/phase_detection/ \
+  --model {CURRENT_MODEL_NAME} \
+  --skill-sha {CURRENT_SKILL_SHA} \
+  --write-cache /tmp/phase_detection_cache.json
+```
+
+The cache file (`/tmp/phase_detection_cache.json`) contains a `statuses` map:
+- `"COMPLETE"` — Phase 2 already done for this model+SHA; skip entirely.
+- `"PARTIAL"` — Phase 1 ran but Phase 2 never finished; this issue needs Phase 2.
+- `"UNDONE"` — no benchmark yet; eligible for Phase 1.
+
+**Decision from the cache:**
+- One or more `PARTIAL` entries → pick the one with the earliest `oldest_partial_at` in `partial_details` → **enter Phase 2** with that state.
+- No `PARTIAL` entries → **enter Phase 1**, passing `--phase-detection-cache /tmp/phase_detection_cache.json` to `get_next_eval.py`.
+
+### Phase Detection via gh / REST (fallback)
+
+If MCP tools are unavailable but `gh` or `GH_TOKEN` is set, Phase Detection is handled automatically inside `get_next_eval.py` — no cache file needed. The script calls `gh issue view` or the REST API for each eval during Step 1.
+
+### Important: BENCHMARK_COMPLETE detection
+
+`scan_phase_detection.py` (and `has_matching_benchmark_comment` in `get_next_eval.py`)
+check for completion in three formats, in priority order:
+1. `<!-- BENCHMARK_COMPLETE: {"skill_sha":"<full SHA>",...} -->` — canonical, most reliable.
+2. `**Skill version** | \`<full SHA>\`` in a results table (early runner format).
+3. `**Skill version** | \`<7-char prefix>\`` in a results table (current display format).
+
+All three formats encode the same SHA; always pass the **full 64-character SHA** to the scripts.
 
 **BENCHMARK_PARTIAL marker format** (hidden HTML comment embedded in the issue comment body):
 ```
@@ -85,16 +127,28 @@ Exits non-zero on failure — stop and report the error. Do not proceed.
 ### Step 1 — Discover Next Eval
 
 ```bash
+# With MCP-based Phase Detection cache (preferred — no gh/token needed):
+python3 _automation/benchmark-runner/scripts/get_next_eval.py \
+  --model {CURRENT_MODEL_NAME} \
+  --phase-detection-cache /tmp/phase_detection_cache.json
+
+# Without cache (gh or GH_TOKEN must be available):
 python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {CURRENT_MODEL_NAME}
 ```
 
 - `STATUS: UP_TO_DATE` → all evals complete for this model+SHA. Exit.
 - JSON output → parse to a temp file; extract `_skill_name`, `_skill_sha`, `_skill_content`, `_bundled_resources`, `_prompt_a`, `_blinded_scoring_map`, and the issue number from `id`.
 
+The `--phase-detection-cache` file (written by `scan_phase_detection.py --scan-dir`) tells
+`get_next_eval.py` which issues are COMPLETE (skip), PARTIAL (skip — Phase 2 pending), or
+UNDONE (eligible, skip the gh/REST comment check). This is the correct path when `gh` and
+`GH_TOKEN` are both unavailable.
+
 Optional flags:
 ```bash
 --runner-id {YOUR_NAME}           # stable per-person ordering
 --priority-issue github-issue-{N} # force a specific eval
+--completed-issues id1,id2,...    # inline list of confirmed-complete IDs (simpler alternative to cache)
 ```
 
 ### Step 2 — Run Agent A (With Skill)
