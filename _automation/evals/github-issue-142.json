@@ -28,6 +28,6 @@
   ],
   "language": "R",
   "target_skills": [
-    "admiral-adsl"
+    "admiral/admiral-adsl"
   ]
 }
