@@ -167,3 +167,4 @@ disease-agnostic and should be preserved.
 
 ## In progress
 1. ODM integration for structured CRF output
+2. Paperclip search integration for literature-based evidence
