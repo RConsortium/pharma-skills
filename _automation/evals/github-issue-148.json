@@ -1,0 +1,11 @@
+{
+  "id": "github-issue-148",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study AE domain and a completed\nADSL, derive an ADaM Adverse Events Analysis Dataset (ADAE) for a\nPhase 3 safety analysis.\n\nDerive all required analysis variables: analysis dates, study days,\nthe treatment-emergent adverse event flag, severity, seriousness,\ncausality, and outcome. Use a 30-day post-treatment window for TRTEMFL.\n\nInput data must be loaded directly from the pharmaverse R packages:\n\n```r\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\nae   <- pharmaversesdtm::ae    # 1,191 records, CDISC Pilot Study\nadsl <- pharmaverseadam::adsl  # 306 subjects\n```\n\nDo not generate synthetic or simulated data. Scripts that construct\nAE or ADSL records from scratch will fail the benchmark.",
+  "expected_output": "Executable R script using {admiral} that produces a valid ADAE dataset\nfrom pharmaversesdtm::ae and pharmaverseadam::adsl. The script should\nexecute without errors and produce one record per AE per subject.\n\n| Variable | Source / derivation |\n|---|---|\n| ASTDT, ASTDTF | derive_vars_dt() from AESTDTC, date_imputation = \"first\" |\n| AENDT, AENDTF | derive_vars_dt() from AEENDTC, date_imputation = \"last\" |\n| ASTDY, AENDY | derive_vars_dy() relative to TRTSDT |\n| TRTEMFL | derive_var_trtemfl(), end_window = 30 (annotated) |\n| AESEV | Carried from AE.AESEV |\n| AESEVN | Integer 1/2/3 mapped from AESEV |\n| AESER, AESDTH | Recoded to \"Y\"/NA |\n| AEOUT, AEREL, AEACN | Carried from AE with controlled terminology alignment |\n\nNote: pharmaversesdtm::ae does not contain AETOXGR. The AETOXGR\nderivation should be commented out or omitted; its absence should\nnot cause the script to error.",
+  "files": [],
+  "assertions": [],
+  "language": "R",
+  "target_skills": [
+    "admiral-adae"
+  ]
+}

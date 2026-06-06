@@ -1,0 +1,21 @@
+{
+  "id": "github-issue-147",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study VS domain, derive an ADaM\nBDS Findings dataset (ADVS) for vital signs parameters.\n\nParameter mapping:\n- SYSBP  \u2192 \"Systolic Blood Pressure (mmHg)\",  PARAMN = 1\n- DIABP  \u2192 \"Diastolic Blood Pressure (mmHg)\", PARAMN = 2\n- PULSE  \u2192 \"Pulse Rate (beats/min)\",           PARAMN = 3\n- WEIGHT \u2192 \"Weight (kg)\",                      PARAMN = 4\n- HEIGHT \u2192 \"Height (cm)\",                      PARAMN = 5\n- BMI    \u2192 \"Body Mass Index (kg/m^2)\",         PARAMN = 6\n\nBaseline definition: the last non-missing record on or before TRTSDT\nper subject per parameter (ADT <= TRTSDT, !is.na(AVAL)).\n\nANL01FL: the last on-treatment non-missing non-DTYPE record per subject\nper parameter per analysis visit (ADT >= TRTSDT, !is.na(AVAL),\nis.na(DTYPE)).\n\nNormal range indicators (ANRIND): \"LOW\" / \"NORMAL\" / \"HIGH\" based on\nANRLO and ANRHI sourced from the VS domain (VSSTNRLO, VSSTNRHI).\n\nInclude at minimum: STUDYID, USUBJID, PARAMCD, PARAM, PARAMN, AVISIT,\nAVISITN, ADT, ADTF, ADY, AVAL, AVALC, AVALU, ABLFL, BASE, BASEC,\nCHG, PCHG, ANRLO, ANRHI, ANRIND, ANL01FL, TRTSDT, TRTEDT,\nTRT01P, TRT01PN, TRT01A, TRT01AN, SAFFL, ITTFL.",
+  "expected_output": "Executable R code producing an ADVS dataset with one record per subject\nper parameter per analysis visit that matches pharmaverseadam::advs on\nkey variables (ADT, AVAL, BASE, CHG, ABLFL, ANRIND per USUBJID /\nPARAMCD / AVISIT).",
+  "files": [
+    "Input data loaded directly from the {pharmaversesdtm} and",
+    "{pharmaverseadam} R packages (CDISC Pilot Study).",
+    "```r",
+    "library(pharmaversesdtm)",
+    "library(pharmaverseadam)",
+    "vs   <- pharmaversesdtm::vs",
+    "adsl <- pharmaverseadam::adsl",
+    "ref  <- pharmaverseadam::advs",
+    "```"
+  ],
+  "assertions": [],
+  "language": "R",
+  "target_skills": [
+    "admiral-bds"
+  ]
+}

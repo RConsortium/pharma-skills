@@ -1,0 +1,11 @@
+{
+  "id": "github-issue-149",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study LB domain and a completed\nADSL, derive an ADaM BDS Findings dataset (ADLB) for laboratory values.\n\nInput data must be loaded directly from the pharmaverse R packages:\n\n```r\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\nlb   <- pharmaversesdtm::lb\nadsl <- pharmaverseadam::adsl  # 306 subjects\n```\n\nDo not generate synthetic or simulated data. Scripts that construct\nLB or ADSL records from scratch will fail the benchmark.\n\nParameter scope: include all LBTESTCD values present in\npharmaversesdtm::lb. PARAMCD and PARAM should be mapped from a\nspec-driven lookup table, not hardcoded case_when() chains.\n\nBaseline definition: the last non-missing record on or before TRTSDT\nper subject per parameter (ADT <= TRTSDT, !is.na(AVAL)).\n\nANL01FL: the last on-treatment non-missing non-DTYPE record per subject\nper parameter per analysis visit (ADT >= TRTSDT, !is.na(AVAL),\nis.na(DTYPE)).\n\nNormal range indicators (ANRIND): \"LOW\" / \"NORMAL\" / \"HIGH\" based on\nANRLO and ANRHI sourced from the LB domain (LBSTNRLO, LBSTNRHI).\n\nInclude at minimum: STUDYID, USUBJID, PARAMCD, PARAM, PARAMN, AVISIT,\nAVISITN, ADT, ADTF, ADY, AVAL, AVALC, AVALU, ABLFL, BASE, BASEC,\nCHG, PCHG, ANRLO, ANRHI, ANRIND, BNRIND, ANL01FL, TRTSDT, TRTEDT,\nTRT01P, TRT01PN, TRT01A, TRT01AN, SAFFL, ITTFL.",
+  "expected_output": "Executable R code producing an ADLB dataset with one record per subject\nper parameter per analysis visit that matches pharmaverseadam::adlb on\nkey variables (ADT, AVAL, BASE, CHG, ABLFL, ANRIND per USUBJID /\nPARAMCD / AVISIT).",
+  "files": [],
+  "assertions": [],
+  "language": "R",
+  "target_skills": [
+    "admiral-bds"
+  ]
+}
