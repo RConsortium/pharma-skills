@@ -93,7 +93,7 @@ advs <- vs |>
 
 Map SDTM test codes to ADaM parameters. Use `derive_vars_merged_lookup()` with a
 lookup table driven by the ADaM spec. Do **not** use `derive_vars_merged()` here —
-that function is for ADSL variable merges only. Do not use `case_when()` or
+it is not a lookup function and will not correctly handle unmatched records. Do not use `case_when()` or
 hardcoded `if_else()` chains.
 
 ```r
