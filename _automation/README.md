@@ -9,6 +9,7 @@ This directory contains automated workflows for managing, evaluating, and report
 | [`benchmark-runner/`](benchmark-runner/) | **Benchmark Runner** | Runs parallel "With Skill" vs. "Without Skill" evaluations to quantify skill performance. Posts results to GitHub issues. |
 | [`issue-to-eval/`](issue-to-eval/) | **Issue to Eval** | Automatically syncs GitHub issues labeled `benchmark` into the local `_automation/evals/` directory. Supports updating existing tests if the issue content changes. |
 | [`weekly-summary/`](weekly-summary/) | **Weekly Summary** | Aggregates repository activity (commits, PRs, issues) over the last 7 days and generates a concise status update for Slack. |
+| [`pilot7-weekly-summary/`](pilot7-weekly-summary/) | **Pilot 7 Weekly Summary** | Aggregates weekly activity from `RConsortium/submissions-pilot7-synthetic-data` and posts a Friday progress update to the `#pilot7-sdtm-adam-tlf-bench` Slack channel. See its README for routine scheduling. |
 
 ## Usage
 

@@ -20,7 +20,8 @@ pharma_skills/
 ├── _automation/               ← Automation skills (see below)
 │   ├── benchmark-runner/      ← A/B benchmark orchestration
 │   ├── issue-to-eval/         ← GitHub Issue → evals.json converter
-│   └── weekly-summary/        ← Weekly activity → Slack
+│   ├── weekly-summary/        ← Weekly activity → Slack
+│   └── pilot7-weekly-summary/ ← Pilot 7 weekly activity → Slack (Friday)
 └── .github/
     ├── ISSUE_TEMPLATE/benchmark.md  ← Template for benchmark issues
     └── workflows/             ← CI: skill validation + benchmark scheduling
@@ -38,6 +39,7 @@ pharma_skills/
 | `benchmark-summary` | "update the benchmark summary", "generate benchmark analysis", "summarize skill vs no-skill results", "add failure patterns", produce `benchmark_analysis_*.md` |
 | `issue-to-eval` | "parse this issue into a benchmark", "sync all benchmark issues" |
 | `weekly-summary` | "generate weekly summary", "post to Slack" |
+| `pilot7-weekly-summary` | "pilot7 weekly update", "summarize pilot7 progress", "submissions-pilot7-synthetic-data weekly summary" |
 
 ## Agent Guardrails
 
@@ -51,6 +53,7 @@ pharma_skills/
 | Variable | Used by | Purpose |
 |---|---|---|
 | `PHARMA_SKILLS_SLACK_CHANNEL` | `weekly-summary` | Slack channel ID for posting. If unset, the skill reads from `_automation/weekly-summary/config.json`. |
+| `PILOT7_SLACK_CHANNEL` | `pilot7-weekly-summary` | Slack channel ID for posting. If unset, the skill reads from `_automation/pilot7-weekly-summary/config.json`. |
 
 ## Contributing
 

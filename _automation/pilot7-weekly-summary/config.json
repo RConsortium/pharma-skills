@@ -1,0 +1,6 @@
+{
+  "repo": "RConsortium/submissions-pilot7-synthetic-data",
+  "max_words": 200,
+  "slack_channel": "C0B44HS7CNA",
+  "lookback_days": 7
+}
