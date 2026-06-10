@@ -91,8 +91,10 @@ advs <- vs |>
 
 ### Step 3 — Parameter assignment
 
-Map SDTM test codes to ADaM parameters. Use a lookup table driven by the ADaM
-spec — do not use `case_when()` or hardcoded `if_else()` chains for this.
+Map SDTM test codes to ADaM parameters. Use `derive_vars_merged_lookup()` with a
+lookup table driven by the ADaM spec. Do **not** use `derive_vars_merged()` here —
+it is not a lookup function and will not correctly handle unmatched records. Do not use `case_when()` or
+hardcoded `if_else()` chains.
 
 ```r
 # REVIEW: PARAMCD mapping must match the ADaM spec parameter list exactly.
@@ -388,6 +390,10 @@ if (length(missing_vars) > 0) {
 - Asserting uniqueness without accounting for DTYPE rows — exclude
   `DTYPE != NA` records from uniqueness checks (synthetic rows are intentional
   duplicates by USUBJID + PARAMCD + AVISITN)
+- Using `derive_vars_merged()` instead of `derive_vars_merged_lookup()` for
+  PARAMCD/PARAM/PARAMN assignment — `derive_vars_merged()` is primarily used for ADSL
+  backbone merges; parameter code mappings must use `derive_vars_merged_lookup()`
+  so that unmatched records are retained and filterable via `filter(!is.na(PARAMCD))`
 - Using `"N"` for ABLFL or ANL01FL — flag convention is `"Y"` or `NA` only
 - Deriving ANRIND from AVAL without a `# REVIEW:` comment — normal range logic
   is almost always protocol-specific
@@ -400,7 +406,7 @@ Before returning code, verify:
 
 - [ ] ADSL variables (TRTSDT, population flags) merged before baseline derivation
 - [ ] DOMAIN removed from source domain before `derive_vars_merged()` calls
-- [ ] PARAMCD mapping sourced from spec lookup table, not `case_when()`
+- [ ] PARAMCD/PARAM/PARAMN assigned with `derive_vars_merged_lookup()` — not `derive_vars_merged()`, not `case_when()`
 - [ ] ADT derived with `derive_vars_dt()`, not `as.Date()` on VSDTC/LBDTC
 - [ ] ADY derived with `derive_vars_dy()`
 - [ ] AVISIT assigned from spec-driven visit map
