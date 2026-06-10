@@ -1,6 +1,5 @@
 import hashlib
 import json
-import random
 import subprocess
 import argparse
 import sys
@@ -21,6 +20,13 @@ TEXT_EXTENSIONS = {
     ".csv", ".tsv", ".txt", ".md", ".r", ".py", ".json",
     ".yaml", ".yml", ".toml", ".xml", ".html", ".sql",
 }
+
+COMPLETE_MARKER_RE = re.compile(r'<!-- BENCHMARK_COMPLETE: ({.*?}) -->', re.DOTALL)
+
+# Sentinel values used when a comment fetch fails: sort failed-fetch evals to the back
+# of the queue so we never re-run a possibly-complete eval due to a transient network error.
+_FETCH_FAILED_RUNS = 999_999
+_FETCH_FAILED_TS = "9999-12-31T00:00:00Z"
 
 
 def normalize_model_name(name: str) -> str:
@@ -66,9 +72,54 @@ def fetch_issue_comments_via_api(issue_number: str, repo: str = GITHUB_REPO) -> 
     return comments
 
 
-def has_matching_benchmark_comment(comments: list[dict], target_sha: str, target_model: str) -> bool:
-    """Return True when comments contain a benchmark result for this SHA/model."""
+def _get_comment_created_at(comment: dict) -> str:
+    """Return the created_at timestamp handling both gh CLI (camelCase) and REST (snake_case)."""
+    return comment.get("created_at") or comment.get("createdAt", "")
+
+
+def extract_complete_markers(comments: list[dict]) -> list[dict]:
+    """Parse BENCHMARK_COMPLETE marker payloads from all issue comments.
+
+    Returns a list of dicts, each being the marker JSON payload augmented with
+    '_comment_created_at' from the containing comment.  Only COMPLETE markers
+    are counted; PARTIAL markers are ignored here (they drive Phase Detection,
+    not selection ordering).
+    """
+    markers = []
+    for comment in comments:
+        body = comment.get("body", "")
+        created_at = _get_comment_created_at(comment)
+        for m in COMPLETE_MARKER_RE.finditer(body):
+            try:
+                payload = json.loads(m.group(1))
+                payload["_comment_created_at"] = created_at
+                markers.append(payload)
+            except json.JSONDecodeError:
+                pass
+    return markers
+
+
+def has_matching_benchmark_complete(markers: list[dict], target_sha: str, target_model: str) -> bool:
+    """Return True when a COMPLETE marker with the exact SHA + model exists."""
     norm_target = normalize_model_name(target_model)
+    for m in markers:
+        if (m.get("skill_sha") == target_sha and
+                normalize_model_name(m.get("model", "")) == norm_target):
+            return True
+    return False
+
+
+def has_matching_benchmark_comment_legacy(
+    comments: list[dict], target_sha: str, target_model: str
+) -> bool:
+    """Legacy prose-string check for benchmark comments posted before the marker format.
+
+    Only the 7-char short SHA appears in the prose ('Skill version' field), so this
+    check is inherently imprecise.  It is kept only as a fallback for pre-marker runs;
+    the marker-based check takes priority.
+    """
+    norm_target = normalize_model_name(target_model)
+    short_sha = target_sha[:7]
 
     for comment in comments:
         body = comment.get("body", "")
@@ -77,17 +128,40 @@ def has_matching_benchmark_comment(comments: list[dict], target_sha: str, target
         has_sha = (
             f"Skill version: `{target_sha}`" in body
             or f"**Skill version** | `{target_sha}`" in body
+            or f"Skill version: `{short_sha}`" in body
+            or f"**Skill version** | `{short_sha}`" in body
         )
-        # Normalize the entire comment body so variant spellings still match (fix 1.3)
         has_model = norm_target in normalize_model_name(body)
         if has_sha and has_model:
             return True
     return False
 
 
-def count_benchmark_comments(comments: list[dict]) -> int:
-    """Count all benchmark result comments regardless of SHA or model."""
-    return sum(1 for c in comments if "Automated Benchmark Results" in c.get("body", ""))
+def count_completed_runs(
+    markers: list[dict], model: str
+) -> tuple[int, int, str]:
+    """Return (runs_model, runs_total, last_run_model_iso).
+
+    runs_model:         COMPLETE markers for this model, any SHA.
+    runs_total:         COMPLETE markers across all models.
+    last_run_model_iso: created_at of the newest COMPLETE for this model, "" if never run.
+
+    Only COMPLETE markers are counted.  Partials don't count — an in-progress run
+    that was never finished is not a completed benchmark.
+    """
+    norm_model = normalize_model_name(model)
+    runs_model = 0
+    runs_total = len(markers)
+    last_run_ts = ""
+
+    for m in markers:
+        if normalize_model_name(m.get("model", "")) == norm_model:
+            runs_model += 1
+            ts = m.get("_comment_created_at", "")
+            if ts > last_run_ts:
+                last_run_ts = ts
+
+    return runs_model, runs_total, last_run_ts
 
 
 def get_issue_num(eval_id: str) -> int:
@@ -129,35 +203,53 @@ def select_eval(
     selection_salt: str,
     now: datetime,
 ) -> dict:
-    def run_count_key(e: dict) -> int:
-        count = e.get("_prior_run_count")
-        if count is None:
-            # Fetch failed: place this issue at a stable-random position so issues
-            # with unknown history don't all cluster at the front or the back.
-            rng = random.Random(f"{e.get('id', '')}:{selection_salt}")
-            return rng.randint(0, 999)
-        return count
+    """Choose the next eval to run from the eligible set.
+
+    Selection key (distributed mode):
+      1. runs_model  — fewest completed runs for THIS model first; never-run evals win
+      2. runs_total  — fewest runs across all models; spreads cross-model coverage
+      3. last_run_model — oldest completed-at timestamp for this model; when a new SHA
+                          re-opens every eval at once, cycles round-robin rather than
+                          immediately repeating the most-recently-run eval
+      4. distributed_selection_score — spreads concurrent runners across different evals
+
+    Fetch failures map to sentinel max values so we never accidentally run an eval
+    whose history is unknown — prefer skipping over re-running.
+    """
+    def sort_key_distributed(e: dict) -> tuple:
+        runs_model = e.get("_runs_model")
+        runs_total = e.get("_runs_total")
+        last_run = e.get("_last_run_model", "")
+
+        if runs_model is None:
+            # fetch failed — push to back of queue
+            return (
+                _FETCH_FAILED_RUNS,
+                _FETCH_FAILED_RUNS,
+                _FETCH_FAILED_TS,
+                distributed_selection_score(e, model, runner_id, selection_salt),
+            )
+
+        return (
+            runs_model,
+            runs_total if runs_total is not None else _FETCH_FAILED_RUNS,
+            last_run,
+            distributed_selection_score(e, model, runner_id, selection_salt),
+        )
 
     if selection_mode == "daily":
         today_last_digit = int(str(now.day)[-1])
         return min(
             eligible_evals,
             key=lambda e: (
-                run_count_key(e),
+                e.get("_runs_model", _FETCH_FAILED_RUNS),
                 abs((get_issue_num(e["id"]) % 10) - today_last_digit),
                 get_issue_num(e["id"])
             )
         )
 
     if selection_mode == "distributed":
-        return min(
-            eligible_evals,
-            key=lambda e: (
-                run_count_key(e),
-                distributed_selection_score(e, model, runner_id, selection_salt),
-                get_issue_num(e["id"]),
-            )
-        )
+        return min(eligible_evals, key=sort_key_distributed)
 
     raise ValueError(f"Unsupported selection mode: {selection_mode}")
 
@@ -193,17 +285,20 @@ def get_skill_content_sha(skill_path: Path) -> str:
 
 def fetch_and_check_comments(
     issue_id: str, target_sha: str, target_model: str
-) -> tuple[bool, Optional[int]]:
-    """Fetch issue comments once and return (already_done, prior_run_count).
+) -> tuple[bool, Optional[int], Optional[int], str]:
+    """Fetch issue comments once; return (already_done, runs_model, runs_total, last_run_model).
 
-    already_done: True if a benchmark comment matching the current SHA+model exists.
-    prior_run_count: total count of all benchmark result comments regardless of SHA/model,
-                     or None when the fetch failed (caller should treat the issue as
-                     having an unknown run history).
+    already_done:   True if a COMPLETE marker (or legacy prose) matching SHA+model found.
+    runs_model:     completed runs for this model (any SHA); None if fetch failed.
+    runs_total:     completed runs across all models; None if fetch failed.
+    last_run_model: ISO timestamp of newest completed run for this model ("" if never run).
+
+    On fetch failure returns (False, None, None, "") so the caller can sort the eval
+    to the back of the queue rather than treating it as a fresh never-run eval.
     """
     match = re.search(r"(\d+)$", issue_id)
     if not match:
-        return False, None
+        return False, None, None, ""
     issue_number = match.group(1)
 
     comments: Optional[list[dict]] = None
@@ -238,15 +333,18 @@ def fetch_and_check_comments(
             comments = fetch_issue_comments_via_api(issue_number)
         except (RuntimeError, OSError, urllib.error.URLError, urllib.error.HTTPError) as e:
             print(
-                f"Warning: GitHub REST API fallback failed checking comments for issue "
-                f"{issue_id} — treating as pending with unknown run count: {e}",
+                f"Warning: GitHub REST API fallback failed for issue {issue_id} — "
+                f"deferring to back of queue: {e}",
                 file=sys.stderr,
             )
-            return False, None
+            return False, None, None, ""
 
-    already_done = has_matching_benchmark_comment(comments, target_sha, target_model)
-    prior_count = count_benchmark_comments(comments)
-    return already_done, prior_count
+    markers = extract_complete_markers(comments)
+    already_done = has_matching_benchmark_complete(
+        markers, target_sha, target_model
+    ) or has_matching_benchmark_comment_legacy(comments, target_sha, target_model)
+    runs_model, runs_total, last_run_model = count_completed_runs(markers, target_model)
+    return already_done, runs_model, runs_total, last_run_model
 
 
 def build_agent_prompts(eval_case: dict) -> None:
@@ -348,6 +446,8 @@ def write_run_manifest(eval_case: dict, model: str, skill_sha: str, status: str)
         "selection_mode": eval_case.get("_selection_mode"),
         "selection_runner_id": eval_case.get("_selection_runner_id"),
         "selection_salt": eval_case.get("_selection_salt"),
+        "runs_model_before": eval_case.get("_runs_model"),
+        "runs_total_before": eval_case.get("_runs_total"),
     }
     manifest_path = RUNS_DIR / "runs.json"
     records = []
@@ -398,6 +498,15 @@ def main() -> None:
             "Set explicitly to reproduce a prior dispatch order."
         ),
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Print the full ranked queue of eligible evals with their sort keys, "
+            "then exit without writing runs.json or printing the selected eval JSON. "
+            "Useful for inspecting dispatcher behavior without triggering a run."
+        ),
+    )
     args = parser.parse_args()
 
     # Discover evals from the centralized evals directory
@@ -437,9 +546,13 @@ def main() -> None:
 
         skill_sha = get_skill_content_sha(skill_path)
 
-        already_done, prior_run_count = fetch_and_check_comments(eval_id, skill_sha, args.model)
+        already_done, runs_model, runs_total, last_run_model = fetch_and_check_comments(
+            eval_id, skill_sha, args.model
+        )
         if not already_done:
-            eval_case["_prior_run_count"] = prior_run_count
+            eval_case["_runs_model"] = runs_model
+            eval_case["_runs_total"] = runs_total
+            eval_case["_last_run_model"] = last_run_model
             eval_case["_skill_name"] = primary_skill_name
             eval_case["_skill_sha"] = skill_sha
             eval_case["_skill_dir"] = str(skill_path.relative_to(REPO_ROOT))
@@ -448,7 +561,7 @@ def main() -> None:
                 eval_case["_skill_content"] = s.read()
 
             # Bundle .md and .py files — exclude evals/ to avoid leaking rubric
-            # to Agent A, and warn if total exceeds 100 KB (fixes 2.3)
+            # to Agent A, and warn if total exceeds 100 KB (fix 2.3)
             bundled: dict[str, str] = {}
             total_bytes = 0
             size_warned = False
@@ -498,6 +611,48 @@ def main() -> None:
         selection_salt,
         dispatch_now,
     )
+
+    if args.dry_run:
+        # Rank the full eligible set and print the queue — do not write or emit the eval JSON.
+        def rank_key(e: dict) -> tuple:
+            runs_model = e.get("_runs_model")
+            runs_total = e.get("_runs_total")
+            last_run = e.get("_last_run_model", "")
+            if runs_model is None:
+                return (_FETCH_FAILED_RUNS, _FETCH_FAILED_RUNS, _FETCH_FAILED_TS,
+                        distributed_selection_score(e, args.model, args.runner_id, selection_salt))
+            return (
+                runs_model,
+                runs_total if runs_total is not None else _FETCH_FAILED_RUNS,
+                last_run,
+                distributed_selection_score(e, args.model, args.runner_id, selection_salt),
+            )
+
+        ranked = sorted(eligible_evals, key=rank_key)
+        print(f"\n{'='*72}")
+        print(f"DRY RUN — model={args.model}  runner={args.runner_id}  mode={args.selection_mode}")
+        print(f"salt={selection_salt}  eligible={len(eligible_evals)}")
+        print(f"{'='*72}")
+        hdr = f"{'Rank':<5} {'Eval ID':<30} {'runs_mdl':>8} {'runs_tot':>8} {'last_run_model':<26} {'skill'}"
+        print(hdr)
+        print("-" * len(hdr))
+        for rank, e in enumerate(ranked, 1):
+            rm = e.get("_runs_model")
+            rt = e.get("_runs_total")
+            lr = (e.get("_last_run_model") or "never")[:25]
+            marker = " ◄ SELECTED" if e["id"] == selected_eval["id"] else ""
+            print(
+                f"{rank:<5} {e['id']:<30} "
+                f"{'???' if rm is None else rm:>8} "
+                f"{'???' if rt is None else rt:>8} "
+                f"{lr:<26} "
+                f"{e.get('_skill_name', '?')}"
+                f"{marker}"
+            )
+        print(f"{'='*72}\n")
+        print("STATUS: DRY_RUN")
+        return
+
     selected_eval["_selection_mode"] = args.selection_mode
     selected_eval["_selection_runner_id"] = args.runner_id
     selected_eval["_selection_salt"] = selection_salt
