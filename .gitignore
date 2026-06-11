@@ -34,3 +34,6 @@ clinical-trial-simulation/**/*.html
 
 # Local /simulate launcher (per-user; do not ship)
 /.claude/commands/simulate.md
+
+# Weekly-summary skill output — generated per run, posted to Slack, not committed
+/outputs/
