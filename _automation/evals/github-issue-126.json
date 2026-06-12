@@ -1,6 +1,6 @@
 {
   "id": "github-issue-126",
-  "prompt": "Using the pharmaversesdtm CDISC Pilot Study SDTM domains, derive an ADaM\nSubject-Level Analysis Dataset (ADSL) for a three-arm parallel group study\n(Xanomeline High Dose, Xanomeline Low Dose, Placebo).\n\nAge grouping cut-points: <65 / 65-80 / >80.\nNumeric treatment codes: Xanomeline High Dose = 3, Xanomeline Low Dose = 2,\nPlacebo = 1.\nSAFFL: received at least one dose (EXDOSE > 0 or EXTRT contains \"PLACEBO\")\nwith non-missing EXSTDTC.\nITTFL: randomised \u2014 ARMCD != \"Scrnfail\" and ARM != \"Screen Failure\".\n\nInclude at minimum: STUDYID, USUBJID, SUBJID, SITEID, AGE, AGEU, SEX, RACE,\nETHNIC, COUNTRY, AGEGR1, AGEGR1N, TRT01P, TRT01PN, TRT01A, TRT01AN,\nTRTSDTM, TRTSTMF, TRTEDTM, TRTETMF, TRTSDT, TRTEDT, TRTDURD, RANDDT,\nRFSTDT, RFENDDT, EOSSTT, EOSDT, DCSREAS, DTHFL, DTHDT, LSTALVDT,\nSAFFL, ITTFL.",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study SDTM domains, derive an ADaM\nSubject-Level Analysis Dataset (ADSL) for a three-arm parallel group study\n(Xanomeline High Dose, Xanomeline Low Dose, Placebo).\n\nAge grouping cut-points: <65 / 65-80 / >80.\nNumeric treatment codes: Xanomeline High Dose = 3, Xanomeline Low Dose = 2,\nPlacebo = 1.\nSAFFL: received at least one dose (EXDOSE > 0 or EXTRT contains \"PLACEBO\")\nwith non-missing EXSTDTC.\nITTFL: randomised — ARMCD != \"Scrnfail\" and ARM != \"Screen Failure\".\n\nInclude at minimum: STUDYID, USUBJID, SUBJID, SITEID, AGE, AGEU, SEX, RACE,\nETHNIC, COUNTRY, AGEGR1, AGEGR1N, TRT01P, TRT01PN, TRT01A, TRT01AN,\nTRTSDTM, TRTSTMF, TRTEDTM, TRTETMF, TRTSDT, TRTEDT, TRTDURD, RANDDT,\nRFSTDT, RFENDDT, EOSSTT, EOSDT, DCSREAS, DTHFL, DTHDT, LSTALVDT,\nSAFFL, ITTFL.",
   "expected_output": "Executable R code producing an ADSL dataset with one record per USUBJID\n(306 subjects) that matches pharmaverseadam::adsl on key variables\n(TRTSDT, TRTEDT, TRT01P, TRT01A, EOSSTT, SAFFL).",
   "files": [
     "Input data loaded directly from the `{pharmaversesdtm}` R package (CDISC",
@@ -19,6 +19,6 @@
   "assertions": [],
   "language": "R",
   "target_skills": [
-    "admiral-adsl"
+    "admiral/admiral-adsl"
   ]
 }
