@@ -11,6 +11,18 @@ Repository: `RConsortium/pharma-skills` (https://github.com/RConsortium/pharma-s
 
 ---
 
+## Model Selection — Parent and Sub-Agents Use the Same Model
+
+`{CURRENT_MODEL_NAME}` throughout this skill means the canonical API model ID of the **parent (orchestrating) agent** — the session executing this SKILL.md. Resolve it once at startup and use it everywhere it appears: `get_next_eval.py --model`, both `claude -p --model` launches, the marker JSON, and the report metadata.
+
+Rules:
+
+- Agent A and Agent B MUST be launched with exactly the parent's model ID (`claude -p --model "{CURRENT_MODEL_NAME}"`). Never select a different model for the sub-agents and never hardcode a model name — the benchmark series being extended is the parent model's own series.
+- The model ID — together with the prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting — is the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This keeps the measurement clean (bare model ± skill) and prevents the orchestrator's context from leaking into either candidate.
+- If the parent's model ID cannot be determined, or cannot be truthfully recorded in the public issue-comment markers (e.g., the host environment withholds or embargoes its model identity), **exit cleanly without launching agents or posting comments**. Do not run the benchmark under a substituted model ID: markers carrying a model name that did not actually produce the outputs corrupt deduplication and the scorecard history for every other runner.
+
+---
+
 ## Routine Setup (one-time)
 
 Create a single routine at [claude.ai/code/routines](https://claude.ai/code/routines):
@@ -205,7 +217,7 @@ Write the partial comment body to `/tmp/partial_comment_{eval_id}.md`:
 |---|---|
 | **Eval ID** | `{id}` |
 | **Run date** | {YYYY-MM-DD HH:MM UTC} |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `{CURRENT_MODEL_NAME}` |
 | **Skill version** | `{_skill_sha[:7]}` |
 | **Phase** | 1 of 2 complete — Agent A (with skill) finished |
 
@@ -466,7 +478,10 @@ EVERY ROUTINE INVOCATION:
 
 ## Notes on Model Name
 
+`{CURRENT_MODEL_NAME}` is always the parent agent's own model — see "Model Selection — Parent and Sub-Agents Use the Same Model" at the top of this skill.
+
 Pass `--model` using the canonical API model ID (e.g., `claude-sonnet-4-6` or `gemini-3.1-pro-preview`), not the display name. The deduplication logic normalises both sides, but using the API ID avoids ambiguity.
+* **For Claude Code:** Read the model ID from your system prompt / environment context (e.g., `claude-sonnet-4-6`) if you don't already know it.
 * **For Gemini CLI:** Read the **Runtime Context** block injected into your system prompt to find the `Active Model` (e.g., `gemini-3-pro-preview`) if you don't already know it.
 
 ## Notes on Distributed Selection
