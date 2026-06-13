@@ -19,71 +19,7 @@ Rules:
 
 - Agent A and Agent B MUST be launched with exactly the parent's model ID (`claude -p --model "{CURRENT_MODEL_NAME}"`). Never select a different model for the sub-agents and never hardcode a model name — the benchmark series being extended is the parent model's own series.
 - The model ID — together with the prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting — is the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This keeps the measurement clean (bare model ± skill) and prevents the orchestrator's context from leaking into either candidate.
-- **If the parent's model ID cannot be determined *at all*** (the host exposes no truthful identifier anywhere — not even for the agent's own use), **exit cleanly without launching agents or posting comments**. There is nothing to launch the sub-agents with.
-- **If the model ID *can* be determined but the host embargoes it from persisted/public artifacts** — e.g. Claude Code running as a scheduled routine "on the web", where the model ID may be used in chat and to launch local processes but **must not** be written into commits, code comments, GitHub issue comments, release assets, or any other artifact pushed to a repository — then do **not** post the model-bearing `BENCHMARK_PARTIAL`/`BENCHMARK_COMPLETE` markers or the model-bearing report. Switch to **Local Embargo Mode** (see the section below): perform the full with/without-skill assessment in a single invocation and report the scorecard in the chat reply only. Resolve the ID at runtime from your environment; **never hardcode a model name into this skill or its scripts**, and **never substitute a fake ID** into public markers — markers carrying a model name that did not actually produce the outputs corrupt deduplication and the scorecard history for every other runner.
-
----
-
-## Local Embargo Mode — Assess the Skill Without Publishing the Model ID
-
-Run this mode **instead of** the two-phase GitHub flow whenever the model ID is embargoed from persisted/public artifacts (see the second bullet of "Model Selection" above). The canonical trigger is **Claude Code running as a scheduled routine on the web**, where the model ID is available to the agent but must stay in chat — never written to the repo or to GitHub comments. This is the mode that makes the benchmark *executable* in a routine: without it, the skill can only exit.
-
-**Why single-invocation.** The two-phase flow exists to (a) survive the rolling usage window by parking work across a ~5 h gap and (b) hand state from one invocation to the next through public issue comments. Under embargo we cannot park model-bearing state in GitHub, and the routine's container is ephemeral, so there is no durable place to resume from. Therefore embargo mode runs Agent A, Agent B, and scoring **back-to-back in one invocation** and delivers the result immediately in chat.
-
-**The embargo contract — do not violate any of these:**
-
-- **No GitHub writes.** Do not post `BENCHMARK_PARTIAL` or `BENCHMARK_COMPLETE` comments, do not create or upload release assets, do not edit existing comments. The shared public scorecard must never receive an entry it cannot attribute to a truthful model ID.
-- **Nothing model-identifying is committed.** Resolve the model ID at runtime from your environment/system context. `runs.json` is gitignored and the container is ephemeral, so the local manifest and the `claude -p` CLI logs (kept under `/tmp/`) are acceptable; just never `git add`/commit anything carrying the model name, and never write it into a tracked file under `_automation/`.
-- **Report in chat only.** The model ID may appear in your chat reply to the user (that is not a repo artifact). The scorecard, scores, and verdict are delivered there.
-
-### Embargo Step 1 — Discover next eval
-
-Run R pre-flight (Step 0) and discovery (Step 1) exactly as in Phase 1, resolving `{CURRENT_MODEL_NAME}` at runtime:
-
-```bash
-bash _automation/benchmark-runner/scripts/setup_r_env.sh
-python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {CURRENT_MODEL_NAME}
-```
-
-`get_next_eval.py` still consults GitHub *read-only* for deduplication. If reads are also blocked, that is fine — it sorts unreachable evals to the back of the queue and still returns a candidate. If `STATUS: UP_TO_DATE`, exit. Otherwise parse the eval JSON as in Phase 1 Step 1.
-
-### Embargo Step 2 — Run Agent A (with skill)
-
-Identical to Phase 1 **Step 2**: stage bundled resources to `/tmp/benchmark_{id}/agent_A/`, write `prompt_A.txt` (`_skill_content` + `_prompt_a`), launch with `claude -p --model "{CURRENT_MODEL_NAME}"`, then extract `tokens_a` / `is_error_a`. Record locally with `record_run_result.py --status partial_a --tokens-a {tokens_a}` (local manifest only — do **not** archive or upload the output).
-
-### Embargo Step 3 — Run Agent B (without skill)
-
-Identical to Phase 2 **Step 6**: write `prompt_B.txt` (`_prompt_b` only), launch with `claude -p --model "{CURRENT_MODEL_NAME}"`, extract `tokens_b` / `is_error_b`, record with `record_run_result.py --status completed --tokens-b {tokens_b}`.
-
-If either agent hits a usage rate limit (`is_error: true`, "You've hit your limit"), record the matching `error_*_rate_limited` status and stop. Report what completed in chat and note that re-invoking will start a fresh run (there is no parked partial to resume under embargo).
-
-### Embargo Step 4 — Score blinded
-
-Identical to **Step 7**: copy outputs per `_blinded_scoring_map` into `candidate_1`/`candidate_2`, grade every assertion (Pass / Partial / Fail), compute `(passes + 0.5 × partials) / total`, then unblind back to With-Skill / Without-Skill.
-
-### Embargo Step 5 — Report in chat (no GitHub post)
-
-Render the same scorecard as Step 8 **as your chat reply** — do not write a comment to any issue and do not include any `BENCHMARK_*` HTML marker (markers exist only to coordinate GitHub state, which we are deliberately not touching). Lead with the model ID and an explicit note that results were not published:
-
-```
-✓ Local embargo benchmark complete — {eval_id}
-  Model: {CURRENT_MODEL_NAME}  (embargoed — results NOT posted to GitHub)
-  Skill version: {skill_sha[:7]}
-
-  | Metric     | With Skill        | Without Skill     |
-  |------------|-------------------|-------------------|
-  | Score      | {score_A} ({pct_A}%) | {score_B} ({pct_B}%) |
-  | Assertions | {pass_A}/{partial_A}/{fail_A} | {pass_B}/{partial_B}/{fail_B} |
-  | Tokens     | {tokens_a:,}      | {tokens_b:,}      |
-
-  Verdict: {1-2 sentence comparison}
-
-  Not published because the host embargoes the model identity; posting a
-  model-bearing marker would corrupt the shared scorecard. Re-run on a host
-  that can truthfully record the model to publish to issue #{N}.
-```
-
-Then exit cleanly.
+- If the parent's model ID cannot be determined, or cannot be truthfully recorded in the public issue-comment markers (e.g., the host environment withholds or embargoes its model identity), **exit cleanly without launching agents or posting comments**. Do not run the benchmark under a substituted model ID: markers carrying a model name that did not actually produce the outputs corrupt deduplication and the scorecard history for every other runner.
 
 ---
 
@@ -119,8 +55,6 @@ For release-asset upload there is currently no MCP tool — use `gh release uplo
 ---
 
 ## Phase Detection — Run Before Any Other Step
-
-**First, resolve `{CURRENT_MODEL_NAME}` and check the embargo condition** (see "Model Selection" above). If your model ID is embargoed from persisted/public artifacts (the routine-on-the-web case), skip the GitHub-state scan entirely and run **Local Embargo Mode** instead — the two phases below depend on writing model-bearing markers to GitHub, which embargo forbids. Only proceed with the scan below when you are allowed to publish the model ID.
 
 Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B + scoring) **for the model you are running**:
 
@@ -521,17 +455,7 @@ Then exit cleanly.
 ```
 EVERY ROUTINE INVOCATION:
 
-  Resolve {CURRENT_MODEL_NAME} + check embargo
-    │
-    ├─ Model ID embargoed from public/persisted artifacts ──► Local Embargo Mode
-    │     (routine-on-the-web case)   Step 1: discover eval (read-only GitHub OK)
-    │                                 Step 2: run Agent A (with skill)
-    │                                 Step 3: run Agent B (without skill)
-    │                                 Step 4: score blinded
-    │                                 Step 5: report scorecard in CHAT — no GitHub post
-    │     EXIT
-    │
-    └─ Model ID publishable ──► Phase Detection
+  Phase Detection
     │
     ├─ BENCHMARK_PARTIAL found (no BENCHMARK_COMPLETE for same eval+model) ──► Phase 2
     │     Step 5: load state from comment + restore Agent A output
@@ -572,7 +496,6 @@ If Agent A or Agent B hits a usage rate limit mid-run (`is_error: true`, result 
 
 ## Success Criteria
 
-- **Executable under embargo:** when the model ID cannot be published, the skill runs Local Embargo Mode and delivers a chat-only scorecard instead of exiting — and writes **nothing** model-identifying to GitHub or any tracked repo file.
 - One phase executed per invocation (~20 min each)
 - State persists entirely in GitHub issue comments — no commits, no repo write access needed from the human user
 - Blinded scoring: `_blinded_scoring_map` is never visible to the scorer
