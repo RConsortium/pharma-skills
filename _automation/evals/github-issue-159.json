@@ -1,0 +1,30 @@
+{
+  "id": "github-issue-159",
+  "prompt": "Derive the AE (Adverse Events) SDTM domain from `pharmaverseraw::ae_raw` using `{sdtm.oak}`. The target output should match `pharmaversesdtm::ae`.\n\nThe raw AE dataset uses `PATNUM` as the subject identifier and `IT.*`-prefixed variable names reflecting a non-CDASH EDC format. Load the study CT spec with:\n\n```r\nct_spec <- read_ct_spec(ct_spec_example(\"ct-01-cm\"))\n```\n\n(Use as a proxy; in practice the study CT spec would be provided.)\n\nDerive the following variables using the appropriate sdtm.oak algorithms:\n\n- **Direct mappings (`assign_no_ct`):** `AETERM`, `AEDECOD`, `AEBODSYS`, `AELLT`, `AELLTCD`, `AEHLT`, `AEHLTCD`, `AEHLGT`, `AEHLGTCD`, `AESOC`, `AESOCCD`, `AEBDSYCD`\n- **Controlled terminology mappings (`assign_ct`):** `AESEV`, `AESER`, `AEREL`, `AEOUT`, `AEACN`, `AESDTH`, `AESCONG`, `AESDISAB`, `AESHOSP`, `AESLIFE`, `AESMIE`\n- **Datetime variables (`assign_datetime`):** `AESTDTC` from the raw AE start date variable; `AEENDTC` from the raw AE end date variable\n- **Hardcoded:** `DOMAIN = \"AE\"` using `hardcode_ct()` (validated against the DOMAIN codelist)\n\nDerive `AESTDY` and `AEENDY` using `derive_study_day()` with reference date from `pharmaverseraw::dm_raw`. Derive `AESEQ` as the sequence number within subject.",
+  "expected_output": "A single R script (`ae.R`) that produces the AE SDTM dataset comparable to `pharmaversesdtm::ae`.",
+  "files": [
+    "Use only CRAN-available packages:",
+    "`pharmaverseraw::ae_raw` \u2014 raw adverse events",
+    "`pharmaverseraw::dm_raw` \u2014 raw demographics (reference start date for study day)",
+    "`pharmaversesdtm::ae` \u2014 reference output for comparison",
+    "`read_ct_spec(ct_spec_example(\"ct-01-cm\"))` \u2014 example CT spec (proxy)"
+  ],
+  "assertions": [
+    "1. `generate_oak_id_vars()` is called on `ae_raw` with `pat_var = \"PATNUM\"` and `raw_src = \"ae_raw\"` before any derivation steps.",
+    "2. The CT spec is loaded with `read_ct_spec()` and validated with `assert_ct_spec()` before first use.",
+    "3. All direct-mapped variables are derived using `assign_no_ct()`, not `dplyr::mutate()` or `dplyr::rename()`.",
+    "4. All CT-mapped variables are derived using `assign_ct()` with both a `ct_spec` argument and a `ct_clst` argument; none are derived using `dplyr::mutate()` with `ct_map()` inline or any other workaround.",
+    "5. `DOMAIN` is hardcoded as `\"AE\"` using `hardcode_ct()` (not `hardcode_no_ct()`).",
+    "6. `AESTDTC` and `AEENDTC` are derived using `assign_datetime()` with an explicit `raw_fmt` argument; each `raw_fmt` value has a `# REVIEW:` annotation.",
+    "7. Every `ct_clst` value in an `assign_ct()` call has a `# REVIEW:` annotation marking it as protocol-specific.",
+    "8. `AESTDY` and `AEENDY` are derived using `derive_study_day()` with reference date joined from `dm_raw`; CDISC day 1 convention is correctly applied (no day 0).",
+    "9. `AESEQ` is derived using `derive_seq()`, not `row_number()` or manual sequencing.",
+    "10. The output `AE` dataset contains at minimum: `STUDYID`, `DOMAIN`, `USUBJID`, `AESEQ`, `AETERM`, `AEDECOD`, `AEBODSYS`, `AESEV`, `AESER`, `AESTDTC`, `AEENDTC`, `AESTDY`, `AEENDY`, `AEOUT`.",
+    "11. `nrow(ae)` matches `nrow(pharmaversesdtm::ae)` (record count agrees with the reference output).",
+    "12. `AETERM`, `AEDECOD`, `AESTDTC`, and `AESTDY` values agree with `pharmaversesdtm::ae` on matched records."
+  ],
+  "language": "R",
+  "target_skills": [
+    "sdtm-oak"
+  ]
+}
