@@ -51,6 +51,7 @@ pharma_skills/
 | Variable | Used by | Purpose |
 |---|---|---|
 | `PHARMA_SKILLS_SLACK_CHANNEL` | `weekly-summary` | Slack channel ID for posting. If unset, the skill reads from `_automation/weekly-summary/config.json`. |
+| `PHARMA_SKILLS_BENCHMARK_MODEL` | `benchmark-runner` | Canonical API model ID to benchmark (used for the Agent A/B sub-agents and recorded in issue markers). If unset, the runner benchmarks the orchestrating session's own model; if that identity cannot be published, the runner exits without running. |
 
 ## Contributing
 

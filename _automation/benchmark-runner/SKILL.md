@@ -11,15 +11,19 @@ Repository: `RConsortium/pharma-skills` (https://github.com/RConsortium/pharma-s
 
 ---
 
-## Model Selection — Parent and Sub-Agents Use the Same Model
+## Model Selection — Resolving `{BENCHMARK_MODEL}`
 
-`{CURRENT_MODEL_NAME}` throughout this skill means the canonical API model ID of the **parent (orchestrating) agent** — the session executing this SKILL.md. Resolve it once at startup and use it everywhere it appears: `get_next_eval.py --model`, both `claude -p --model` launches, the marker JSON, and the report metadata.
+`{BENCHMARK_MODEL}` throughout this skill means the canonical API model ID of the **model being benchmarked** — the model Agent A and Agent B are launched with. Resolve it once at startup, in this order, and use it everywhere it appears: `get_next_eval.py --model`, both `claude -p --model` launches, the marker JSON, and the report metadata.
+
+1. **Explicit override** — the `PHARMA_SKILLS_BENCHMARK_MODEL` environment variable, or a benchmark model named in the invoking prompt (e.g., the routine prompt says "execute with benchmark model `claude-sonnet-4-6`"). Use this when set.
+2. **Parent's own model** — otherwise, use the parent (orchestrating) session's own model ID, provided that ID can be truthfully recorded in the public issue-comment markers.
+3. **Neither available** — if no override is configured and the parent's model ID cannot be determined or cannot be published (e.g., the host environment withholds or embargoes its model identity), **exit cleanly without launching agents or posting comments**, and tell the user to set `PHARMA_SKILLS_BENCHMARK_MODEL` (or name a model in the routine prompt) to enable runs from this environment.
 
 Rules:
 
-- Agent A and Agent B MUST be launched with exactly the parent's model ID (`claude -p --model "{CURRENT_MODEL_NAME}"`). Never select a different model for the sub-agents and never hardcode a model name — the benchmark series being extended is the parent model's own series.
+- Agent A and Agent B MUST both be launched with exactly `{BENCHMARK_MODEL}` (`claude -p --model "{BENCHMARK_MODEL}"`), and that same ID is what goes in every marker and report. The marker must always name the model that actually produced the candidate outputs — never record a model ID that did not run the agents, and never silently substitute one: markers carrying the wrong model corrupt deduplication and the scorecard history for every other runner.
+- When `{BENCHMARK_MODEL}` comes from the explicit override (source 1), the orchestrator and the candidates may be different models. That is fine: the orchestrator only dispatches, scores blinded outputs, and posts results — its own identity is never recorded in any repo artifact, and it must not be. (The scorer model is intentionally not part of the report; blinding, not scorer identity, is what keeps scoring fair.)
 - The model ID — together with the prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting — is the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This keeps the measurement clean (bare model ± skill) and prevents the orchestrator's context from leaking into either candidate.
-- If the parent's model ID cannot be determined, or cannot be truthfully recorded in the public issue-comment markers (e.g., the host environment withholds or embargoes its model identity), **exit cleanly without launching agents or posting comments**. Do not run the benchmark under a substituted model ID: markers carrying a model name that did not actually produce the outputs corrupt deduplication and the scorecard history for every other runner.
 
 ---
 
@@ -34,6 +38,12 @@ Create a single routine at [claude.ai/code/routines](https://claude.ai/code/rout
 | **Schedule** | `0 1,6 * * *` (1 AM and 6 AM UTC — 5 h gap, matches rolling usage window) |
 
 That is all. The skill determines its own phase on every invocation.
+
+If the environment running the routine does not publish its own model identity (e.g., embargoed or undercover preview models), pick the model to benchmark explicitly — either set `PHARMA_SKILLS_BENCHMARK_MODEL` in the routine's environment configuration, or use a prompt like:
+
+```
+Read _automation/benchmark-runner/SKILL.md and execute with benchmark model claude-sonnet-4-6.
+```
 
 ---
 
@@ -56,14 +66,14 @@ For release-asset upload there is currently no MCP tool — use `gh release uplo
 
 ## Phase Detection — Run Before Any Other Step
 
-Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B + scoring) **for the model you are running**:
+Resolve `{BENCHMARK_MODEL}` first (see "Model Selection" above), then scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B + scoring) **for that model**:
 
 1. List all eval files: `ls _automation/evals/*.json` — extract each `id` field (e.g. `github-issue-27` → issue **#27**).
 
 2. For each issue number, fetch comments using whichever GitHub access method is available (see above). Scan each comment body for a `<!-- BENCHMARK_PARTIAL:` marker.
 
 3. Filter and evaluate each `BENCHMARK_PARTIAL` marker found:
-   - **Skip if `state.model` does not match `{CURRENT_MODEL_NAME}`.** This is critical: a partial run by another user on a different model belongs to that user. Only pick up partials matching your current model.
+   - **Skip if `state.model` does not match `{BENCHMARK_MODEL}`.** This is critical: a partial run by another user on a different model belongs to that user. Only pick up partials matching your current model.
    - Skip if a later comment on the same issue contains a matching `<!-- BENCHMARK_COMPLETE: {"eval_id":"{same}","model":"{same}"` — Phase 2 already finished for that combination.
    - Otherwise → **Phase 2 candidate**. Extract the JSON from the marker (see format below) and note the partial comment `id`.
 
@@ -97,7 +107,7 @@ Exits non-zero on failure — stop and report the error. Do not proceed.
 ### Step 1 — Discover Next Eval
 
 ```bash
-python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {CURRENT_MODEL_NAME}
+python3 _automation/benchmark-runner/scripts/get_next_eval.py --model {BENCHMARK_MODEL}
 ```
 
 - `STATUS: UP_TO_DATE` → all evals complete for this model+SHA. Exit.
@@ -144,7 +154,7 @@ with open(os.path.join(agent_a_dir, "prompt_A.txt"), "w", encoding="utf-8") as f
 ```bash
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 cd /tmp/benchmark_{id}/agent_A && \
-  cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" \
+  cat prompt_A.txt | claude -p --model "{BENCHMARK_MODEL}" \
   --allowedTools "Bash,Read,Write,Edit,Glob" \
   --output-format json > agent_A_run.json 2>&1
 ```
@@ -167,7 +177,7 @@ Record in `runs.json`:
 
 ```bash
 python3 _automation/benchmark-runner/scripts/record_run_result.py \
-  --eval-id {id} --model {CURRENT_MODEL_NAME} \
+  --eval-id {id} --model {BENCHMARK_MODEL} \
   --status partial_a --tokens-a {tokens_a}
 ```
 
@@ -217,14 +227,14 @@ Write the partial comment body to `/tmp/partial_comment_{eval_id}.md`:
 |---|---|
 | **Eval ID** | `{id}` |
 | **Run date** | {YYYY-MM-DD HH:MM UTC} |
-| **Model** | `{CURRENT_MODEL_NAME}` |
+| **Model** | `{BENCHMARK_MODEL}` |
 | **Skill version** | `{_skill_sha[:7]}` |
 | **Phase** | 1 of 2 complete — Agent A (with skill) finished |
 
 Agent A has completed. Agent B (without skill) will run in the next scheduled window (~5 h).
 Results will be updated here automatically.
 
-<!-- BENCHMARK_PARTIAL: {"eval_id":"{id}","model":"{CURRENT_MODEL_NAME}","skill_sha":"{_skill_sha}","issue_number":{N},"blinded_map":{_blinded_scoring_map},"agent_a_asset_url":"{asset_url}","run_date":"{ISO8601}","tokens_a":{tokens_a}} -->
+<!-- BENCHMARK_PARTIAL: {"eval_id":"{id}","model":"{BENCHMARK_MODEL}","skill_sha":"{_skill_sha}","issue_number":{N},"blinded_map":{_blinded_scoring_map},"agent_a_asset_url":"{asset_url}","run_date":"{ISO8601}","tokens_a":{tokens_a}} -->
 ```
 
 Post it using whichever GitHub access method is available (see "GitHub Access" above). The partial comment `id` returned by the API is not needed for Phase 2 (Phase 2 discovers it by scanning), but log it for debugging.
@@ -478,7 +488,7 @@ EVERY ROUTINE INVOCATION:
 
 ## Notes on Model Name
 
-`{CURRENT_MODEL_NAME}` is always the parent agent's own model — see "Model Selection — Parent and Sub-Agents Use the Same Model" at the top of this skill.
+`{BENCHMARK_MODEL}` is resolved by the precedence in "Model Selection — Resolving `{BENCHMARK_MODEL}`" at the top of this skill: explicit override first, then the parent agent's own model.
 
 Pass `--model` using the canonical API model ID (e.g., `claude-sonnet-4-6` or `gemini-3.1-pro-preview`), not the display name. The deduplication logic normalises both sides, but using the API ID avoids ambiguity.
 * **For Claude Code:** Read the model ID from your system prompt / environment context (e.g., `claude-sonnet-4-6`) if you don't already know it.
