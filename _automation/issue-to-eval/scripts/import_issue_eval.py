@@ -27,7 +27,10 @@ def clean_value(val: str) -> str:
 
 
 def normalize_skill_name(name: str) -> str:
-    return clean_value(name).lower().replace(" ", "-").replace("_", "-")
+    # Strip backticks too — issue authors sometimes wrap the skill name in
+    # markdown code formatting (e.g. `sdtm-oak`), and backticks are never
+    # valid in a skill directory name.
+    return clean_value(name).lower().replace(" ", "-").replace("_", "-").replace("`", "")
 
 
 def parse_list_items(content: str, split_commas: bool = False) -> list[str]:
