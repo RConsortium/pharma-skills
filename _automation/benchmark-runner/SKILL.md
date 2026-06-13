@@ -19,7 +19,6 @@ Rules:
 
 - Agent A and Agent B MUST be launched with exactly the parent's model ID (`claude -p --model "{CURRENT_MODEL_NAME}"`). Never select a different model for the sub-agents and never hardcode a model name — the benchmark series being extended is the parent model's own series.
 - The model ID — together with the prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting — is the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This keeps the measurement clean (bare model ± skill) and prevents the orchestrator's context from leaking into either candidate.
-- If the parent's model ID cannot be determined, or cannot be truthfully recorded in the public issue-comment markers (e.g., the host environment withholds or embargoes its model identity), **exit cleanly without launching agents or posting comments**. Do not run the benchmark under a substituted model ID: markers carrying a model name that did not actually produce the outputs corrupt deduplication and the scorecard history for every other runner.
 
 ---
 
