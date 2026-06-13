@@ -11,14 +11,14 @@ Repository: `RConsortium/pharma-skills` (https://github.com/RConsortium/pharma-s
 
 ---
 
-## Model Selection — Parent and Sub-Agents Use the Same Model
+## Model Selection — Series Label and Sub-Agent Model
 
-`{CURRENT_MODEL_NAME}` throughout this skill means the canonical API model ID of the **parent (orchestrating) agent** — the session executing this SKILL.md. Resolve it once at startup and use it everywhere it appears: `get_next_eval.py --model`, both `claude -p --model` launches, the marker JSON, and the report metadata.
+`{CURRENT_MODEL_NAME}` throughout this skill is the **benchmark series label**, fixed to the literal string `Claude Routine`. Use it verbatim everywhere it appears: `get_next_eval.py --model`, `record_run_result.py --model`, the marker JSON (`"model"`), and the report metadata. The scripts normalise this label (lowercase, strip spaces/punctuation) for deduplication, so all runs group into one consistent series.
 
-Rules:
+Sub-agent model:
 
-- Agent A and Agent B MUST be launched with exactly the parent's model ID (`claude -p --model "{CURRENT_MODEL_NAME}"`). Never select a different model for the sub-agents and never hardcode a model name — the benchmark series being extended is the parent model's own series.
-- The model ID — together with the prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting — is the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This keeps the measurement clean (bare model ± skill) and prevents the orchestrator's context from leaking into either candidate.
+- Agent A and Agent B are launched **without an explicit `--model` flag** (`claude -p ...`), so each sub-agent inherits this session's default model — the same model orchestrating the routine. This keeps the measurement clean (bare model ± skill, identical model on both sides) without ever writing a concrete model ID into a repository artifact. Never hardcode a concrete model ID anywhere in this skill or its outputs.
+- The prompt files constructed in Step 2 / Step 6 and the `CLAUDE_CODE_MAX_OUTPUT_TOKENS` setting are the **only** information passed from the parent session to a sub-agent. Do not forward any other parent context: no conversation history, no additional environment variables, no eval assertions, no scoring prompt, no blinded map. This prevents the orchestrator's context from leaking into either candidate.
 
 ---
 
@@ -72,7 +72,7 @@ Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B
 
 **BENCHMARK_PARTIAL marker format** (hidden HTML comment embedded in the issue comment body):
 ```
-<!-- BENCHMARK_PARTIAL: {"eval_id":"github-issue-27","model":"claude-sonnet-4-6","skill_sha":"b5ede6a...","issue_number":27,"blinded_map":{"candidate_1":"output_B","candidate_2":"output_A"},"agent_a_asset_url":"https://github.com/RConsortium/pharma-skills/releases/download/benchmark-results/benchmark_agent_a_github-issue-27.zip","run_date":"2026-05-03T06:00Z","tokens_a":199382,"partial_comment_id":4367060533} -->
+<!-- BENCHMARK_PARTIAL: {"eval_id":"github-issue-27","model":"Claude Routine","skill_sha":"b5ede6a...","issue_number":27,"blinded_map":{"candidate_1":"output_B","candidate_2":"output_A"},"agent_a_asset_url":"https://github.com/RConsortium/pharma-skills/releases/download/benchmark-results/benchmark_agent_a_github-issue-27.zip","run_date":"2026-05-03T06:00Z","tokens_a":199382,"partial_comment_id":4367060533} -->
 ```
 
 ---
@@ -143,7 +143,7 @@ with open(os.path.join(agent_a_dir, "prompt_A.txt"), "w", encoding="utf-8") as f
 ```bash
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 cd /tmp/benchmark_{id}/agent_A && \
-  cat prompt_A.txt | claude -p --model "{CURRENT_MODEL_NAME}" \
+  cat prompt_A.txt | claude -p \
   --allowedTools "Bash,Read,Write,Edit,Glob" \
   --output-format json > agent_A_run.json 2>&1
 ```
@@ -311,7 +311,7 @@ Launch Agent B:
 ```bash
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 cd /tmp/benchmark_{id}/agent_B && \
-  cat prompt_B.txt | claude -p --model "{state['model']}" \
+  cat prompt_B.txt | claude -p \
   --allowedTools "Bash,Read,Write,Edit,Glob" \
   --output-format json > agent_B_run.json 2>&1
 ```
@@ -477,11 +477,7 @@ EVERY ROUTINE INVOCATION:
 
 ## Notes on Model Name
 
-`{CURRENT_MODEL_NAME}` is always the parent agent's own model — see "Model Selection — Parent and Sub-Agents Use the Same Model" at the top of this skill.
-
-Pass `--model` using the canonical API model ID (e.g., `claude-sonnet-4-6` or `gemini-3.1-pro-preview`), not the display name. The deduplication logic normalises both sides, but using the API ID avoids ambiguity.
-* **For Claude Code:** Read the model ID from your system prompt / environment context (e.g., `claude-sonnet-4-6`) if you don't already know it.
-* **For Gemini CLI:** Read the **Runtime Context** block injected into your system prompt to find the `Active Model` (e.g., `gemini-3-pro-preview`) if you don't already know it.
+`{CURRENT_MODEL_NAME}` is the fixed series label `Claude Routine` — see "Model Selection — Series Label and Sub-Agent Model" at the top of this skill. Sub-agents inherit the host's default model rather than being pinned with `--model`, so no concrete model ID is recorded in issue comments or release assets. The dedup logic normalises the label, so every run posted under `Claude Routine` groups into one series.
 
 ## Notes on Distributed Selection
 
