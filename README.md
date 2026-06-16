@@ -50,7 +50,9 @@ All skills in this repository are required to be licensed under the MIT License 
 
 ## Join Us
 
-This effort is the part B of R consortium Submissions Working Group [Pilot 7](https://github.com/RConsortium/submissions-pilot7-synthetic-data). The pilot 7 aims at developing modern, realistic synthetic clinical trial benchmark datasets and test cases to evaluate open-source clinical data science tools and pharma AI “skills,” starting with group sequential design.
+This effort is the part of R consortium Submissions Working Group Pilot 7. It is a joint effort between the R consortium and the [BBSW AI committee](https://www.bbsw.org/ai-committee). 
+
+Pilot 7 was initiated to help the community navigate the rapidly growing number of AI capabilities, tools, and R packages available for clinical trial workflows. One major challenge is the lack of high-quality, diverse benchmark resources, including patient-level datasets and structured test cases such as trial design scenarios. Pilot 7 addresses this gap by crowdsourcing both AI skills and benchmark resources, then using community evaluation to continuously improve them.
 
 Pilot 7 holds weekly standups three times a month on Fridays from 8–9 AM PST. We also host monthly Submissions Working Group meetings with FDA staff, bringing together participants across different pilot subgroups.
 
