@@ -1,0 +1,37 @@
+{
+  "id": "github-issue-168",
+  "prompt": "Design and simulate a Phase 1b/2 Bayesian adaptive dose-finding trial for an oncology drug with three dose levels (100mg, 200mg, 300mg) and dual endpoints: efficacy (objective response rate, ORR) and safety (dose-limiting toxicity rate, DLT).\n\nDesign specifications:\n- Cohort size: 10 patients per dose level per cohort\n- Maximum sample size: 90 patients (3 dose levels × 3 cohorts maximum)\n- Efficacy prior: Beta(1, 1), non-informative, for ORR at each dose\n- Safety prior: Beta(1, 1), non-informative, for DLT rate at each dose\n- Escalation rule: escalate to next dose if BOTH: P(ORR > 0.20 | data) > 0.60 AND P(DLT > 0.33 | data) < 0.10\n- De-escalation rule: de-escalate if: P(DLT > 0.33 | data) > 0.25\n- Stopping rule: stop trial for futility if:  P(ORR > 0.20 | data) < 0.05 at ALL remaining untested doses\n\nTrue parameters for simulation (unknown to the agent, used to generate data):\n- ORR: dose 1 = 0.15, dose 2 = 0.30, dose 3 = 0.40\n- DLT: dose 1 = 0.05, dose 2 = 0.15, dose 3 = 0.35\n\nOptimal dose is dose 2 (200mg): best ORR with acceptable DLT rate.\n\nRun 1,000 simulation iterations with a fixed random seed.\nReport operating characteristics:\n1. Probability of selecting each dose as optimal\n2. Probability of correct selection (dose 2)\n3. Average sample size across simulations\n4. Probability of early stopping for futility",
+  "expected_output": "R code implementing genuine Bayesian Beta-Binomial conjugate updating with posterior probability decision rules. All dose escalation, de-escalation, and stopping decisions must be made using pbeta() posterior probability calculations, not observed proportions, not p-values, not z-statistics.\n\n**Critical note:** The most common silent failure is implementing decision rules using frequentist logic. An agent that checks whether observed_ORR > 0.20 instead of computing 1 - pbeta(0.20, 1 + k, 1 + n - k) is not implementing a Bayesian design. The output will look identical, dose escalation decisions, stopping rules, an operating characteristics table, but the design is wrong. The posterior probability calculation is detectable by code inspection: if pbeta() or 1 - pbeta() does not appear in the escalation decision logic, the benchmark fails.\n\nClosed-form verification check for first cohort:\n- Suppose dose 1 cohort 1 yields k=2 successes in n=10 patients\n- Posterior is Beta(1+2, 1+8) = Beta(3, 9)\n- P(ORR > 0.20 | data) = 1 - pbeta(0.20, 3, 9) ≈ 0.738\n- The script's decision logic must produce this value (±0.001) for this input, include this as a unit test or assertion in the code",
+  "files": [
+    "None",
+    "all simulation parameters are fully specified in the query. No hard sample size cap: adaptive rules determine enrollment at each cohort."
+  ],
+  "assertions": [
+    "Bayesian decision rule correctness",
+    "pbeta() or qbeta() used for all posterior probability computations, prop.test(), binom.test(), and z-test calculations absent from escalation/de-escalation logic",
+    "Beta posterior update correct: Beta(α + k, β + n - k) after k successes in n patients with Beta(α, β) prior",
+    "All three probability thresholds implemented: P(ORR > 0.20) > 0.60 for escalation, P(DLT > 0.33) < 0.10 for escalation, P(DLT > 0.33) > 0.25 for de-escalation",
+    "Futility stopping: trial stops if P(ORR > 0.20 | data) < 0.05 at ALL remaining doses — not just the current dose",
+    "Closed-form verification: P(ORR > 0.20 | Beta(3,9)) ≈ 0.738 (±0.001), unit test or assertion confirms posterior calculation is correct",
+    "Simulation correctness",
+    "1,000 iterations complete without errors",
+    "Each iteration independently initializes priors and updates posteriors after each cohort, no carryover between iterations",
+    "set.seed() called before simulation loop for reproducibility",
+    "True ORR = (0.15, 0.30, 0.40) and DLT = (0.05, 0.15, 0.35) used, as data-generating parameters",
+    "Operating characteristics",
+    "Probability of correct selection (dose 2) > 0.33, if PCS ≤ 0.33, the design performs no better than random selection, indicating the decision logic is wrong",
+    "Probability of selecting each dose sums to ≤ 1.0 (early stopping accounts for the remainder)",
+    "Average sample size ≤ 90 (maximum) and > 10 (minimum one cohort)",
+    "Operating characteristics table produced with all four required metrics",
+    "QC readiness",
+    "# REVIEW: comment at escalation threshold (P(ORR > 0.20) > 0.60, confirm threshold with clinical team and regulatory)",
+    "# REVIEW: comment at DLT safety threshold (P(DLT > 0.33), confirm acceptable DLT rate with safety review committee)",
+    "# REVIEW: comment at prior specification (Beta(1,1) non-informative, confirm whether historical data warrants informative prior)",
+    "# REVIEW: comment at cohort size (10 patients, confirm operational feasibility with clinical operations)",
+    "set.seed() value documented with rationale"
+  ],
+  "language": "R",
+  "target_skills": [
+    "clinical-trial-simulation"
+  ]
+}
