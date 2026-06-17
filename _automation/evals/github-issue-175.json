@@ -1,0 +1,45 @@
+{
+  "id": "github-issue-175",
+  "prompt": "I am designing a Phase 3 non-inferiority trial for a new oral anticoagulant (NOAC) vs warfarin for stroke prevention in non-valvular atrial fibrillation.\n\nHistorical evidence:\n- Three placebo-controlled RCTs of warfarin in NVAF (SPAF, AFASAK, BAATAF) show warfarin HR vs placebo = 0.60 (95% CI: 0.45, 0.80)\n- Historical placebo arm event rate: 4.5% per year\n- Historical warfarin arm event rate: 1.8% per year (= 0.60 × 4.5%)\n\nTrial design parameters:\n- Primary endpoint: composite of stroke or systemic embolism (time to first event, log-rank test, Cox HR for NI conclusion)\n- Experimental arm (new NOAC) vs control (warfarin)\n- Expected HR of new NOAC vs warfarin: 1.00 (assumed equivalent)\n- Target power: 90% to conclude NI\n- One-sided alpha: 0.025 for NI test\n- Enrollment: 6,000 patients per arm over 24 months\n- Minimum follow-up: 18 months per patient\n- One interim analysis at 50% of events, futility only, non-binding\n\nNI margin question: derive the correct NI margin using the M1/M2 framework and size the trial appropriately.",
+  "expected_output": "The skill must derive the NI margin using the M1/M2 framework on the log-HR scale (not the absolute risk difference scale) and size the trial to test the NI hypothesis with HR_null = NI_margin.\n\nCorrect M1/M2 derivation on log-HR scale:\n- M1 = full warfarin effect on log-HR scale = -log(HR_warfarin_vs_placebo) = -log(0.60) = 0.5108\n- M2 = 50% of M1 to be preserved = 0.50 × 0.5108 = 0.2554\n- NI margin on HR scale = exp(M2) = exp(0.2554) ≈ 1.291 (Note: this is the correct derivation — not 1 + M2/HR_historical)\n\nThe skill must use HR_null = 1.291 (the NI margin) in nSurv() or gsDesign2, NOT HR_null = 1.0 (which would size a superiority trial).\n\nCritical note: Two critical silent failures occur in NI design:\n(1) Sizing the trial with HR_null = 1.0 instead of HR_null = NI_margin. A trial sized with HR_null = 1.0 and HR_alt = 1.0 has zero events required, the trial is sized for a superiority hypothesis, not NI. The correct NI hypothesis is H0: HR_NOAC_vs_warfarin ≥ 1.291 vs H1: HR_NOAC_vs_warfarin < 1.291.\n(2) Stating the NI margin without deriving it from M1/M2. FDA will reject a margin presented without the historical evidence chain regardless of whether the statistical design is otherwise correct.\n\nThe margin derivation and the statistical sizing are two separate required outputs, a design with only one of the two has failed.",
+  "files": [
+    "None",
+    "all parameters specified in query. No hard sample size cap."
+  ],
+  "assertions": [
+    "NI margin derivation, log-HR scale",
+    "M1 = -log(0.60) = 0.5108 computed and reported, margin stated without M1 derivation is a failing answer",
+    "M2 = 0.50 × M1 = 0.2554 computed and reported, M2 fraction stated without derivation is a failing answer",
+    "NI margin = exp(M2) = exp(0.2554) ≈ 1.291 on HR scale, margin computed as 1 + M2/HR_historical (≈ 1.33) is incorrect derivation and a failing answer",
+    "CI approach stated: NI concluded if upper 95% CI of",
+    "HR_NOAC_vs_warfarin < 1.291",
+    "Regulatory framework compliance",
+    "Constancy assumption explicitly stated: warfarin effect in NI trial population equals historical effect from SPAF/AFASAK/BAATAF, omission is a failing answer",
+    "Assay sensitivity addressed: NI trial population similar to historical trial populations, omission is a failing answer",
+    "Biocreep risk flagged: NOAC cannot serve as active control in subsequent NI trial without independent placebo-controlled evidence",
+    "FDA NI guidance (2016) or ICH E10 cited by name",
+    "Statistical design correctness",
+    "gsDesign::nSurv() or gsDesign2 used with HR_null = 1.291 (NI margin), HR_null = 1.0 is a failing answer for NI sizing",
+    "HR_alternative = 1.00 (assumed equivalent) used, HR_alt = 0.72 or any superiority alternative is wrong",
+    "One-sided alpha = 0.025 for NI test",
+    "Required events computed correctly under NI hypothesis",
+    "Interim futility analysis: boundary tests NI conclusion (is upper CI still below NI margin?), not superiority",
+    "Design output",
+    "gsd_results.json contains: NI_margin (1.291), M1 (0.5108), M2 (0.2554), constancy_assumption (text), assay_sensitivity (text), any of these fields absent is a failing answer",
+    "Required events, total N, calendar time to final analysis reported",
+    "Power to demonstrate superiority (if HR < 1.0) reported separately",
+    "QC readiness",
+    "# REVIEW: at M1 derivation (confirm HR = 0.60 from SPAF, AFASAK, BAATAF, cite specific trials and pooled estimate)",
+    "# REVIEW: at M2 fraction (confirm 50% with regulatory affairs, EMA requires 50%, FDA may accept lower with strong justification)",
+    "# REVIEW: at constancy assumption (confirm current SOC and patient population match historical trial populations)",
+    "# REVIEW: at assay sensitivity (confirm warfarin is expected to reduce stroke in current study population)",
+    "# REVIEW: at biocreep (confirm this trial will not be used as basis for further NI trials without independent placebo evidence)",
+    "gsd_results.json NI_margin must be between 1.20 and 1.50, values outside this range trigger a warning requiring justification",
+    "HR_null in nSurv() call must equal NI_margin (≈ 1.291), HR_null = 1.0 detected in code is a failing answer",
+    "Script runs end-to-end without errors"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

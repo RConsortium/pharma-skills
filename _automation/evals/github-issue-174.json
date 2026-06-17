@@ -1,0 +1,43 @@
+{
+  "id": "github-issue-174",
+  "prompt": "Using the pharmaverseadam ADTTE dataset, produce a submission-ready RTF survival analysis table for a DMC or regulatory submission.\n\nInput data:\nlibrary(pharmaverseadam)\nadtte <- pharmaverseadam::adtte\n\nThe table must include:\n1. Kaplan-Meier estimates by treatment arm (TRT01P)\n2. Median survival with 95% CI, use Brookmeyer-Crowley method if available (km.ci package); if not available, use survfit() with conf.type = \"log\"and document the method used with a\n   # REVIEW: flag for biostatistician confirmation\n3. Number at risk at: 0, 3, 6, 12, 18, 24 months\n4. Log-rank test p-value (unstratified, from survdiff())\n5. Hazard ratio with 95% CI from coxph()\n6. Censoring footnote if any CNSR == 1 records present\n\nFormatting requirements:\n- Median survival: \"X.X (Y.Y, Z.Z)\", months, one decimal place\n- CI notation: parentheses, brackets are a failing answer\n- Number at risk: integers only, decimal values indicate wrong risk set computation\n- HR: \"X.XX (Y.YY, Z.ZZ)\", two decimal places\n- P-value: \"< 0.001\" when p < 0.001, \"0.000\" is a failing answer\n- Title, footnote defining CI/HR/NR, page number in footer\n- RTF file written to disk using write_rtf()",
+  "expected_output": "Executable R code using {r2rtf} pipe API producing a valid .rtf file. The script must call write_rtf() to produce a file on disk, displaying a data frame in the console is not acceptable.\n\n**Critical note:** Five silent failures are common in KM table production: (1) Missing number-at-risk row, FDA requires this to assess tail estimate reliability; (2) Wrong CI method without documentation, Brookmeyer-Crowley is preferred; if another method is used it must be explicitly flagged for review; (3) Wrong CI notation, parentheses required, not brackets; (4) P-value \"0.000\", must display as \"< 0.001\"; (5) Fractional at-risk counts, number at risk must be non-negative integers. All five pass visual inspection but fail formal QC review.",
+  "files": [
+    "library(pharmaverseadam)",
+    "adtte <- pharmaverseadam::adtte"
+  ],
+  "assertions": [
+    "r2rtf API correctness",
+    "rtf_body(), rtf_title(), rtf_footnote(), rtf_page() used in pipe chain, manual RTF string construction absent",
+    "write_rtf() called and produces .rtf file on disk, console output only is a failing answer",
+    "RTF file opens in Microsoft Word without corruption warnings",
+    "Statistical correctness",
+    "Median survival CI uses Brookmeyer-Crowley (km.ci::km.ci()) OR survfit() with explicit conf.type documented and # REVIEW: flag, default log CI without documentation is a failing answer",
+    "Log-rank p-value from survdiff() — t-test or Wilcoxon absent",
+    "HR and CI from coxph() — manual computation absent",
+    "Number at risk from summary(survfit_object, times = c(0,3,6,12,18,24))",
+    "Formatting correctness",
+    "Median CI in parentheses: \"X.X (Y.Y, Z.Z)\", brackets absent",
+    "P-value \"< 0.001\" when p < 0.001, \"0.000\" or \"0.0000\" absent",
+    "HR to two decimals: \"X.XX (Y.YY, Z.ZZ)\"",
+    "Number at risk values are non-negative integers, decimal values indicate incorrect risk set computation and are a failing answer",
+    "Number at risk row present and aligned with month columns",
+    "Censoring footnote present if any CNSR == 1 records in ADTTE",
+    "Submission compliance",
+    "Title includes analysis description (not blank or placeholder)",
+    "Footnote defines: CI = confidence interval, HR = hazard ratio, NR = not reached (or equivalent)",
+    "Page number in document footer",
+    "Treatment arm labels from TRT01P, not hardcoded strings",
+    "QC readiness",
+    "# REVIEW: at CI method (confirm Brookmeyer-Crowley vs log-transformed, document in SAP before submission)",
+    "# REVIEW: at p-value threshold (confirm \"< 0.001\" display against SAP formatting conventions)",
+    "# REVIEW: at number-at-risk timepoints (confirm 0, 3, 6, 12,18, 24 months against DMC charter or SAP)",
+    "# REVIEW: at Cox model (confirm unstratified vs stratified against SAP randomization strata)",
+    "RTF file produced on disk and opens without errors",
+    "Script runs end-to-end without errors"
+  ],
+  "language": "R",
+  "target_skills": [
+    "r2rtf"
+  ]
+}

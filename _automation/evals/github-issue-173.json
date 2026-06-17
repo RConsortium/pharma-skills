@@ -1,0 +1,42 @@
+{
+  "id": "github-issue-173",
+  "prompt": "A Phase 3 trial was designed assuming a control arm event rate of 30% at 12 months (exponential survival, lambda_0 = -log(0.70)/12 ≈ 0.0296). At the planned blinded interim analysis after 50% of original planned events, the observed blinded overall event rate suggests the control arm rate is lower than assumed, approximately 22% at 12 months.\n\nOriginal design parameters:\n- Primary endpoint: OS (time to event), HR = 0.75\n- Control arm: 30% events at 12 months, lambda_0 = -log(0.70)/12\n- Experimental arm: HR = 0.75, lambda_1 = lambda_0 × 0.75\n- Target power: 90%, two-sided alpha 0.05\n- Planned N: 400 patients (200 per arm)\n- Planned events at final: 280\n\nObserved blinded interim data:\n- Enrolled: 400 patients (full enrollment complete)\n- Blinded overall event rate at interim: 15%\n  → Updated control arm estimate: 22% at 12 months\n  → Updated lambda_0_new = -log(1 - 0.22)/12 = -log(0.78)/12 ≈ 0.0199\n  **Note:** this is the UPDATED lambda, distinct from original lambda_0 = -log(0.70)/12 ≈ 0.0296\n- No unblinded treatment arm data available\n\nTasks:\n1. Compute revised required events under updated lambda_0_new, HR = 0.75 preserved, power = 90%, alpha = 0.05\n2. Implement blinded SSR using the Wittes-Brittain (1990) method to maintain type I error at 0.05\n3. Simulate 10,000 trials under H0 (HR = 1.0) and H1 (HR = 0.75, lambda_0 = lambda_0_new) for both original and SSR designs:\n   a. Type I error ≤ 0.052 for SSR design under H0\n   b. Power ≥ 88% for SSR design under H1\n   c. Original design power deficit: how much power is lost at original N = 400 given true lambda_0 = lambda_0_new?\n      (Report as: \"Original design achieves X% power vs 90% target\")\n4. Assess FDA 25% threshold: if revised N > 500 (400 × 1.25), output must state protocol amendment and alpha adjustment required",
+  "expected_output": "R simulation code implementing Wittes-Brittain blinded SSR. The revised N must account for inflation from the interim look.\n\n**Critical note:** The most common silent failure is recomputing the fixed-design N directly from the updated nuisance parameter without any alpha adjustment (n_new = power_calc(lambda_0_new, HR=0.75, power=0.90, alpha=0.05)). This is incorrect, even a blinded interim look at aggregate event rates provides information about the nuisance parameter and induces type I error inflation of approximately 0.002-0.005. The Wittes-Brittain correction applies a small inflation factor to preserve the nominal alpha level. A simulation showing type I error = exactly 0.050 for the naive SSR design has a methodological error, the actual inflation is small but real and detectable with 10,000 iterations.\n\nImportant lambda clarification:\n- Original design: lambda_0 = -log(0.70)/12 ≈ 0.0296 (30% events)\n- Updated estimate: lambda_0_new = -log(0.78)/12 ≈ 0.0199 (22% events)\n- H1 simulation uses HR = 0.75 applied to lambda_0_new, not lambda_0",
+  "files": [
+    "None",
+    "all parameters specified in query. No sample size cap."
+  ],
+  "assertions": [
+    "SSR method correctness",
+    "Wittes-Brittain (1990) blinded SSR implemented, direct fixed-design recomputation without inflation factor is a failing answer",
+    "Revised events computed under lambda_0_new = -log(0.78)/12 with HR = 0.75, wrong lambda in revised calculation is a failing answer",
+    "Percentage N increase computed: (revised_N - 400) / 400 × 100%",
+    "25% FDA threshold assessed: if revised_N > 500, alpha adjustment requirement stated explicitly",
+    "Type I error control",
+    "10,000 iterations under H0 (HR = 1.0, lambda = lambda_0_new)",
+    "SSR design type I error ≤ 0.052, values > 0.055 indicate, Wittes-Brittain correction not implemented correctly",
+    "Naive SSR type I error reported if implemented: expected 0.051-0.055 demonstrating inflation the correction addresses",
+    "Type I error estimate printed with 95% Monte Carlo CI: (observed_rejections ± 1.96 × sqrt(p(1-p)/n)) / n",
+    "Power confirmation",
+    "10,000 iterations under H1 (HR = 0.75, lambda = lambda_0_new)",
+    "SSR design power ≥ 88%",
+    "Original design (N = 400) power under true lambda_0_new reported as numeric value, power deficit quantified explicitly",
+    "Side-by-side comparison: original power vs SSR power vs target 90%",
+    "Output completeness",
+    "Original design: N=400, events=280, lambda_0, power under true lambda",
+    "SSR design: revised_N, revised_events, lambda_0_new, power, type I error",
+    "Percentage N increase and FDA 25% threshold assessment",
+    "Operating characteristics table covering both designs",
+    "QC readiness",
+    "# REVIEW: at blinded event rate (confirm interim look was blinded, any unblinded data requires unblinded SSR with prospective alpha adjustment per FDA Adaptive Design Guidance 2019)",
+    "# REVIEW: at 25% threshold (confirm with regulatory affairs whether protocol amendment required before enrollment expansion)",
+    "# REVIEW: at Wittes-Brittain implementation (confirm method with lead statistician, cite Wittes & Brittain 1990)",
+    "# REVIEW: at updated lambda estimate (confirm 22% estimate derived from blinded aggregate data only, not by-arm analysis)",
+    "set.seed() documented with value",
+    "Script runs end-to-end without errors"
+  ],
+  "language": "R",
+  "target_skills": [
+    "clinical-trial-simulation"
+  ]
+}
