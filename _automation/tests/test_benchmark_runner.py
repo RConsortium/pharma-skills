@@ -345,5 +345,45 @@ class TestWriteRunManifest(unittest.TestCase):
                 gne.RUNS_DIR = original_runs_dir
 
 
+class TestMainStdoutContract(unittest.TestCase):
+    """main() must emit either a pure-JSON eval case OR a STATUS line — never both.
+
+    Regression guard for the bug where a stray `print("STATUS: UP_TO_DATE")`
+    followed the JSON dump, appending a trailing non-JSON line that broke
+    json.load for every downstream consumer (SKILL.md Step 1 / Step 5).
+    """
+
+    @patch("get_next_eval.write_run_manifest")
+    @patch("get_next_eval.fetch_and_check_comments")
+    def test_selected_eval_stdout_is_pure_json(self, mock_check, mock_manifest):
+        import io
+        import contextlib
+
+        # Pretend the eval has never been run so it is eligible.
+        mock_check.return_value = (False, 0, 0, "")
+
+        # Pick any real eval id present in _automation/evals/.
+        evals_dir = gne.REPO_ROOT / "_automation" / "evals"
+        eval_files = sorted(evals_dir.glob("*.json"))
+        self.assertTrue(eval_files, "no eval fixtures found to exercise main()")
+        eval_id = json.loads(eval_files[0].read_text(encoding="utf-8"))["id"]
+
+        argv = [
+            "get_next_eval.py",
+            "--model", "Claude Routine",
+            "--priority-issue", eval_id,
+        ]
+        buf = io.StringIO()
+        with patch.object(sys, "argv", argv), contextlib.redirect_stdout(buf):
+            gne.main()
+
+        stdout = buf.getvalue()
+        self.assertNotIn("STATUS:", stdout,
+                         "selected-eval stdout must not contain a STATUS sentinel line")
+        # The entire stdout must parse as a single JSON object.
+        parsed = json.loads(stdout)
+        self.assertEqual(parsed["id"], eval_id)
+
+
 if __name__ == "__main__":
     unittest.main()
