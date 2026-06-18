@@ -16,7 +16,10 @@ https://zhangh12.github.io/TrialSimulator/reference/.
 
 ## Enroller
 
-`StaggeredRecruiter` is the only enroller this skill uses. It is **for
+`trial()` **MUST always** set `enroller = StaggeredRecruiter` — it is the
+only enroller this skill supports; never a custom function. Setting it
+**requires** passing `accrual_rate` (via `trial(..., accrual_rate = <data.frame>)`);
+the two are inseparable. `StaggeredRecruiter` is **for
 `trial(enroller = ...)` only — never as an `endpoint(generator = ...)`**.
 
 | Function | Purpose |

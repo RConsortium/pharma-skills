@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.16
+  version: 0.2.17
   trialsimulator_min_version: "1.18.4"
 ---
 
