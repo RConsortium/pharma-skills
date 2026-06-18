@@ -658,9 +658,11 @@ def main() -> None:
     selected_eval["_selection_salt"] = selection_salt
 
     write_run_manifest(selected_eval, args.model, selected_eval["_skill_sha"], "dispatched")
+    # On success, stdout is the eval-case JSON and nothing else, so callers can
+    # parse it directly (see SKILL.md Step 1 / Step 5). The "STATUS: UP_TO_DATE"
+    # sentinel is reserved for the genuinely-nothing-to-run paths above; printing
+    # it here too would append a trailing non-JSON line and break json.load.
     print(json.dumps(selected_eval, indent=2))
-
-    print("STATUS: UP_TO_DATE")
 
 
 if __name__ == "__main__":

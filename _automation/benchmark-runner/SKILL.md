@@ -269,10 +269,13 @@ state = json.loads(m.group(1))
 Also reload the full eval case (for assertions, scoring prompt, prompt_b):
 
 ```bash
+# Send stdout (the eval-case JSON) to the file and stderr (warnings such as
+# the >100 KB bundle notice) to a separate log. Do NOT use `2>&1` here — it
+# would merge warning lines into the JSON file and break the json.load below.
 python3 _automation/benchmark-runner/scripts/get_next_eval.py \
   --model {state["model"]} \
   --priority-issue {state["eval_id"]} \
-  > /tmp/eval_case_{id}.json 2>&1
+  > /tmp/eval_case_{id}.json 2>/tmp/eval_case_{id}.log
 ```
 
 Restore Agent A's output. If `agent_a_asset_url` is set, download and unzip it. Use whichever method works:
