@@ -269,7 +269,14 @@ example than from prose.
 
 | Function | Purpose |
 |---|---|
-| `expandRegimen(data)` | Expand the compact `regimen_trajectory` column in locked data into one row per regimen segment per patient (adds `regimen` and `switch_time_from_enrollment`; drops `regimen_trajectory`). Use **inside an action function** — typically right after `trial$get_locked_data(...)` — to make a switching trajectory readable for downstream computation. Only meaningful when treatment switching is enabled via `add_regimen`. |
+| `expandRegimen(data)` | Expand the compact `regimen_trajectory` column in locked data into one row per regimen segment per patient (adds `regimen` and `switch_time_from_enrollment`; drops `regimen_trajectory`). Use **inside an action function** — typically right after `trial$get_locked_data(...)` — to make a switching trajectory readable for downstream computation. Only meaningful when treatment switching is enabled via `add_regimen` or `crossover()`. |
+
+Locked data also carries an `n_switches` column — the per-patient count of
+treatment switches within the lock window. Use it directly for crossover /
+switch-rate operating characteristics and QC (e.g. fraction who switched,
+fraction switching more than once), rather than recomputing from
+`regimen_trajectory`. Meaningful only when switching is enabled
+(`add_regimen` or `crossover()`).
 
 ## Post-simulation utilities
 

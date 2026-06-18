@@ -9,8 +9,8 @@ endpoint(name, type, readout = NULL, generator, ...)
 | Arg | Type | Required | Notes |
 |-----|------|----------|-------|
 | `name` | character vector | yes | One or more endpoint names; must match generator output column names exactly |
-| `type` | character vector | yes | `"tte"` or `"non-tte"` per name |
-| `readout` | named numeric vector | if non-tte | `c(ep_name = time_value)`; omit or NULL if all TTE |
+| `type` | character vector | yes | `"tte"`, `"non-tte"`, or `"baseline"` per name; use `"baseline"` for a non-tte variable observed at randomization |
+| `readout` | named numeric vector | if non-tte | `c(ep_name = time_value)` per non-tte name; omit/NULL for tte and baseline names (a `"baseline"` endpoint's readout is 0 by definition and must not appear here) |
 | `generator` | function(n, ...) | yes | First argument must be `n`; returns data.frame with one row per patient |
 | `...` | named values | no | Passed to `generator` at call time |
 
@@ -20,7 +20,7 @@ endpoint(name, type, readout = NULL, generator, ...)
 - Custom TTE generators must include a `<name>_event` column (1 = event, 0 = censored). Built-in generators (e.g., `rexp`, `PiecewiseConstantExponentialRNG`) handle this automatically for a single TTE endpoint.
 - Any function whose first argument is not `n` must be wrapped before passing as `generator` (e.g., `sample()` must be wrapped; `rbinom`, `rnorm` do not).
 - `...` can be used to share one generator across arms with different parameter values (e.g., `hr = 0.7`); arms can also use completely independent generators — both are valid.
-- All patient-level variables — endpoints, covariates, biomarkers, subgroup flags — must go through `endpoint()`. Baseline variables use `readout = 0` and `type = "non-tte"`; pass their names to `stratification_factors` in `trial()` for stratified randomization.
+- All patient-level variables — endpoints, covariates, biomarkers, subgroup flags — must go through `endpoint()`. Baseline variables use `type = "baseline"`; pass their names to `stratification_factors` in `trial()` for stratified randomization.
 - Multiple endpoints/variables can be defined in a single `endpoint()` call or across multiple calls — choose based on readability. A single call with a combined generator is convenient when many endpoints share one generator. Separate calls (e.g., `ep1 = endpoint(..., generator = rexp); ep2 = endpoint(..., generator = rnorm)`) are often cleaner when each endpoint has its own simple generator. Pass all resulting objects to `arm$add_endpoints(ep1, ep2, ...)`.
 - Repeated measurements of one endpoint: define each visit as a separate name in `name`, with its assessment time in `readout`. The generator returns all visits jointly (one column per visit), allowing correlation across time.
 
@@ -38,7 +38,7 @@ endpoint(name, type, readout = NULL, generator, ...)
 | — TTE marginal + NORTA, piecewise exponential | Must use built-in `qPiecewiseExponential(p, times, piecewise_risk)`; other distributions use standard quantile functions (e.g., `qexp`, `qweibull`) |
 | — NORTA correlation feasibility | Target correlation in `cor_target_final` may not be achievable for all marginal combinations (e.g., binary variables have bounded correlation range); `simdesign_norta()` will error if infeasible — inform the user and ask to adjust |
 | Repeated measures of one endpoint | Custom function returning one column per visit |
-| Baseline variable (covariate, biomarker, subgroup) | Custom function with `readout = 0`; wrap if first argument is not `n` |
+| Baseline variable (covariate, biomarker, subgroup) | Custom function with `type = "baseline"`; wrap if first argument is not `n` |
 
 **Examples:**
 
@@ -144,8 +144,7 @@ ep_exp   <- endpoint(name = "response", type = "non-tte",
 
 # Baseline variable — wrap if first argument is not n (e.g., sample())
 gen_stage <- function(n, ...) { ... }  # returns: data.frame(stage)
-ep_stage  <- endpoint(name = "stage", type = "non-tte",
-                      readout = c(stage = 0), generator = gen_stage)
+ep_stage  <- endpoint(name = "stage", type = "baseline", generator = gen_stage)
 
 # --- Repeated measures ---
 
@@ -203,8 +202,8 @@ gen_norta <- function(n, ...) {
 
 ep <- endpoint(
   name      = c("os", "secondary", "baseline_bin", "baseline_unif"),
-  type      = c("tte", "non-tte", "non-tte", "non-tte"),
-  readout   = c(secondary = 10, baseline_bin = 0, baseline_unif = 0),
+  type      = c("tte", "non-tte", "baseline", "baseline"),
+  readout   = c(secondary = 10),
   generator = gen_norta
 )
 
@@ -214,15 +213,14 @@ ep <- endpoint(
 ep_os       <- endpoint(name = "os",       type = "tte",     generator = rexp, rate = log(2) / 12)
 ep_response <- endpoint(name = "response", type = "non-tte", readout = c(response = 8),
                         generator = rbinom, size = 1, prob = 0.4)
-ep_baseline <- endpoint(name = "stage",    type = "non-tte", readout = c(stage = 0),
-                        generator = gen_stage)
+ep_baseline <- endpoint(name = "stage",    type = "baseline", generator = gen_stage)
 ctrl$add_endpoints(ep_os, ep_response, ep_baseline)
 
 # Single call: convenient when many endpoints share one combined generator
 ep_all <- endpoint(
   name      = c("os", "response", "stage"),
-  type      = c("tte", "non-tte", "non-tte"),
-  readout   = c(response = 8, stage = 0),
+  type      = c("tte", "non-tte", "baseline"),
+  readout   = c(response = 8),
   generator = gen_all  # returns: data.frame(os, os_event, response, stage)
 )
 ctrl$add_endpoints(ep_all)
@@ -270,7 +268,7 @@ trial(name, n_patients, duration, description = name, seed = NULL,
 | `seed` | numeric/NULL | no | NULL = auto per-replicate |
 | `enroller` | function | yes | **Always `StaggeredRecruiter`** — the only enroller this skill supports. Never a custom function or any other value. |
 | `dropout` | function | no | Returns dropout time vector of length n. **One global dropout function per trial — applies to ALL endpoints uniformly per patient.** Each patient draws a single dropout time; that time censors every TTE endpoint and zeroes out any non-TTE readouts whose readout-time exceeds it. There is no API for endpoint-specific dropout. See helpers.md "Global dropout — no per-endpoint variation". |
-| `stratification_factors` | character | no | Names of baseline endpoints (`readout = 0`); enables stratified randomization |
+| `stratification_factors` | character | no | Names of baseline endpoints (`type = "baseline"`); enables stratified randomization |
 | `silent` | logical | no | Suppress messages |
 | `...` | any | no | Passed to `enroller` and `dropout` |
 
