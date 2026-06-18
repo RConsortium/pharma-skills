@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.17
-  trialsimulator_min_version: "1.18.4"
+  version: 0.2.18
+  trialsimulator_min_version: "1.20.1"
 ---
 
 # TrialSimulator Skill
@@ -210,7 +210,9 @@ calls for that kind of operation.
   `$remove_arms(arms_name)`, `$update_sample_ratio(arm_names, sample_ratios)`,
   `$update_generator(arm_name, endpoint_name, generator, ...)`,
   `$add_arms(sample_ratio, ...)` (mid-trial; same method as setup, used
-  for adaptive arm addition like dose-ranging, basket, or platform designs)
+  for adaptive arm addition like dose-ranging, basket, or platform designs),
+  `$crossover(what, how, when, delay)` (milestone-triggered treatment
+  crossover for patients still in the trial)
 - *Combination test in actions, for seamless / dose-selection designs*:
   `$dunnettTest(formula, placebo, treatments, milestones, alternative,
   planned_info, ...)`, `$closedTest(dunnett_test, treatments, milestones,
@@ -512,6 +514,55 @@ If none of these fit the user's design, ask for more details and
 implement a custom procedure (weighted Hochberg, parallel
 gatekeeping with logical restrictions, complex multi-population
 designs, etc.).
+
+## Crossover and treatment switching
+
+When patients receive, during the trial, a treatment other than the one
+assigned at randomization — crossover, treatment switching, rescue
+therapy, dose changes, and the like — these three vignettes cover three
+*distinct* switching designs, and which one applies is rarely clear until
+you have read them. Read all three in full before implementing, then pick
+the one that matches the user's design and follow it — do not improvise
+from a partial or approximate match:
+
+- **Washout crossover** — the classical within-patient crossover design
+  (e.g. 2×2 AB/BA or higher-order / multi-period), where each patient
+  receives treatments sequentially as their own control, separated by
+  untreated wash-out periods. The solution here is not the switching
+  machinery but an endpoint generator that simulates the outcome
+  accounting for the changing treatment over time.
+  https://zhangh12.github.io/TrialSimulator/articles/crossoverWashout.html
+- **Dynamic treatment switching** — per-patient switching driven by each
+  patient's own evolving outcome, available any time from randomization
+  onward (e.g. switch at progression, rescue after non-response, dose
+  changes, and other outcome-driven changes).
+  https://zhangh12.github.io/TrialSimulator/articles/dynamicTreatmentSwitching.html
+- **Crossover at a milestone** — crossover anchored to a trial-level time:
+  a fixed calendar time, or a milestone trigger not known until it fires
+  (e.g. an interim efficacy signal opens crossover for control patients
+  still on study).
+  https://zhangh12.github.io/TrialSimulator/articles/crossoverAtMilestone.html
+
+If none of the three covers the user's design, do not invent a workaround.
+That almost certainly means TrialSimulator cannot model the design — a rare
+and strong claim. Before making it, both re-read the vignettes carefully
+*and* confirm the design with the user — especially the specific aspects
+that appear to block TrialSimulator, since the mismatch may rest on a
+misunderstanding of what they need. Only after that, tell the user and stop.
+
+For the latter two, read the relevant function signatures if the vignette
+leaves any argument unclear.
+
+**Confirm the post-switch outcome model before implementing.** How each
+endpoint is generated or updated once treatment changes — the `how` step
+for switching / `crossover()`, or the generator logic for washout
+crossover — is a substantive modeling assumption that materially drives
+results (e.g. does a switch extend only residual survival, apply a hazard
+ratio, reset the hazard, or add benefit only after the switch?). Unless
+the user has specified this crystal-clearly, do not choose it yourself.
+When the model is non-trivial, write it up as a short supplement and
+**render it** (properly typeset math, not raw LaTeX in the chat) for the
+user to review and confirm before you implement it.
 
 ## Error-handling stance
 

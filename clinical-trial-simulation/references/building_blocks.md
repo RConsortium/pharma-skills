@@ -437,11 +437,15 @@ regimen(what, when, how)
 
 | Arg | Type | Notes |
 |-----|------|-------|
-| `what` | function(patient_data) | Returns data.frame(patient_id, new_treatment); NA rows = skip patient |
-| `when` | function(patient_data) | Returns data.frame(patient_id, switch_time); no NAs allowed |
-| `how` | function(patient_data) | Returns modified columns + patient_id; NA = unchanged |
+| `what` | function(patient_data) | Returns data.frame(patient_id, new_treatment) — one row per switching patient; omit non-switchers |
+| `when` | function(patient_data) | Returns data.frame(patient_id, switch_time) for every switcher |
+| `how` | function(patient_data) | Returns patient_id + only the endpoint columns it changes; flip just the cells that change via `ifelse(cond, new, original)` |
 
 All three can be lists of functions executed sequentially.
+
+**Rules:**
+- `how()` may modify **post-switch outcomes only**. Returning a changed value for an endpoint whose event/readout is at or before `switch_time` errors. Guard it: `os = ifelse(os > switch_time, new_os, os)`.
+- Never apply dropout or censoring inside `how()` — TrialSimulator re-applies both automatically after the switch.
 
 ```r
 reg <- regimen(what = fn_who_switches, when = fn_when_to_switch, how = fn_update_data)
