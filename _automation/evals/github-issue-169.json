@@ -1,0 +1,35 @@
+{
+  "id": "github-issue-169",
+  "prompt": "I'm designing a platform trial with three experimental arms (A, B, C) sharing a single common control arm under a master protocol. Patients are\nrandomized 1:1:1:1 (control:A:B:C). Control patients are shared across all three experimental comparisons simultaneously.\n\nDesign parameters for each sub-trial:\n- Primary endpoint: OS\n- Control arm median OS: 14 months\n- HR target: 0.72 for each experimental arm vs shared control\n- Target power: 85% per sub-trial\n- One interim analysis at 50% of sub-trial events (O'Brien-Fleming)\n- Two-sided alpha 0.025 per comparison (standard for platform trials)\n- Sub-trials may start and stop independently\n- Enrollment: 40 patients per month total across all four arms\n\nThe question I need answered:\n1. What is the family-wise type I error across the full platform if each sub-trial is tested at alpha = 0.025 independently?\n2. How should I adjust for the correlation between sub-trial test statistics that arises from sharing the control arm?\n3. What is the correct per-comparison alpha to maintain platform-wide FWER ≤ 0.05?\n\nNo hard sample size cap, size each sub-trial correctly.",
+  "expected_output": "The skill must identify that sharing a control arm induces positive correlation between sub-trial test statistics and that testing each independently at alpha = 0.025 inflates the platform-wide FWER above 0.05.\n\nThe correct approach requires one of:\n(1) Bonferroni correction: per-comparison alpha = 0.025/3 ≈ 0.0083\n(2) Closed testing procedure accounting for the correlation structure\n(3) Simulation-based FWER using the bivariate normal distribution with correlation ρ ≈ 0.5\n\nThe output must explicitly compute or estimate the platform-wide FWER under the naive alpha = 0.025 per sub-trial approach and show it exceeds\n0.05 before proposing the correction.\n\n**Critical note:** A skill that produces three separate gsSurv() design objects at alpha = 0.025 without flagging the shared control correlation problem has produced a silent failure with direct regulatory consequence. Each individual sub-trial design will look correct, the error is invisible\nuntil the platform multiplicity structure is examined as a whole.\n\nDerivation of the correlation:\nIn a 1:1:1:1 platform with three sub-trials each comparing one experimental arm to the shared control, each control patient contributes to all three\ncomparisons. For sub-trials i and j sharing a control arm of size n_c, with experimental arm sizes n_i and n_j respectively:\n\nρ(i,j) = n_c / sqrt((n_c + n_i)(n_c + n_j))\n\nWith equal allocation (n_c = n_i = n_j = n):\nρ = n / sqrt(2n × 2n) = n / 2n = 0.5\n\nUnder ρ = 0.5 and three comparisons each at alpha = 0.025 (one-sided 0.0125), the platform-wide FWER computed from the trivariate normal\ndistribution is approximately 0.06–0.07, not 0.05. The skill must demonstrate this or state it explicitly with a reference.",
+  "files": [
+    "None",
+    "all parameters fully specified in query. No hard sample size cap."
+  ],
+  "assertions": [
+    "Multiplicity recognition",
+    "Output explicitly states that shared control arm induces positive correlation ρ ≈ 0.5 between sub-trial test statistics for equal allocation, or derives ρ from the formula above",
+    "Output states that testing each sub-trial at alpha = 0.025 independently gives platform-wide FWER > 0.05, this must be quantified (≈ 0.06-0.07), not just asserted",
+    "Output proposes a specific corrected alpha: Bonferroni ≈ 0.0083, OR a simulation-based or closed-testing alternative with explicit alpha stated",
+    "Platform-wide FWER quantification",
+    "FWER under naive alpha = 0.025 is computed or estimated, either via pmvnorm() from the mvtnorm package using the correlation matrix, or via simulation, or cited from the platform trial literature (Wason & Jaki, 2012 or equivalent)",
+    "Corrected per-comparison alpha is applied to all three sub-trial designs, uncorrected alpha = 0.025 per sub-trial is a failing answer",
+    "Design output",
+    "Each sub-trial sized at the corrected alpha, required events will be higher than at alpha = 0.025 due to more conservative threshold",
+    "Shared control arm ratio correctly reflected: with 1:1:1:1 allocation each experimental arm is compared against 1/4 of total patients as shared control, requiring adjustment in gsSurv() or nSurv() inputs",
+    "Platform-wide power (probability all three sub-trials correctly detect their effects) reported separately from per-sub-trial power",
+    "Scope awareness",
+    "If gsDesign cannot implement correlation-adjusted multiplicity, output explicitly states this and names rpact (via getDesignGroupSequential with correlation matrix) or mvtnorm (via pmvnorm) as correct R implementations",
+    "gsd_results.json does not report platform-wide FWER ≤ 0.05 under naive per-comparison alpha = 0.025 without a warning or correction",
+    "QC readiness",
+    "# REVIEW: comment at per-comparison alpha (confirm platform-wide FWER target ≤ 0.05 with regulatory, some platforms accept higher FWER with strong prior evidence)",
+    "# REVIEW: comment at shared control ratio (confirm 1:1:1:1 allocation is fixed; adaptive randomization changes the correlation)",
+    "# REVIEW: comment at sub-trial independence assumption (confirm sub-trials cannot add or drop arms mid-platform, which changes ρ)",
+    "# REVIEW: comment at correlation assumption (ρ = 0.5 assumes equal allocation throughout, confirm with operations that arm sizes",
+    "remain balanced)"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

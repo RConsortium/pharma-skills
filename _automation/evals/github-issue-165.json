@@ -1,0 +1,42 @@
+{
+  "id": "github-issue-165",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study DM, EX, and DS domains, derive population flags for an ADaM Subject-Level Analysis Dataset (ADSL): Safety Population (SAFFL), Intent-to-Treat Population (ITTFL), and Per-Protocol Population (PPROTFL).\n\nInput data must be loaded directly from the pharmaverse R packages:\n\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\ndm <- pharmaversesdtm::dm    # Demographics, includes screen failures \n                              # with ARMCD == \"Scrnfail\"\nex <- pharmaversesdtm::ex    # Exposure records, source for dosing confirmation\nds <- pharmaversesdtm::ds    # Disposition records, source for protocol \n                              # deviation detection\n\nDo not generate synthetic data. Use pharmaversesdtm domains directly.\n\nPopulation flag definitions:\n- SAFFL = \"Y\" if subject received at least one dose of study drug confirmed by at least one EX record with EXDOSE > 0\n- ITTFL = \"Y\" if subject was randomized (ARMCD != \"Scrnfail\" and ACTARMCD != \"Scrnfail\")\n- PPROTFL = \"Y\" if subject completed treatment without a major protocol deviation (no DS record where DSCAT == \"PROTOCOL MILESTONE\" and\n  DSDECOD == \"PROTOCOL DEVIATION\")\n- Screen failures (ARMCD == \"Scrnfail\"): SAFFL = NA, ITTFL = NA, PPROTFL = NA, not \"N\"\n- Subjects randomized but who never received a dose: ITTFL = \"Y\", SAFFL = NA, both states must coexist correctly",
+  "expected_output": "Executable R code using {admiral} that correctly derives all three population flags with proper handling of screen failures, subjects with no exposure, and subjects with major protocol deviations. The script must use admiral idiom functions throughout, not base R or dplyr workarounds.\n\nCritical note: The most common silent failure is assigning \"N\" to screen failures instead of NA. CDISC ADaM convention requires population flags to\nbe \"Y\" or NA only, \"N\" is not a valid value and will be flagged in any pinnacle21 compliance check. A second silent failure is deriving SAFFL from\n!is.na(TRTSDT) rather than confirmed dosing from EX, a subject can have TRTSDT recorded in error without ever receiving drug. pharmaversesdtm::dm contains screen failure subjects (ARMCD == \"Scrnfail\") that directly test both failure modes.",
+  "files": [
+    "library(pharmaversesdtm)",
+    "library(pharmaverseadam)",
+    "dm <- pharmaversesdtm::dm",
+    "ex <- pharmaversesdtm::ex",
+    "ds <- pharmaversesdtm::ds"
+  ],
+  "assertions": [
+    "Admiral idiom correctness",
+    "derive_var_merged_exist_flag() used for SAFFL derivation from EX with filter_add = EXDOSE > 0, manual left_join() + mutate() absent",
+    "derive_vars_merged() with explicit filter_add used for PPROTFL detection, manual anti_join() or filter() on deviation records absent",
+    "DOMAIN removed from dm, ex, and ds before any merge or derivation",
+    "derive_vars_merged() used for all ADSL variable joins, plain left_join() on full datasets absent",
+    "Flag value correctness",
+    "SAFFL, ITTFL, PPROTFL values are \"Y\" or NA only, \"N\" is completely absent from all three flags across all subjects",
+    "Screen failures (ARMCD == \"Scrnfail\"): all three flags are NA, confirmed by filter(ARMCD == \"Scrnfail\") showing no \"Y\" or \"N\" values",
+    "SAFFL requires EXDOSE > 0 in at least one EX record, !is.na(TRTSDT) as proxy is absent from derivation logic",
+    "Subjects with ITTFL == \"Y\" and SAFFL == NA are present and correct, randomized but undosed subjects handled as a distinct case",
+    "Structural correctness",
+    "One record per subject, no duplicate USUBJID in output",
+    "stopifnot() or equivalent assertion confirms nrow equals nrow(dm)",
+    "All required variables present: USUBJID, SAFFL, ITTFL, PPROTFL,",
+    "ARMCD, ACTARMCD, TRTSDT, TRTEDT at minimum",
+    "CDISC conformance",
+    "SAFFL count is strictly less than or equal to ITTFL count",
+    "PPROTFL count is strictly less than or equal to SAFFL count",
+    "Population counts are printed to console or verification log for human review",
+    "QC readiness",
+    "# REVIEW: comment at SAFFL definition confirming EXDOSE > 0 threshold with protocol (minimum dose may differ)",
+    "# REVIEW: comment at PPROTFL deviation scope confirming which DSDECOD values constitute major deviations per protocol",
+    "# REVIEW: comment at ITTFL definition confirming randomization variable (ARMCD vs RANDFL depending on study)",
+    "Script runs end-to-end without errors on pharmaversesdtm data"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral/admiral-adsl"
+  ]
+}

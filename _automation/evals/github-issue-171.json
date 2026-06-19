@@ -1,0 +1,41 @@
+{
+  "id": "github-issue-171",
+  "prompt": "A Phase 3 oncology trial has reached its pre-specified interim analysis. The trial was designed with the following parameters:\n\nOriginal design:\n- Primary endpoint: OS, HR = 0.72, control arm median 14 months\n- Target power: 90%, two-sided alpha 0.05, O'Brien-Fleming spending\n- One interim at 50% of events (non-binding futility, beta-spending)\n- Required events: 320 at final analysis, 160 at interim\n- Enrollment: 480 patients over 24 months, minimum 12 months follow-up\n\nObserved interim data (unblinded, for DMC use):\n- Calendar time since first patient in: 28 months\n- Events observed to date: 148 (out of 320 planned)\n- Observed HR at interim: 0.81\n- Patients still on study: 412\n- Information fraction based on events: 148/320 = 0.4625\n\nCompute and report for the DMC:\n1. Conditional power given observed HR of 0.81 and assuming the original HR of 0.72 for remaining follow-up\n2. Conditional power given observed HR of 0.81 and assuming the observed HR of 0.81 continues (pessimistic scenario)\n3. Predictive probability of success integrating over uncertainty in the remaining treatment effect using a prior centered at log(0.72) on the log-HR scale\n4. Whether the observed test statistic crosses the pre-specified futility boundary at information fraction 0.4625\n5. Expected calendar time to final analysis given current event rate\n\nReference values for verification (approximate, for assertion checking):\n- Z-statistic at interim: z = -log(0.81) / sqrt(1/148) × sqrt(148/4) ≈ 1.24 (verify against gsDesign computation)\n- Conditional power at IF=0.4625 under original HR=0.72: approximately 52-60% (values outside this range indicate wrong IF or wrong HR input)\n- Conditional power at IF=0.4625 under pessimistic HR=0.81: approximately 20-30% (substantially lower than optimistic scenario)\n- PPS must fall strictly between the two conditional power values",
+  "expected_output": "R code using gsDesign and/or gsDesign2 that correctly computes conditional power and predictive probability of success at the observed information fraction of 0.4625, not at the planned information fraction of 0.50.\n\n| Output | Requirement |\n|--------|-------------|\n| Conditional power (original HR) | gsDesign::condPower() at IF=0.4625 |\n| Conditional power (observed HR) | Same function, pessimistic HR |\n| Predictive probability of success | Numeric value with prior stated |\n| Futility boundary check | Z vs boundary at actual IF=0.4625 |\n| Time to final analysis | Event projection from current rate |\n\n**Critical note:** The most common silent failure is computing conditional power at the planned information fraction (0.50) rather than the observed information fraction (0.4625). A DMC report showing conditional power computed at IF=0.50 overstates the probability of eventual success and may prevent the committee from making a correct futility decision. The second silent failure is conflating conditional power with predictive probability of success; these are different quantities: conditional power assumes a fixed remaining HR, PPS averages over uncertainty in\nthe remaining HR. Both must be reported separately with clear labels.",
+  "files": [
+    "No external files",
+    "all interim data parameters specified in query."
+  ],
+  "assertions": [
+    "Conditional power correctness",
+    "gsDesign::condPower() or equivalent used at IF=0.4625, computation at planned IF=0.50 is a failing answer",
+    "Conditional power under original HR=0.72: value in range 52-60%, values outside this range indicate wrong IF or wrong HR input",
+    "Conditional power under pessimistic HR=0.81: value in range 20-30%",
+    "Conditional power under original HR > conditional power under pessimistic HR, if reversed, inputs are wrong",
+    "Both scenarios clearly labeled in output",
+    "Predictive probability of success",
+    "PPS computed by integrating conditional power over prior distribution on log-HR, a single conditional power value is not PPS",
+    "Prior distribution explicitly stated in output: normal on log-HR scale, mean = log(0.72), SD specified",
+    "PPS falls strictly between pessimistic CP and optimistic CP, PPS outside this range indicates integration error",
+    "PPS reported as a numeric value (0–1), not a qualitative statement",
+    "Futility boundary",
+    "Futility boundary at IF=0.4625 interpolated from O'Brien-Fleming beta-spending function, boundary at IF=0.50 is a failing answer",
+    "Observed Z-statistic computed from HR=0.81 and events=148",
+    "Clear statement: \"futility boundary crossed\" or \"futility boundary not crossed\" with the boundary value shown",
+    "Time projection",
+    "Current event rate = 148/28 ≈ 5.3 events/month used as basis",
+    "Expected calendar time to 320 events projected from current rate",
+    "Projection accounts for patients still on study",
+    "QC readiness",
+    "# REVIEW: at information fraction (confirm 320 planned events, protocol amendment may have changed target)",
+    "# REVIEW: at conditional power HR assumptions (confirm both scenarios with DMC charter before report distribution)",
+    "# REVIEW: at PPS prior (confirm prior distribution with lead statistician, non-informative prior changes PPS substantially)",
+    "# REVIEW: at futility boundary non-binding status (DMC may continue even if boundary crossed)",
+    "Output clearly labels conditional power vs PPS",
+    "Script runs end-to-end without errors"
+  ],
+  "language": "R",
+  "target_skills": [
+    "group-sequential-design"
+  ]
+}

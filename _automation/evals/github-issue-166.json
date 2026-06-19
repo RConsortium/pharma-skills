@@ -1,0 +1,39 @@
+{
+  "id": "github-issue-166",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study AE and ADSL domains, derive an ADaM Time-to-Event dataset (ADTTE) for time to first serious adverse event.\n\nInput data must be loaded directly from the pharmaverse R packages:\n\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\nae   <- pharmaversesdtm::ae    # 1,191 AE records, CDISC Pilot Study\nadsl <- pharmaverseadam::adsl  # 306 subjects\n\nDo not generate synthetic or simulated data. Scripts that construct AE or ADSL records from scratch will fail the benchmark.\n\nParameters:\n- PARAMCD = \"TTAEOSI\", PARAM = \"Time to First Serious AE (Days)\"\n- Event definition: first AE record where AESER == \"Y\"\n- Censoring date: TRTEDT + 30 days (proxy for last known alive date)\n  **Note:** TRTEDT must be derived from EX records if not present in ADSL\n- Censoring reason (CNSDTDSC): \"Completed Study\" for non-events\n- ADT: ASTDT for events; censoring date for non-events\n- STARTDT: TRTSDT from ADSL\n- AVAL: number of days from STARTDT to ADT, 1-indexed (ADT - STARTDT + 1)\n- EVNTDESC: \"First Serious Adverse Event\" for events; NA for censored\n- CNSR: 0 for events, 1 for censored, integer, not character or logical\n\nUse derive_param_tte() from admiral for all time-to-event derivation. Do not use difftime(), as.numeric(), or case_when() for date arithmetic.",
+  "expected_output": "Executable R code using {admiral} that produces a valid ADTTE dataset with one record per subject. The script must use derive_param_tte() with explicit event_conditions and censor_conditions arguments constructed via event_source() and censor_source() respectively.\n\n| Variable  | Source / derivation                                        |\n|-----------|------------------------------------------------------------|\n| ADT       | derive_param_tte() event or censor date                    |\n| AVAL      | compute_duration() or derived within derive_param_tte()    |\n| CNSR      | 0 for event, 1 for censored, integer only                 |\n| EVNTDESC  | \"First Serious Adverse Event\" for events; NA for censored  |\n| CNSDTDSC  | \"Completed Study\" for all censored records                 |\n| STARTDT   | TRTSDT from ADSL, joined via derive_vars_merged()         |\n\n**Critical note:** pharmaversesdtm::ae uses AESER == \"Y\" to flag serious AEs. The derivation must correctly handle: (1) subjects with no serious AE, all censored at TRTEDT + 30; (2) subjects with multiple serious AEs, only the first qualifying event used. Manual date arithmetic (as.numeric (ADT - STARTDT) + 1) produces correct AVAL in most cases but silently fails to populate CNSDTDSC and EVNTDESC for all records and fails to enforce CNSR as integer 0/1. These variables are required for survival analysis and will produce errors or wrong results in downstream proc lifetest or survfit() calls if absent or mistyped.",
+  "files": [
+    "library(pharmaversesdtm)",
+    "library(pharmaverseadam)",
+    "ae   <- pharmaversesdtm::ae",
+    "adsl <- pharmaverseadam::adsl"
+  ],
+  "assertions": [
+    "Admiral idiom correctness",
+    "derive_param_tte() used with explicit event_conditions and censor_conditions arguments, difftime(), as.numeric(ADT - STARTDT), and case_when() date subtraction are absent",
+    "event_source() and censor_source() objects defined separately before being passed to derive_param_tte(), inline construction absent",
+    "derive_vars_merged() used to join ADSL variables including TRTSDT and TRTEDT, plain left_join() on full ADSL absent",
+    "DOMAIN removed from ae before any derive step",
+    "compute_duration() or equivalent admiral function used for AVAL, manual integer arithmetic absent",
+    "Structural correctness",
+    "nrow(adtte) == nrow(adsl), exactly one record per subject",
+    "No duplicate USUBJID + PARAMCD combinations",
+    "stopifnot() or equivalent uniqueness check before final output",
+    "CDISC conformance",
+    "CNSR is integer 0 or 1 only, character \"Y\"/\"N\", logical TRUE/FALSE, and numeric values other than 0 and 1 are absent",
+    "CNSDTDSC is non-missing for every record where CNSR == 1",
+    "EVNTDESC is non-missing for every record where CNSR == 0",
+    "AVAL is strictly positive (≥ 1) for all records, zero or negative AVAL indicates incorrect date subtraction",
+    "STARTDT is non-missing for all subjects, derived from ADSL merge, not hardcoded",
+    "QC readiness",
+    "# REVIEW: comment at event definition (AESER == \"Y\", confirm AESI scope and whether AETOXGR threshold applies, per medical monitor)",
+    "# REVIEW: comment at censoring date definition (TRTEDT + 30 proxy, confirm last known alive date source with protocol and data management)",
+    "# REVIEW: comment at CNSDTDSC controlled terminology (confirm \"Completed Study\" against study-specific codelist)",
+    "Script runs end-to-end without errors on pharmaversesdtm::ae and pharmaverseadam::adsl",
+    "Event count and censoring count printed to console for manual verification"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral/admiral-bds"
+  ]
+}
