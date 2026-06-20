@@ -64,11 +64,21 @@ Scan all benchmark eval issues to find any that are waiting for Phase 2 (Agent B
 3. Filter and evaluate each `BENCHMARK_PARTIAL` marker found:
    - **Skip if `state.model` does not match `{CURRENT_MODEL_NAME}`.** This is critical: a partial run by another user on a different model belongs to that user. Only pick up partials matching your current model.
    - Skip if a later comment on the same issue contains a matching `<!-- BENCHMARK_COMPLETE: {"eval_id":"{same}","model":"{same}"` — Phase 2 already finished for that combination.
+   - **Expire if stale.** Compute the partial's age as `now − state.run_date` (UTC; fall back to the comment's `created_at` if `run_date` is missing or unparseable). If the age exceeds **`{STALE_PARTIAL_DAYS}` = 3 days** *and* there is no matching `BENCHMARK_COMPLETE`, the Phase 1 run was abandoned (the scheduled Phase 2 never completed it). **Delete the stale partial comment** rather than picking it up — see "Deleting a stale partial" below — then treat the eval as **not** a Phase 2 candidate so the next Phase 1 starts it fresh. Log the deleted comment `id` and eval id.
    - Otherwise → **Phase 2 candidate**. Extract the JSON from the marker (see format below) and note the partial comment `id`.
 
 4. **Decision:**
    - One or more Phase 2 candidates found → pick the **oldest** (earliest `created_at`) → **enter Phase 2** with that state.
-   - No candidates for your model → **enter Phase 1**.
+   - No candidates for your model (after expiring any stale partials above) → **enter Phase 1**.
+
+**Deleting a stale partial.** Use the `partial_comment_id` from the marker JSON (or the comment `id` returned by the scan) and whichever GitHub access method works (see "GitHub Access" above):
+
+- **`gh` CLI:** `gh api -X DELETE repos/RConsortium/pharma-skills/issues/comments/{comment_id}`
+- **REST via `curl`** (when `GH_TOKEN`/`GITHUB_TOKEN` is set): `curl -X DELETE -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/RConsortium/pharma-skills/issues/comments/{comment_id}`
+- **MCP** has no delete-comment tool — use `gh` or `curl`.
+- **If deletion is not possible** (no `gh`, no token, no host delete tool), **edit the comment instead** to neutralize the marker — e.g. rewrite `<!-- BENCHMARK_PARTIAL:` to `<!-- BENCHMARK_PARTIAL_EXPIRED:` and append a note that the partial was abandoned after `{STALE_PARTIAL_DAYS}` days. Future Phase Detection scans only match the literal `<!-- BENCHMARK_PARTIAL:` prefix, so a renamed marker is effectively expired even if the comment cannot be removed.
+
+Expiring stale partials is the only cleanup this skill performs; it never deletes `BENCHMARK_COMPLETE` comments or any non-benchmark content.
 
 **BENCHMARK_PARTIAL marker format** (hidden HTML comment embedded in the issue comment body):
 ```
@@ -459,7 +469,11 @@ EVERY ROUTINE INVOCATION:
 
   Phase Detection
     │
-    ├─ BENCHMARK_PARTIAL found (no BENCHMARK_COMPLETE for same eval+model) ──► Phase 2
+    ├─ BENCHMARK_PARTIAL found, but age > 3 days and no BENCHMARK_COMPLETE ──► expire it
+    │     delete (or rename) the stale partial comment; it is NOT a Phase 2
+    │     candidate — falls through to Phase 1 so the eval restarts fresh
+    │
+    ├─ BENCHMARK_PARTIAL found (fresh: ≤ 3 days, no BENCHMARK_COMPLETE for same eval+model) ──► Phase 2
     │     Step 5: load state from comment + restore Agent A output
     │     Step 6: run Agent B (without skill)
     │     Step 7: score blinded
@@ -492,10 +506,15 @@ If Agent A or Agent B hits a usage rate limit mid-run (`is_error: true`, result 
 - **Agent A rate-limited in Phase 1**: record `status: error_a_rate_limited` in `runs.json`, do NOT post a partial comment, exit. The next Phase 1 invocation will retry.
 - **Agent B rate-limited in Phase 2**: record `status: error_b_rate_limited`, do NOT post a full results comment. Leave the `BENCHMARK_PARTIAL` comment in place so the next Phase 2 invocation retries Agent B. Include a note in the partial comment body edit if possible.
 
+## Notes on Stale Partials
+
+`{STALE_PARTIAL_DAYS}` is fixed at **3 days**. A partial is normally cleared within hours when the next scheduled invocation runs Phase 2 (and a rate-limited Phase 2 deliberately leaves the partial in place to retry — see above). A partial that is still uncompleted after 3 days means its Phase 2 never ran to completion (abandoned run, environment unavailable, repeated rate limits, etc.). Phase Detection treats such partials as expired: it deletes the stale partial comment (or renames the marker if deletion is not possible) and does not enter Phase 2 for it, so the eval is picked up fresh by a future Phase 1. This bounds the retry window at 3 days and keeps the issue timeline from accumulating orphaned `🟡 In Progress` comments.
+
 ## Success Criteria
 
 - One phase executed per invocation (~20 min each)
 - State persists entirely in GitHub issue comments — no commits, no repo write access needed from the human user
 - Blinded scoring: `_blinded_scoring_map` is never visible to the scorer
 - Deduplication: `BENCHMARK_COMPLETE` marker prevents re-running finished evals
+- Stale-partial expiry: a `BENCHMARK_PARTIAL` older than 3 days with no matching `BENCHMARK_COMPLETE` is deleted (not picked up) so the eval restarts fresh
 - Results posted on the correct GitHub issue with full assertion breakdown
