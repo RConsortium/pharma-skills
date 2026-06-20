@@ -1,12 +1,12 @@
 {
   "id": "github-issue-141",
   "prompt": "I need to create two outputs from the pharmaversesdtm package:\n\n1. Add baseline vital sign variables (HEIGHTBL, WEIGHTBL, BMIBL) to an existing ADSL dataset using data from the VS domain.\n2. Create a full ADVS BDS ADaM dataset from the VS domain, including analysis values, baseline flags, change from baseline, and normal range indicators.\n\nUse the admiral R package for all derivations. Input data should come from pharmaversesdtm. The reference output for ADVS is pharmaverseadam::advs.",
-  "expected_output": "Two R script outputs:\n\n1. **ADSL** — the input ADSL dataset augmented with HEIGHTBL, WEIGHTBL, and BMIBL, each sourced from the corresponding baseline VS record (VSBLFL == \"Y\").\n2. **ADVS** — a BDS ADaM dataset containing one record per subject per parameter per visit, with PARAMCD, PARAM, AVAL, AVALC, ADT, ADY, ABLFL, BASE, CHG, PCHG, and ANRIND populated. Reference: `pharmaverseadam::advs`.",
+  "expected_output": "Two R script outputs:\n\n1. **ADSL** \u2014 the input ADSL dataset augmented with HEIGHTBL, WEIGHTBL, and BMIBL, each sourced from the corresponding baseline VS record (VSBLFL == \"Y\").\n2. **ADVS** \u2014 a BDS ADaM dataset containing one record per subject per parameter per visit, with PARAMCD, PARAM, AVAL, AVALC, ADT, ADY, ABLFL, BASE, CHG, PCHG, and ANRIND populated. Reference: `pharmaverseadam::advs`.",
   "files": [
-    "`pharmaversesdtm::vs` — Vital Signs SDTM domain (input)",
-    "`pharmaversesdtm::dm` — Demographics SDTM domain (for subject spine)",
-    "`pharmaverseadam::adsl` — Subject-level ADaM (for merging into ADVS and for ADSL augmentation)",
-    "`pharmaverseadam::advs` — Reference output for ADVS",
+    "`pharmaversesdtm::vs` \u2014 Vital Signs SDTM domain (input)",
+    "`pharmaversesdtm::dm` \u2014 Demographics SDTM domain (for subject spine)",
+    "`pharmaverseadam::adsl` \u2014 Subject-level ADaM (for merging into ADVS and for ADSL augmentation)",
+    "`pharmaverseadam::advs` \u2014 Reference output for ADVS",
     "All datasets are available via the `pharmaversesdtm` and `pharmaverseadam` R packages."
   ],
   "assertions": [
@@ -28,6 +28,6 @@
   ],
   "language": "R",
   "target_skills": [
-    "admiral/admiral-adsl"
+    "admiral-adsl"
   ]
 }

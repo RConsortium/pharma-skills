@@ -1,7 +1,7 @@
 {
   "id": "github-issue-172",
-  "prompt": "Using PK concentration-time data from the admiralpk package (or the self-contained fallback below), derive an ADaM PK dataset (ADPX) with non-compartmental analysis exposure metrics.\n\nPrimary data source:\nlibrary(admiralpk)\npc   <- admiralpk::example_pc\nadsl <- admiralpk::example_adsl\n\nSelf-contained fallback (use if admiralpk unavailable):\nConstruct a minimal PC domain with:\n- 24 subjects (USUBJID: SUBJ-001 to SUBJ-024)\n- 8 nominal timepoints per subject: 0, 0.5, 1, 2, 4, 8, 12, 24 hours\n- PCTPT: nominal timepoint label (e.g., \"Hour 0\", \"Hour 0.5\")\n- PCTPTNUM: numeric timepoint in hours\n- PCSTRESN: concentration in ng/mL, simulate as: C(t) = 100 * exp(-0.15 * t) for t > 0; C(0) = 0 (pre-dose) Add 20% log-normal residual error per subject\n- PCSTRESU: \"ng/mL\"\n- PCBLFL: \"Y\" for time 0 records only\n- Introduce BLQ in 10% of post-dose records by setting PCORRES = \"<1.0\" and PCSTRESN = NA where C(t) < 1.0 ng/mL (this will occur primarily at Hour 24 for some subjects)\n\nDerive the following NCA parameters per subject:\n- CMAX: maximum observed concentration (ng/mL)\n- TMAX: time of Cmax (hours)\n- AUCLST: AUC from time 0 to last quantifiable timepoint, linear-up/log-down trapezoidal rule\n- AUCIFO: AUC from time 0 extrapolated to infinity (AUCLST + Clast/lambda_z)\n- LAMZHL: terminal elimination half-life (log(2)/lambda_z)\n- LAMZ: terminal elimination rate constant (slope of log-linear terminal phase, minimum R² ≥ 0.90 required)\n\nBLQ imputation rules (per FDA bioanalytical guidance):\n- Pre-dose BLQ (PCBLFL == \"Y\"): impute as 0\n- Post-dose BLQ before Cmax: impute as 0\n- Post-dose BLQ after Cmax: impute as LLOQ/2 = 0.5 ng/mL\n- Trailing BLQ records after last quantifiable: exclude from AUC calculation entirely (do not impute)\n\nUse admiral's derive_param_exposure() and admiralpk NCA functions where available.",
-  "expected_output": "ADPX dataset with one record per subject per NCA parameter. All NCA parameters derived using admiral/admiralpk idiom functions.\n\n| Parameter | PARAMCD | Expected range (simulated data) |\n|-----------|---------|--------------------------------|\n| Cmax | CMAX | 80–120 ng/mL |\n| Tmax | TMAX | 0.5–2 hours |\n| AUC 0-last | AUCLST | 250–450 ng·h/mL |\n| AUC 0-inf | AUCIFO | AUCLST × 1.10 to AUCLST × 1.30 |\n| Half-life | LAMZHL | 4–6 hours |\n\n**Sanity check:** AUCIFO must be 10–30% larger than AUCLST for all subjects with estimable lambda_z. If AUCIFO < AUCLST for any subject, the extrapolation is wrong.\n\nCritical note: The most common silent failure is computing AUC using uniform linear trapezoidal rule across all intervals. The correct method is linear-up/log-down: use the linear trapezoid formula when concentration is rising (C_next ≥ C_current), and the log-linear formula when concentration is falling (C_next C_current). The difference is largest in the terminal phase where the log-linear method correctly captures the exponential decay. A second silent failure is BLQ imputation: applying LLOQ/2 to post-Cmax BLQ values is correct but applying LLOQ/2 to pre-Cmax BLQ values inflates early AUC. Both errors produce plausible summary statistics that are statistically wrong.",
+  "prompt": "Using PK concentration-time data from the admiralpk package (or the self-contained fallback below), derive an ADaM PK dataset (ADPX) with non-compartmental analysis exposure metrics.\n\nPrimary data source:\nlibrary(admiralpk)\npc   <- admiralpk::example_pc\nadsl <- admiralpk::example_adsl\n\nSelf-contained fallback (use if admiralpk unavailable):\nConstruct a minimal PC domain with:\n- 24 subjects (USUBJID: SUBJ-001 to SUBJ-024)\n- 8 nominal timepoints per subject: 0, 0.5, 1, 2, 4, 8, 12, 24 hours\n- PCTPT: nominal timepoint label (e.g., \"Hour 0\", \"Hour 0.5\")\n- PCTPTNUM: numeric timepoint in hours\n- PCSTRESN: concentration in ng/mL, simulate as: C(t) = 100 * exp(-0.15 * t) for t > 0; C(0) = 0 (pre-dose) Add 20% log-normal residual error per subject\n- PCSTRESU: \"ng/mL\"\n- PCBLFL: \"Y\" for time 0 records only\n- Introduce BLQ in 10% of post-dose records by setting PCORRES = \"<1.0\" and PCSTRESN = NA where C(t) < 1.0 ng/mL (this will occur primarily at Hour 24 for some subjects)\n\nDerive the following NCA parameters per subject:\n- CMAX: maximum observed concentration (ng/mL)\n- TMAX: time of Cmax (hours)\n- AUCLST: AUC from time 0 to last quantifiable timepoint, linear-up/log-down trapezoidal rule\n- AUCIFO: AUC from time 0 extrapolated to infinity (AUCLST + Clast/lambda_z)\n- LAMZHL: terminal elimination half-life (log(2)/lambda_z)\n- LAMZ: terminal elimination rate constant (slope of log-linear terminal phase, minimum R\u00b2 \u2265 0.90 required)\n\nBLQ imputation rules (per FDA bioanalytical guidance):\n- Pre-dose BLQ (PCBLFL == \"Y\"): impute as 0\n- Post-dose BLQ before Cmax: impute as 0\n- Post-dose BLQ after Cmax: impute as LLOQ/2 = 0.5 ng/mL\n- Trailing BLQ records after last quantifiable: exclude from AUC calculation entirely (do not impute)\n\nUse admiral's derive_param_exposure() and admiralpk NCA functions where available.",
+  "expected_output": "ADPX dataset with one record per subject per NCA parameter. All NCA parameters derived using admiral/admiralpk idiom functions.\n\n| Parameter | PARAMCD | Expected range (simulated data) |\n|-----------|---------|--------------------------------|\n| Cmax | CMAX | 80\u2013120 ng/mL |\n| Tmax | TMAX | 0.5\u20132 hours |\n| AUC 0-last | AUCLST | 250\u2013450 ng\u00b7h/mL |\n| AUC 0-inf | AUCIFO | AUCLST \u00d7 1.10 to AUCLST \u00d7 1.30 |\n| Half-life | LAMZHL | 4\u20136 hours |\n\n**Sanity check:** AUCIFO must be 10\u201330% larger than AUCLST for all subjects with estimable lambda_z. If AUCIFO < AUCLST for any subject, the extrapolation is wrong.\n\nCritical note: The most common silent failure is computing AUC using uniform linear trapezoidal rule across all intervals. The correct method is linear-up/log-down: use the linear trapezoid formula when concentration is rising (C_next \u2265 C_current), and the log-linear formula when concentration is falling (C_next C_current). The difference is largest in the terminal phase where the log-linear method correctly captures the exponential decay. A second silent failure is BLQ imputation: applying LLOQ/2 to post-Cmax BLQ values is correct but applying LLOQ/2 to pre-Cmax BLQ values inflates early AUC. Both errors produce plausible summary statistics that are statistically wrong.",
   "files": [
     "library(admiralpk)",
     "pc   <- admiralpk::example_pc",
@@ -18,12 +18,12 @@
     "Linear-up/log-down rule applied, uniform linear trapezoid across all intervals is a failing answer",
     "AUCLST computed to last quantifiable (non-BLQ non-trailing) timepoint, trailing BLQ timepoints not included",
     "AUCIFO = AUCLST + Clast/lambda_z, AUCIFO < AUCLST for any subject is a failing answer",
-    "LAMZ estimated from terminal log-linear phase with R² ≥ 0.90, lambda_z estimated from fewer than 3 timepoints or R² < 0.90 must be flagged as unreliable and excluded from AUCIFO",
+    "LAMZ estimated from terminal log-linear phase with R\u00b2 \u2265 0.90, lambda_z estimated from fewer than 3 timepoints or R\u00b2 < 0.90 must be flagged as unreliable and excluded from AUCIFO",
     "BLQ imputation correctness",
-    "Pre-dose BLQ → 0 (not LLOQ/2)",
-    "Post-dose BLQ before Cmax → 0 (not LLOQ/2)",
-    "Post-dose BLQ after Cmax → LLOQ/2 = 0.5 ng/mL (not 0)",
-    "Trailing BLQ after last quantifiable → excluded from AUC (not imputed to any value)",
+    "Pre-dose BLQ \u2192 0 (not LLOQ/2)",
+    "Post-dose BLQ before Cmax \u2192 0 (not LLOQ/2)",
+    "Post-dose BLQ after Cmax \u2192 LLOQ/2 = 0.5 ng/mL (not 0)",
+    "Trailing BLQ after last quantifiable \u2192 excluded from AUC (not imputed to any value)",
     "Imputation rule applied per subject independently, population-level BLQ handling absent",
     "Structural correctness",
     "One record per subject per PARAMCD, no duplicates",
@@ -34,7 +34,7 @@
     "QC readiness",
     "# REVIEW: at BLQ imputation rules (confirm LLOQ = 1.0 ng/mL",
     "and imputation method against bioanalytical validation report)",
-    "# REVIEW: at lambda_z R² threshold (confirm R² ≥ 0.90",
+    "# REVIEW: at lambda_z R\u00b2 threshold (confirm R\u00b2 \u2265 0.90",
     "acceptance criterion with pharmacokineticist)",
     "# REVIEW: at AUC method (confirm linear-up/log-down vs",
     "linear-linear against SAP)",
@@ -46,6 +46,6 @@
   ],
   "language": "R",
   "target_skills": [
-    "admiral/admiral-bds"
+    "admiral-bds"
   ]
 }

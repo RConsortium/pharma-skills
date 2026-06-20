@@ -23,7 +23,7 @@
     "CNSR is integer 0 or 1 only, character \"Y\"/\"N\", logical TRUE/FALSE, and numeric values other than 0 and 1 are absent",
     "CNSDTDSC is non-missing for every record where CNSR == 1",
     "EVNTDESC is non-missing for every record where CNSR == 0",
-    "AVAL is strictly positive (≥ 1) for all records, zero or negative AVAL indicates incorrect date subtraction",
+    "AVAL is strictly positive (\u2265 1) for all records, zero or negative AVAL indicates incorrect date subtraction",
     "STARTDT is non-missing for all subjects, derived from ADSL merge, not hardcoded",
     "QC readiness",
     "# REVIEW: comment at event definition (AESER == \"Y\", confirm AESI scope and whether AETOXGR threshold applies, per medical monitor)",
@@ -34,6 +34,6 @@
   ],
   "language": "R",
   "target_skills": [
-    "admiral/admiral-bds"
+    "admiral-bds"
   ]
 }
