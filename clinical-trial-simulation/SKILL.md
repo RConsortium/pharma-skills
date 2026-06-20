@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.19
+  version: 0.2.20
   trialsimulator_min_version: "1.20.1"
 ---
 
@@ -426,6 +426,13 @@ decisions. Don't ask; just do.
   hide everything in a header docstring.
 ## Testing and multiplicity
 
+**Test one-sided, always.** Simulation hypothesis testing is one-sided
+throughout. If the user describes the design in two-sided terms, convert
+to the one-sided equivalent before anything else: a two-sided α becomes
+one-sided α/2 (e.g. two-sided 0.05 → one-sided 0.025), and every boundary
+/ critical value is computed on that one-sided scale. State the conversion
+to the user so the design is unambiguous.
+
 Two intertwined concerns: how to compute decision boundaries when a
 hypothesis is tested under group-sequential design, and how to
 control familywise error when more than one hypothesis is tested.
@@ -522,8 +529,14 @@ assigned at randomization — crossover, treatment switching, rescue
 therapy, dose changes, and the like — these three vignettes cover three
 *distinct* switching designs, and which one applies is rarely clear until
 you have read them. Read all three in full before implementing, then pick
-the one that matches the user's design and follow it — do not improvise
-from a partial or approximate match:
+the one that matches the user's design and **implement it with that
+vignette's mechanism** — `regimen()` for dynamic switching, `crossover()`
+for crossover at a milestone, the endpoint-generator approach *only* for
+washout crossover. Do not re-encode switching logic inside an endpoint
+generator for a design the vignette implements via `regimen()` /
+`crossover()`, even if the numbers would come out right — it hides the
+design and defeats QC. Do not improvise from a partial or approximate
+match:
 
 - **Washout crossover** — the classical within-patient crossover design
   (e.g. 2×2 AB/BA or higher-order / multi-period), where each patient
@@ -552,6 +565,9 @@ misunderstanding of what they need. Only after that, tell the user and stop.
 
 For the latter two, read the relevant function signatures if the vignette
 leaves any argument unclear.
+
+Cite the matched vignette's URL in the final simulation report so the user
+has the reference for how the switching was implemented.
 
 **Confirm the post-switch outcome model before implementing.** How each
 endpoint is generated or updated once treatment changes — the `how` step

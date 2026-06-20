@@ -222,9 +222,15 @@ row per experimental arm × placebo pair, with columns `arm`,
 `...` argument accepts `dplyr::filter` syntax for subsetting (e.g.,
 `biomarker == "positive"`).
 
-Use these inside action functions. **Prefer them over hand-rolled
-`coxph`/`survdiff`/`glm`/`lm` calls** — the standardized output makes
-downstream `trial$save()` clean.
+Use these inside action functions. **Always use a wrapper whenever one
+covers the test** — do not call `coxph`/`survdiff`/`glm`/`lm` directly. The
+standardized output makes downstream `trial$save()` clean. The wrappers
+return a **one-sided** p-value *by design* — that is the required form for
+simulation, never a reason to hand-roll a two-sided test (convert a
+two-sided design to its one-sided equivalent instead; see "Testing and
+multiplicity" in `SKILL.md`). The only acceptable reason to bypass a
+wrapper is that no wrapper can express the test (e.g. a non-inferiority
+margin) — and that must be justified, not assumed.
 
 | Function | Method | Covariate adjustment | Notes |
 |---|---|---|---|
