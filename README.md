@@ -11,7 +11,7 @@ A collection of agent skills for pharmaceutical R&D.
 | [admiral/admiral-adsl](admiral/admiral-adsl/) | Derive ADaM Subject-Level Analysis Datasets (ADSL) from SDTM domains using the {admiral} R package. Encodes the workflow, function selection logic, and CDISC conventions for QC-ready, submission-traceable R code. |
 | [admiral/admiral-bds](admiral/admiral-bds/) | Derive ADaM BDS findings datasets (ADVS, ADLB) from SDTM VS/LB domains. Covers parameter assignment, baseline flagging, change from baseline, visit windowing, and ADLB normal range derivations. |
 | [clinical-trial-ipd-sim](clinical-trial-ipd-sim/) | Generate synthetic IPD, source CRFs, SDTM, ADaM, and exports for registered clinical trials using an R/pharmaverse g-formula causal-DAG workflow calibrated to posted protocol and results. |
-| [reviewer_skill](reviewer_skill/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
+| [statistical-reviewer](statistical-reviewer/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
 
 ## Usage
 
