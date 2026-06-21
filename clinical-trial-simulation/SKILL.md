@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.20
+  version: 0.2.21
   trialsimulator_min_version: "1.20.1"
 ---
 
@@ -53,6 +53,7 @@ conversation (see "Two user modes" below).
 - `SKILL.md` (this file) — framework, conversation principles, build order, workflow
 - `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system
 - `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas
+- `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
 - `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
 
 These files cache the most common things to save tokens. When confused
@@ -500,13 +501,15 @@ Procedures, in roughly increasing complexity:
    but worth reaching for on its own when the order is clear.
 
 3. **Graphical testing** (Maurer-Bretz). Alpha flows between
-   hypotheses via a pre-specified transition graph. Use the built-in
-   `GraphicalTesting` class. **Read the example in `?GraphicalTesting`
-   or the pkgdown reference page before writing** — the API is
-   concrete and easier to follow from a worked example than from
-   prose. Pair with `trial$bind()` to accumulate per-stage stats
-   across milestones and call `gt$test(stats)` once in the final
-   action; see the `actionFunctions` vignette for the bind pattern.
+   hypotheses via a pre-specified transition graph, with per-hypothesis
+   group-sequential spending. Use the built-in `GraphicalTesting` class.
+   **If this is the chosen procedure, you MUST read
+   `references/graphical_testing.md` and follow its implementation pattern
+   exactly** — constructing the graph inside the first milestone's action
+   (per replicate), carrying it across milestones via
+   `save_custom_data`/`get`, and setting `is_final` / `max_info` per
+   hypothesis. A plausible-looking alternative silently corrupts the FWER;
+   do not improvise one.
 
 4. **Built-in combination test for seamless / dose-selection
    designs** (`trial$dunnettTest` + `trial$closedTest`). The
