@@ -214,6 +214,7 @@ Recommended format:
 
 | Metric | Value |
 |---|---|
+| Report date | required |
 | Input tokens | ... |
 | Output tokens | ... |
 | Cache read tokens | ... |
@@ -225,7 +226,7 @@ Recommended format:
 | R version | required |
 | Skill version | required |
 
-§0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source".
+§0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source". **Report date** is the date the report is generated (the current date), written as a literal `YYYY-MM-DD` — never a placeholder.
 
 ### 0.5 Output Files and Reproduction
 

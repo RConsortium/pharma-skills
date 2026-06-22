@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.21
+  version: 0.2.23
   trialsimulator_min_version: "1.20.1"
 ---
 
@@ -54,6 +54,7 @@ conversation (see "Two user modes" below).
 - `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system
 - `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas
 - `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
+- `references/parallel_targets.md` — `targets` pipeline for parallel runs; read only when a simulation is large enough to parallelize
 - `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
 
 These files cache the most common things to save tokens. When confused
@@ -64,9 +65,10 @@ is the source of truth.
 
 ## Package source
 
-This skill targets a known-good baseline of TrialSimulator declared
-in `metadata.trialsimulator_min_version` of the YAML frontmatter
-above. **At load, only a local `packageVersion("TrialSimulator")`
+This skill requires TrialSimulator **≥ 1.20.1** (the minimum declared
+in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
+which is the source of truth — keep this number in sync with it). 
+**At load, only a local `packageVersion("TrialSimulator")`
 check runs — no automatic `install_github`, no network call.** The
 load-time check + offer/auto behavior is specified in "Loading
 announcement".
@@ -672,18 +674,20 @@ noise.
 
 ### Parallelism
 
-**Default `n_workers = 1`** (single process). Most simulations in
-this skill's typical territory — a few thousand replicates with
-simple endpoints — finish in seconds single-process, and the script
-is universally readable. Reach for `n_workers > 1` only when runtime
-warrants it.
+**Run single-process by default.** Most simulations in this skill's
+typical territory — a few thousand replicates with simple endpoints —
+finish in seconds, single-threaded.
 
-When `n_workers > 1` is used, pass per-call configuration through the
-package's `...` mechanism: `trial(dropout = fn, my_arg = X)`,
-`endpoint(generator = fn, my_arg = Y)`, `milestone(name, when,
-action, my_arg = Z)`. The functions then receive their arguments via
-their own signature. Don't reference script-level globals from
-inside generators / dropout / enroller / action functions — `mirai`
-workers don't share the script env and globals break. The `...`
-pattern is also the idiomatic style in the package's vignettes.
-Start at 2-4 workers on a laptop; requires the `mirai` package.
+**When parallelism is warranted, use the `targets` package — never
+`controller$run(n_workers > 1)`.** `n_workers > 1` is forbidden in this
+skill. Instead, each replicate runs single-threaded and a `targets` +
+`crew` pipeline distributes batches of replicates across scenarios over
+worker processes (with result caching, reproducibility, and a clean
+scenario grid as bonuses). The worker count is half the physical cores:
+`max(1L, parallelly::availableCores(logical = FALSE) %/% 2L)`.
+
+**If parallelism is needed, read `references/parallel_targets.md`** for the
+rules — worker functions self-contained (no script-level globals; crew
+workers don't share the env), `controller$run` single-threaded returning
+`controller$get_output()`, no `seed` in `trial()`. How the work is split
+into targets is left to whatever reads and QCs best.
