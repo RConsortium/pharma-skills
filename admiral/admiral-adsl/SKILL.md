@@ -380,20 +380,20 @@ if (!exists("dv")) {
 
 dv_major <- dv |>
   select(-DOMAIN) |>
-  mutate(MAJORDVFL = "Y")
+  mutate(MAJDVFL = "Y")
 
 adsl <- adsl |>
   derive_vars_merged(
     dataset_add = dv_major,
     by_vars     = exprs(STUDYID, USUBJID),
-    new_vars    = exprs(MAJORDVFL),
+    new_vars    = exprs(MAJDVFL),
     filter_add  = DVCAT == "MAJOR",
     mode        = "first"   # subjects may have >1 major deviation record; any match suffices
   ) |>
   mutate(
-    PPROTFL = if_else(ITTFL == "Y" & is.na(MAJORDVFL), "Y", NA_character_)
+    PPROTFL = if_else(ITTFL == "Y" & is.na(MAJDVFL), "Y", NA_character_)
   ) |>
-  select(-MAJORDVFL)  # intermediate exclusion flag; not an ADSL output variable
+  select(-MAJDVFL)  # intermediate exclusion flag; not an ADSL output variable
 ```
 
 ### Step 12 — Dataset attributes and final checks
