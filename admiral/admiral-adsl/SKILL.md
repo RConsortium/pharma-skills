@@ -43,6 +43,7 @@ as absent:
 | DM | Yes | Subject spine; one record per USUBJID |
 | EX | Yes | Exposure; needed for treatment dates and SAFFL |
 | DS | Yes | Disposition; needed for EOSSTT, DCSREAS |
+| DV | No | Protocol deviations; needed for PPROTFL |
 | MH | No | Medical history flags if protocol requires |
 | VS | No | HEIGHTBL, WEIGHTBL, BMIBL if in scope |
 | ADaM ADSL spec | Yes | Variable list, derivation rules, grouping cut-points |
@@ -356,9 +357,43 @@ adsl <- adsl |>
       NA_character_
     )
   )
-  # PPROTFL: per protocol — highly protocol-specific
-  # REVIEW: Derive per SAP definition with protocol deviation exclusions.
-  # mutate(PPROTFL = if_else(ITTFL == "Y" & no_major_deviations, "Y", NA_character_))
+# ITTFL pipe chain ends here; PPROTFL is derived separately below.
+
+# PPROTFL: per-protocol — ITT subjects with no major protocol deviations.
+# Uses derive_vars_merged() + filter_add (not derive_var_merged_exist_flag) because
+# the exclusion criterion belongs in filter_add, and NA absence of a match is the
+# natural signal that no major deviation record was found for the subject.
+#
+# Guard: DV-absent and DV-present-but-no-major-deviations are different states
+# and must not produce the same PPROTFL output. If DV is not loaded, halt so the
+# analyst can decide explicitly — do not silently set NA.
+# REVIEW: DVCAT values must match the protocol deviation management plan (PDMP).
+#   Some studies categorise by DVCAT == "MAJOR"; others use DVSCAT or a study-
+#   specific flag. Confirm the filter_add condition with the statistician before use.
+if (!exists("dv")) {
+  stop(
+    "DV domain is required for PPROTFL derivation but is not loaded. ",
+    "Load DV, or set adsl$PPROTFL <- NA_character_ explicitly if the study ",
+    "has no protocol deviation records and this has been confirmed with the statistician."
+  )
+}
+
+dv_major <- dv |>
+  select(-DOMAIN) |>
+  mutate(MAJDVFL = "Y")
+
+adsl <- adsl |>
+  derive_vars_merged(
+    dataset_add = dv_major,
+    by_vars     = exprs(STUDYID, USUBJID),
+    new_vars    = exprs(MAJDVFL),
+    filter_add  = DVCAT == "MAJOR",
+    mode        = "first"   # subjects may have >1 major deviation record; any match suffices
+  ) |>
+  mutate(
+    PPROTFL = if_else(ITTFL == "Y" & is.na(MAJDVFL), "Y", NA_character_)
+  ) |>
+  select(-MAJDVFL)  # intermediate exclusion flag; not an ADSL output variable
 ```
 
 ### Step 12 — Dataset attributes and final checks
