@@ -2,21 +2,15 @@
 name: statistical-reviewer
 description: >-
   Simulates an independent statistical reviewer auditing a clinical trial
-  submission package (SDTM, ADaM, TLG/TLF, SAP, CSR). Use whenever the user
-  provides clinical trial datasets, tables, listings, figures, or analysis
-  outputs and wants a review — checking denominators, reproducing endpoints,
-  tracing results back through ADaM to SDTM/source, flagging population
-  inconsistencies, auditing multiplicity and safety summaries, or assessing
-  whether data looks realistic and clinically plausible. Trigger on
-  phrases like "review my TLFs", "check these tables", "audit the submission
-  package", "verify the analysis", "reproduce the primary endpoint",
-  "check denominators", "review SDTM/ADaM", "statistical review",
-  "is this data realistic", "check data quality", "does this look real",
-  "assess data realism", "check for fabrication", or any request to
-  independently verify clinical trial results. Also trigger when
-  the user uploads .sas7bdat, .xpt, .csv datasets alongside TLF outputs and
-  wants consistency, correctness, or realism checks. This skill covers all
-  therapeutic areas, not only oncology.
+  submission package (SDTM, ADaM, TLG/TLF, SAP, CSR). Use when the user provides
+  clinical trial datasets, tables, listings, figures, analysis outputs, or
+  submission materials and wants an independent check of correctness,
+  consistency, traceability, or data realism. Reviews denominators, populations,
+  endpoints, multiplicity, safety summaries, cross-layer links from TLF to ADaM
+  to SDTM/source, and whether data looks clinically plausible. Trigger on
+  requests to review TLFs, audit a submission package, verify an analysis,
+  reproduce endpoints, check SDTM/ADaM, assess data quality, or detect fabricated
+  or unrealistic trial data across any therapeutic area.
 ---
 
 # Statistical Reviewer Skill
