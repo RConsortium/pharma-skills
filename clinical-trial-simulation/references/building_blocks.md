@@ -276,10 +276,11 @@ trial(name, n_patients, duration, description = name, seed = NULL,
 - Units of `duration`, `dropout`, and non-tte `readout` must be consistent.
 - Baseline covariates are assumed to have the same distribution across arms.
 - **`trial()` MUST set `enroller = StaggeredRecruiter` and MUST also supply `accrual_rate`** (passed via `...`). `accrual_rate` is a data.frame with columns `end_time` and `piecewise_rate`. The two go together — `StaggeredRecruiter` is non-functional without `accrual_rate`.
+- **The last `end_time` MUST be `Inf`** with a positive rate (open-ended), so the schedule can supply any `n` — the engine may request several × the planned size for resizing.
 
 **Example:**
 ```r
-accrual <- data.frame(end_time = c(6, 36), piecewise_rate = c(10, 20))
+accrual <- data.frame(end_time = c(6, Inf), piecewise_rate = c(10, 20))
 
 tr <- trial(
   name         = "my_trial",

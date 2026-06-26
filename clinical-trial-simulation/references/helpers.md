@@ -26,17 +26,22 @@ the two are inseparable. `StaggeredRecruiter` is **for
 |---|---|
 | `StaggeredRecruiter(n, accrual_rate)` | Piecewise-constant-rate accrual. `accrual_rate` is `data.frame(end_time, piecewise_rate)`. Pass via `trial(..., enroller = StaggeredRecruiter, accrual_rate = <data.frame>)`. |
 
-Tip — **simulating a recruitment pause** (e.g., a hold for safety
-review after an interim): use a near-zero `piecewise_rate` for the
-relevant time window. The schedule still has full coverage; the rate
-is just very low during the pause.
+Tip — **simulating a recruitment pause or zero-accrual window**
+(e.g., a hold for safety review after an interim, a site not yet
+activated, a seasonal/holiday gap, or staggered site openings): set
+`piecewise_rate = 0` for the relevant time window. No patient enrolls
+during the window, calendar time still advances, and enrollment
+resumes at the window's `end_time`.
 
 ```r
 accrual_rate <- data.frame(
   end_time       = c(12, 18, Inf),
-  piecewise_rate = c(30, 0.001, 30)   # 12 mo at 30/mo, 6 mo near-pause, then 30/mo
+  piecewise_rate = c(30, 0, 30)   # 30/mo, 6-mo pause, then 30/mo
 )
 ```
+
+Do **not** fake a pause with a tiny positive rate: a finite window with
+`window-length × piecewise_rate < 1` is rejected with an error. Use `0`.
 
 ---
 
@@ -167,7 +172,7 @@ generators need.
 | Dropout at 1 landmark | exponential is the simple default: `dropout = rexp, rate = -log(1-p)/t`. If the user has a different model in mind (e.g., heavier early dropout, time-varying), build a custom dropout function whose first argument is `n` and pass it as `trial(dropout = my_fn, ...)`. |
 | Constant uniform accrual | none — `accrual_rate = data.frame(end_time = Inf, piecewise_rate = N)` |
 | Ramp-up accrual | none — multi-row `accrual_rate` |
-| Recruitment pause window | none — set `piecewise_rate` near zero for the pause window |
+| Recruitment pause window | none — set `piecewise_rate = 0` for the pause window |
 
 ### Bridge: piecewise-exp marginal in a NORTA copula
 

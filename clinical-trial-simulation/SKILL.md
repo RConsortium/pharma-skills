@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.23
-  trialsimulator_min_version: "1.20.1"
+  version: 0.2.24
+  trialsimulator_min_version: "1.23.0"
 ---
 
 # TrialSimulator Skill
@@ -65,7 +65,7 @@ is the source of truth.
 
 ## Package source
 
-This skill requires TrialSimulator **≥ 1.20.1** (the minimum declared
+This skill requires TrialSimulator **≥ 1.23.0** (the minimum declared
 in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
 which is the source of truth — keep this number in sync with it). 
 **At load, only a local `packageVersion("TrialSimulator")`
