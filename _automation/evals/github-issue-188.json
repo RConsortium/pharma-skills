@@ -1,0 +1,45 @@
+{
+  "id": "github-issue-188",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study LB domain and ADSL, derive NCI-CTCAE v5.0 lab toxicity grades for an ADaM BDS Findings dataset (ADLB).\n\nInput data must be loaded directly from the pharmaverse R packages:\n\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\nlb   <- pharmaversesdtm::lb    # Laboratory results, CDISC Pilot Study\nadsl <- pharmaverseadam::adsl  # 306 subjects\n\nDo not generate synthetic or simulated data. Scripts that construct LB or ADSL records from scratch will fail the benchmark.\n\nGrade the following lab tests using NCI-CTCAE v5.0 criteria (`atoxgr_criteria_ctcv5`):\n- ALT (LBTESTCD == \"ALT\", term \"Alanine aminotransferase increased\") — **unidirectional, baseline-relative**: grading thresholds depend on whether baseline was normal or abnormal (BNRIND), requiring BASE and BNRIND as inputs in addition to AVAL/ANRHI\n- AST (LBTESTCD == \"AST\", term \"Aspartate aminotransferase increased\") — same baseline-relative, unidirectional pattern as ALT\n- Sodium (LBTESTCD == \"SODIUM\", terms \"Hyponatremia\" / \"Hypernatremia\") — **bidirectional**, both low and high grading criteria apply, well-represented in the data (34 low-abnormal, 50 high-abnormal records)\n- Potassium (LBTESTCD == \"K\", terms \"Hypokalemia\" / \"Hyperkalemia\") — **bidirectional**, both directions apply, but sparsely represented (11 low-abnormal, 5 high-abnormal records)\n\n**Note:** Potassium's abnormal-value coverage is thin, particularly on the high side. If the derivation produces zero or near-zero non-missing ATOXGRH values for Potassium, the script must explicitly state this as a data density limitation in a comment with a `# REVIEW:` flag rather than silently treating it as a derivation failure.\n\nDerive:\n- ATOXGRL: low-direction toxicity grade, via `derive_var_atoxgr_dir()` with `criteria_direction = \"L\"`\n- ATOXGRH: high-direction toxicity grade, via `derive_var_atoxgr_dir()` with `criteria_direction = \"H\"`, supplying `high_indicator = \"HIGH\"` for ALT and AST specifically (required by the ctcv5 criteria for these terms)\n- ATOXGR: combined grade, via `derive_var_atoxgr()` — not manual negation/combination of ATOXGRL and ATOXGRH\n- BTOXGR: baseline toxicity grade, same logic applied against BASE\n- ATOXDSCL / ATOXDSCH: lookup terms linking each PARAMCD to the grading metadata (required inputs to `derive_var_atoxgr_dir()`, not outputs to be left blank)\n- BNRIND: baseline normal range indicator, must be derived/merged before grading ALT and AST\n\n**Note:** ALT and AST should produce ATOXGRH only (ATOXGRL should be entirely NA for these tests — CTCAE v5.0 defines no low-direction grading criteria for either). Sodium and Potassium must produce both ATOXGRL and ATOXGRH columns populated.",
+  "expected_output": "Executable R code using {admiral} that produces a valid ADLB dataset with toxicity grading. The script must use `derive_var_atoxgr_dir()` for all directional grading and `derive_var_atoxgr()` for combining into ATOXGR — not manual `case_when()` threshold chains and not manual sign-flipping/combination logic.\n\n| Variable   | Derivation                                                        |\n|------------|--------------------------------------------------------------------|\n| ATOXGRL    | `derive_var_atoxgr_dir()`, `criteria_direction = \"L\"`, `meta_criteria = atoxgr_criteria_ctcv5` |\n| ATOXGRH    | `derive_var_atoxgr_dir()`, `criteria_direction = \"H\"`, `meta_criteria = atoxgr_criteria_ctcv5`, `high_indicator = \"HIGH\"` for ALT/AST |\n| ATOXGR     | `derive_var_atoxgr()` applied to ATOXGRL/ATOXGRH, character output |\n| BTOXGR     | Same grading + combination logic applied to baseline values        |\n| BNRIND     | Baseline normal range indicator, merged/derived before ALT/AST grading |\n| ATOXDSCL / ATOXDSCH | PARAMCD-to-grading-term lookup, populated for all 4 tests before calling `derive_var_atoxgr_dir()` |\n\n**Critical note:** The most common silent failure is treating grading as inherently one-directional: an agent grades Sodium and Potassium using only `criteria_direction = \"H\"` (or only \"L\"), because ALT/AST — the tests most agents reach for as a first worked example — are unidirectional and don't surface the bug. The output still runs and looks structurally complete; it just silently has no hyponatremia/hypokalemia grades at all, invisible unless someone checks that both ATOXGRL and ATOXGRH are populated for the bidirectional tests specifically. A second silent failure is skipping `derive_var_atoxgr()` in favor of manual combination — getting the sign right by luck on simple cases but missing the NA/NORMAL edge-case rules the function encodes (e.g., when only one direction has a defined term and that direction grades NORMAL, the combined ATOXGR should be \"0\", not missing). A third, sharper failure is grading ALT/AST without merging BNRIND and BASE first — CTCAE v5 thresholds for these two tests shift depending on baseline abnormality status, so a script using only AVAL/ANRHI will produce a grade that looks plausible but uses the wrong threshold tier for any subject with an abnormal baseline.\n\n**Sanity check:** For Sodium and Potassium, `sum(!is.na(ATOXGRL))` and `sum(!is.na(ATOXGRH))` must both be > 0. For ALT and AST, `sum(!is.na(ATOXGRL))` must equal 0, and BNRIND must be non-missing for any subject receiving a Grade 1 ALT/AST result.",
+  "files": [
+    "library(pharmaversesdtm)",
+    "library(pharmaverseadam)",
+    "lb   <- pharmaversesdtm::lb",
+    "adsl <- pharmaverseadam::adsl"
+  ],
+  "assertions": [
+    "Admiral idiom correctness",
+    "`derive_var_atoxgr_dir()` used for all directional grade derivations, manual `case_when()` threshold chains on AVAL/ANRLO/ANRHI absent",
+    "`derive_var_atoxgr_dir()` called with both `criteria_direction = \"L\"` and `criteria_direction = \"H\"` for Sodium and Potassium, single-direction call for a bidirectional test absent",
+    "`derive_var_atoxgr()` used to combine ATOXGRL/ATOXGRH into ATOXGR, manual sign-flipping or `case_when()` combination absent",
+    "`high_indicator = \"HIGH\"` supplied for ALT and AST grading calls, BNRIND merged/derived before these calls",
+    "`meta_criteria = atoxgr_criteria_ctcv5` used explicitly, hardcoded numeric thresholds absent",
+    "ATOXDSCL/ATOXDSCH lookup populated from PARAMCD before grading, not left as direct copies of LBTEST",
+    "DOMAIN removed from lb before any derivation step",
+    "Grading logic correctness",
+    "ALT, AST: ATOXGRH populated, ATOXGRL entirely NA",
+    "Sodium: both ATOXGRL and ATOXGRH populated with multiple non-missing grades in each direction",
+    "Potassium: both ATOXGRL and ATOXGRH populated with at least one non-missing grade each; if high-direction coverage is near-zero, a `# REVIEW:` comment documents the data density limitation rather than silently passing",
+    "ATOXGR correctly reflects sign convention via `derive_var_atoxgr()` (low-direction grades negative, high-direction positive, \"0\" for normal-but-gradable, NA when ungradable)",
+    "BTOXGR derived from BASE using the same directional grading logic, not copied from the ATOXGR of the baseline record",
+    "Structural correctness",
+    "One ATOXGR (and BTOXGR) value per USUBJID/PARAMCD/AVISIT combination, no duplicates",
+    "`stopifnot()` or equivalent assertion confirms grade values are within {-4..-1, 0, 1..4} as character strings before final output",
+    "BASE, PCHG, and BNRIND present and correctly merged prior to BTOXGR/ALT/AST derivation",
+    "CDISC conformance",
+    "ATOXGR, BTOXGR, ATOXGRL, ATOXGRH stored as **character**, numeric type absent",
+    "ANRLO/ANRHI present and non-missing for all graded records (required inputs to grading metadata lookup)",
+    "PARAMCD/PARAM correctly mapped for all 4 graded tests, no silent drop of Sodium or Potassium records due to mismatched ATOXDSCL/ATOXDSCH terms",
+    "QC readiness",
+    "`# REVIEW:` comment at criteria version selection (CTCAE v5.0 vs v6.0, confirm against protocol/SAP)",
+    "`# REVIEW:` comment at unit system (SI vs. US conventional; confirm `atoxgr_criteria_ctcv5` vs `atoxgr_criteria_ctcv5_uscv` against site lab unit convention)",
+    "`# REVIEW:` comment flagging Potassium's thin high-direction abnormal coverage (5 records) as a data-density limitation for medical monitor awareness",
+    "Grade counts per direction (ATOXGRL non-missing count, ATOXGRH non-missing count) printed to console per test, for manual verification",
+    "Script runs end-to-end without errors on pharmaversesdtm::lb and pharmaverseadam::adsl"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral/admiral-bds"
+  ]
+}
