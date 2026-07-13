@@ -16,6 +16,6 @@
   "assertions": [],
   "language": "R",
   "target_skills": [
-    "admiral/admiral-bds"
+    "admiral-bds"
   ]
 }
