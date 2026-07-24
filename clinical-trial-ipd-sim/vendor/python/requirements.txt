@@ -1,0 +1,13 @@
+# Python deps for the vendored tools this R skill shells out to.
+# Install into any python3 you point the skill at (options("ctids.python") or PATH):
+#   python3 -m pip install -r requirements.txt
+#
+# ODM toolchain (odm/*.py):        lxml, duckdb, pandas
+# NCI CDE search (odm/search_nci): duckdb
+# find-protocol (find_protocol/):  duckdb, requests, pypdf
+# render (render/):                stdlib only
+lxml>=5.0
+duckdb>=1.0
+pandas>=2.0
+pypdf>=4.0
+requests>=2.31

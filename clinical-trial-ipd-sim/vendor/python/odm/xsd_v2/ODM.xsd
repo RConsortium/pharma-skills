@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://www.cdisc.org/ns/odm/v2.0"
+    elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+
+    <!--
+          include ODM foundation schemas
+    -->
+    <xs:include schemaLocation="ODM-foundation.xsd"/>
+</xs:schema>
