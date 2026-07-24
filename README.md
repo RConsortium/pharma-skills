@@ -4,7 +4,7 @@ A collection of agent skills for pharmaceutical R&D.
 
 ## Disclaimer
 
-This is an open, community-contributed catalog built as part of R Consortium Submissions Working Group Pilot 7. Skills go through community [benchmarking](LIFECYCLE.md) and carry no warranty or endorsement from the R Consortium, the BBSW AI committee, or any contributor's employer.
+This is an open, community-contributed catalog built as part of [R Consortium Submissions Working Group Pilot 7](https://rconsortium.github.io/submissions-wg/pilot7.html). Skills go through community [benchmarking](LIFECYCLE.md) and carry no warranty or endorsement from the R Consortium, the BBSW AI committee, or any contributor's employer.
 
 These skills produce artifacts that can feed into clinical trial design and regulatory workflows (trial designs, ADaM datasets, simulated data, statistical review). Treat all outputs as a drafting aid, not a validated deliverable — LLM outputs can be wrong or inconsistent between runs, so always independently verify them against your own QC process before they inform any regulatory, clinical, safety, or GxP-regulated activity. You're responsible for that verification and for complying with your organization's policies. Skills may also bundle scripts that execute in your environment, so review a skill's contents before installing and only supply data you're permitted to use. Everything here is MIT-licensed (see [License](#license)) and provided as-is.
 
