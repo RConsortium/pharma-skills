@@ -4,7 +4,7 @@ A collection of agent skills for pharmaceutical R&D.
 
 ## Disclaimer
 
-This is an open, community-contributed catalog built as part of [R Consortium Submissions Working Group Pilot 7](https://rconsortium.github.io/submissions-wg/pilot7.html). Skills go through community [benchmarking](LIFECYCLE.md) and carry no warranty or endorsement from the R Consortium, the BBSW AI committee, or any contributor's employer.
+This is an open, community-contributed catalog built as part of R Consortium Submissions Working Group Pilot 7. Skills go through community [benchmarking](LIFECYCLE.md) and carry no warranty or endorsement from the R Consortium, the BBSW AI committee, or any contributor's employer.
 
 These skills produce artifacts that can feed into clinical trial design and regulatory workflows (trial designs, ADaM datasets, simulated data, statistical review). Treat all outputs as a drafting aid, not a validated deliverable — LLM outputs can be wrong or inconsistent between runs, so always independently verify them against your own QC process before they inform any regulatory, clinical, safety, or GxP-regulated activity. You're responsible for that verification and for complying with your organization's policies. Skills may also bundle scripts that execute in your environment, so review a skill's contents before installing and only supply data you're permitted to use. Everything here is MIT-licensed (see [License](#license)) and provided as-is.
 
@@ -19,16 +19,65 @@ These skills produce artifacts that can feed into clinical trial design and regu
 | [clinical-trial-ipd-sim](clinical-trial-ipd-sim/) | Generate synthetic IPD, source CRFs, SDTM, ADaM, and exports for registered clinical trials using an R/pharmaverse g-formula causal-DAG workflow calibrated to posted protocol and results. |
 | [statistical-reviewer](statistical-reviewer/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
 
-## Usage
+## Installation
 
-**Option 1: Conversational / CLI**
-Ask your agent to directly enable a skill from this repo:
-> enable "group-sequential-design" skill from https://github.com/RConsortium/pharma_skills
+### Using `npx skills add` (Any Agent)
 
-**Option 2: Local IDE (Cursor, Windsurf, Copilot, etc.)**
-1. Clone this repository locally or as a git submodule.
-2. Symlink the skill you want into your project, or manually reference it in your configuration files (like `.cursorrules` or `llms.txt`):
-   `Please refer to /path/to/pharma_skills/group-sequential-design/SKILL.md for the trial design workflow.`
+Install skills from this repository into any supported coding agent (Claude Code, Codex, Cursor, Cline, Copilot, and [many more](https://github.com/vercel-labs/skills)) using the `npx skills add` CLI:
+
+```bash
+# List available skills without installing
+npx skills add RConsortium/pharma-skills --list
+
+# Install skills via an interactive menu
+npx skills add RConsortium/pharma-skills --all
+
+# Install specific skills by name
+npx skills add RConsortium/pharma-skills --skill group-sequential-design --skill admiral-adsl
+
+# Install to Claude Code only, globally
+npx skills add RConsortium/pharma-skills --agent claude-code --global
+```
+
+### Conversational / CLI (Any Agent)
+
+Ask your agent to enable a skill directly from this repo, without cloning it yourself:
+
+> enable "group-sequential-design" skill from https://github.com/RConsortium/pharma-skills
+
+### Manual Installation (Claude Code, Cursor, Windsurf, Copilot, etc.)
+
+1. Clone this repository locally or add it as a git submodule:
+
+   ```bash
+   git clone https://github.com/RConsortium/pharma-skills.git
+   ```
+
+2. Copy or symlink the skill(s) you need into your project or agent's skills directory. Symlinking keeps the skill up to date with `git pull`:
+
+   ```bash
+   # Copy a single skill (e.g. for Claude Code)
+   cp -r pharma-skills/group-sequential-design ~/.config/claude-code/skills/
+
+   # Or symlink instead of copying
+   ln -s "$(pwd)/pharma-skills/group-sequential-design" ~/.config/claude-code/skills/group-sequential-design
+   ```
+
+3. Or manually reference the skill in your configuration files (like `.cursorrules`, `AGENTS.md`, or `llms.txt`):
+
+   > Please refer to /path/to/pharma-skills/group-sequential-design/SKILL.md for the trial design workflow.
+
+## Using Skills
+
+Once installed, your agent will automatically activate relevant skills based on your task — no need to invoke them explicitly. For example, with the `admiral-adsl` skill installed:
+
+```
+You: Derive ADSL from the SDTM DM and EX domains for this study.
+
+Agent: I'll use the admiral ADSL workflow. First, let me check the SDTM domains available...
+```
+
+Skills that bundle scripts (R or Python) will execute in your environment when the agent runs them — review a skill's contents before installing, per the [disclaimer](#disclaimer) above.
 
 ## Contributing
 
