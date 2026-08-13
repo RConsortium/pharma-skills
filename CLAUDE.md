@@ -16,7 +16,8 @@ pharma_skills/
 │   ├── SKILL.md               ← Shared conventions (date rules, flags, QC)
 │   ├── admiral-adsl/          ← Subject-level dataset (ADSL)
 │   ├── admiral-bds/           ← BDS findings datasets (ADVS, ADLB)
-│   └── admiral-adae/          ← Adverse events dataset (ADAE)
+│   ├── admiral-adae/          ← Adverse events dataset (ADAE)
+│   └── admiral-adrs/          ← Tumor response dataset (ADRS, RECIST)
 ├── _automation/               ← Automation skills (see below)
 │   ├── benchmark-runner/      ← A/B benchmark orchestration
 │   ├── issue-to-eval/         ← GitHub Issue → evals.json converter
@@ -34,6 +35,7 @@ pharma_skills/
 | `admiral/admiral-adsl` | "derive ADSL", "create subject-level dataset", "admiral ADSL" |
 | `admiral/admiral-bds` | "derive ADVS", "derive ADLB", "vital signs dataset", "lab dataset", "BDS findings", "admiral BDS" |
 | `admiral/admiral-adae` | "derive ADAE", "adverse events dataset", "TEAE flag", "treatment-emergent", "admiral ADAE" |
+| `admiral/admiral-adrs` | "derive ADRS", "tumor response dataset", "RECIST", "confirmed ORR", "best overall response", "BOR", "clinical benefit", "admiralonco" |
 | `benchmark-runner` | "run benchmarks", "compare skill performance", "eval the skills" |
 | `benchmark-summary` | "update the benchmark summary", "generate benchmark analysis", "summarize skill vs no-skill results", "add failure patterns", produce `benchmark_analysis_*.md` |
 | `issue-to-eval` | "parse this issue into a benchmark", "sync all benchmark issues" |
