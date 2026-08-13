@@ -34,6 +34,7 @@ pharma_skills/
 | `admiral/admiral-adsl` | "derive ADSL", "create subject-level dataset", "admiral ADSL" |
 | `admiral/admiral-bds` | "derive ADVS", "derive ADLB", "vital signs dataset", "lab dataset", "BDS findings", "admiral BDS" |
 | `admiral/admiral-adae` | "derive ADAE", "adverse events dataset", "TEAE flag", "treatment-emergent", "admiral ADAE" |
+| `admiral/admiral-adtte` | "derive ADTTE", "time-to-event dataset", "survival analysis dataset", "event source", "censor source", "time to first", "admiral ADTTE" |
 | `benchmark-runner` | "run benchmarks", "compare skill performance", "eval the skills" |
 | `benchmark-summary` | "update the benchmark summary", "generate benchmark analysis", "summarize skill vs no-skill results", "add failure patterns", produce `benchmark_analysis_*.md` |
 | `issue-to-eval` | "parse this issue into a benchmark", "sync all benchmark issues" |
