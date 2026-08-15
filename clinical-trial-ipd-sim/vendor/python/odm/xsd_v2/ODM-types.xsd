@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://www.cdisc.org/ns/odm/v2.0" elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <!--
+        +===========================================================================+
+        | ODM datatype definitions                                                  |
+        +===========================================================================+
+    -->
+    <xs:simpleType name="text">
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+    <xs:simpleType name="integer">
+        <xs:restriction base="xs:integer"/>
+    </xs:simpleType>
+    <xs:simpleType name="decimal">
+        <xs:restriction base="xs:decimal"/>
+    </xs:simpleType>
+    <xs:simpleType name="float">
+        <xs:restriction base="xs:float"/>
+    </xs:simpleType>
+    <xs:simpleType name="double">
+        <xs:restriction base="xs:double"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="date">
+        <xs:restriction base="xs:date"/>
+    </xs:simpleType>
+    <xs:simpleType name="time">
+        <xs:restriction base="xs:time"/>
+    </xs:simpleType>
+    <xs:simpleType name="datetime">
+        <xs:restriction base="xs:dateTime"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="positiveInteger">
+        <xs:restriction base="xs:positiveInteger"> </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="boolean">
+        <xs:restriction base="xs:boolean"/>
+    </xs:simpleType>
+    <xs:simpleType name="string">
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+    <xs:simpleType name="hexBinary">
+        <xs:restriction base="xs:hexBinary"/>
+    </xs:simpleType>
+    <xs:simpleType name="base64Binary">
+        <xs:restriction base="xs:base64Binary"/>
+    </xs:simpleType>
+    <!--
+        hexFloat and base64Float are binary types intended for precise exchange of floating-point data in a
+        machine/platform independent manner. the types are defined as the same internal data representation
+        as the IBM Mainframe format currently used in the submission V5 Transport standard as described in
+           SAS Technical Support document "TS-140 The Record Layout of a Data set in SAS Transport (XPORT) Format"
+           http://ftp.sas.com/techsup/download/technote/ts140.html
+        with the appropriate direct translation of the converted value to either hexBinary format or the
+        base64Binary (MIME) representation. This secondary conversion ensures XML encoding compatability.
+
+        these data values will not be humanly readable in the XML markup or by a standard XML-based tool,
+        and the decision to use these types should be based on retention of numeric precision vs readability.
+
+        implementers should note that the less constrained hexBinary and base64Binary datatypes could also be
+        used for exchange of floating point values, but will suffer from
+             1) inability to diagnose that a value is actually to be converted back to a float rather than a string
+             2) encoded values may only be reliably exchanged across similar hardware platforms (representation)
+                i.e., platforms may be IEEE-adherent for floating point storage yet be big-endian vs. little-endian
+    -->
+    <xs:simpleType name="hexFloat">
+        <xs:restriction base="xs:hexBinary">
+            <xs:maxLength value="16"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="base64Float">
+        <xs:restriction base="xs:base64Binary">
+            <xs:maxLength value="12"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <!--
+             Standard Schema definitions do not allow the EMPTY/NULL construct.
+             We define the "empytTag" type for use in union derivations where an EMPTY/NULL value is acceptable.
+          -->
+    <xs:simpleType name="emptyTag">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="([ ])?"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <!--
+              Partial dates are defined by the sequences as follows
+                  YYYY-MM-DD              xs:date
+                  YYYY-MM                 gYearMonth
+                  YYYY                    gYear
+                  EMPTY/NULL              emptyTag
+          -->
+    <xs:simpleType name="partialDate">
+        <xs:union memberTypes="emptyTag xs:date xs:gYearMonth xs:gYear"/>
+    </xs:simpleType>
+    <!--
+              Partial times are defined by the sequences as follows
+                  HH:MM:SS[.sss][(+/-)HH:SS] xs:time
+                  HH:MM:SS[.sss][Z]          xs:time
+                  HH:MM:SS[.sss]             xs:time
+                  HH:MM:SS                   xs:time
+                  HH:MM                      xs:time
+                  HH[(+/-)HH:SS]             tHour
+                  HH[Z]                      tHour
+                  EMPTY/NULL                 emptyTag
+          -->
+    <xs:simpleType name="tHour">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="((([0-1][0-9])|([2][0-3]))(:[0-5][0-9])?(((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z))?)"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="partialTime">
+        <xs:union memberTypes="emptyTag xs:time tHour"/>
+    </xs:simpleType>
+    <!--
+              Partial datetimes are defined by the sequences as follows
+              YYYY-MM-DDTHH:MM:SS[.sss][(+/-)HH:SS]
+              YYYY-MM-DDTHH:MM:SS[Z]
+              YYYY-MM-DDTHH:MM:SS[(+/-)HH:SS]
+              YYYY-MM-DDTHH:MM:SS[Z]
+              YYYY-MM-DDTHH:MM
+              YYYY-MM-DDTHH
+              YYYY-MM-DD
+              YYYY-MM
+              YYYY
+
+              pattern not perfect for 28/30/31 days in which months
+              but if a complete datetime, then the xs:dateTime facet will validate it
+          -->
+    <xs:simpleType name="tDatetime">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?))"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="partialDatetime">
+        <xs:union memberTypes="emptyTag xs:dateTime tDatetime"/>
+    </xs:simpleType>
+    <!--
+              Durations may be either EMPTY/NULL
+              or the XML-Schema type duration
+              XML-Schema permits carry-over of components and negative durations
+              neither concept is supported directly by ISO-8601 but we allow them here
+              by specifically NOT restricting the use of the type by a pattern override
+              ISO-8601 reference points
+                  5.5.3.1 (positive integer or zero)
+                  5.5.3.2 (carry-over points)
+              XML-Schema reference point
+                  3.2.6.1 (lexical representation)
+              the full tDuration pattern was used with the tInterval derivation but only a truncated form
+              must still be employed because XML-Schema implementation does NOT support the WEEKS form of ISO-8601
+          -->
+    <xs:simpleType name="tDuration">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="((\+|-)?P([0-9]([0-9]+)?)W)"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="durationDatetime">
+        <xs:union memberTypes="emptyTag xs:duration tDuration"/>
+    </xs:simpleType>
+    <!--
+              The Interval is technically just a combination type composed of either
+                    partialDatetime  "/" partialDatetime
+                    durationDatetime "/" partialDatetime
+                    partialDatetime  "/" durationDatetime
+              but we must enumerate the entire pattern to define it via Schema.
+          -->
+    <xs:simpleType name="tInterval">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="((((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?))/((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?)))|(((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?))/(((\+|-)?P(((([0-9]([0-9]+)?)Y)?(([0-9]([0-9]+)?)M)?(([0-9]([0-9]+)?)D)?)(T((([0-9]([0-9]+)?)H)?(([0-9]([0-9]+)?)M)?(([0-9]([0-9]+)?)((\.[0-9]+)?)S)?)?)?|((([0-9]([0-9]+)?)W))))))|((((\+|-)?P(((([0-9]([0-9]+)?)Y)?(([0-9]([0-9]+)?)M)?(([0-9]([0-9]+)?)D)?)(T((([0-9]([0-9]+)?)H)?(([0-9]([0-9]+)?)M)?(([0-9]([0-9]+)?)((\.[0-9]+)?)S)?)?)?|((([0-9]([0-9]+)?)W)))))/((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?))))"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="intervalDatetime">
+        <xs:union memberTypes="emptyTag tInterval"/>
+    </xs:simpleType>
+    <!--
+              incompleteDatetime are defined similar to partialDateime
+              with the exception that each individual datetime component may be
+              substituted with a single dash to indicate omission
+              ISO-8601 reference points
+                  4.5 Note 1 (Use of separators)
+              pattern required in restriction to add omitted values
+              this type must also accept standard ODM datetime values as defined above
+          -->
+    <xs:simpleType name="tIncomplete">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="(((([0-9][0-9][0-9][0-9]))|-)-(((([0][1-9])|([1][0-2])))|-)-(((([0][1-9])|([1-2][0-9])|([3][0-1])))|-)T(((([0-1][0-9])|([2][0-3])))|-):((([0-5][0-9]))|-):((([0-5][0-9](\.[0-9]+)?))|-)((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|Z|-))?)"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="incompleteDatetime">
+        <xs:union memberTypes="emptyTag xs:dateTime tDatetime tIncomplete"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="tIncompleteDate">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="(((([0-9][0-9][0-9][0-9]))|-)-(((([0][1-9])|([1][0-2])))|-)-(((([0][1-9])|([1-2][0-9])|([3][0-1])))|-))"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="tIncompleteTime">
+        <xs:restriction base="xs:string">
+            <xs:pattern
+                value="((((([0-1][0-9])|([2][0-3])))|-):((([0-5][0-9]))|-):((([0-5][0-9](\.[0-9]+)?))|-)((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|Z|-))?)"
+            />
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="incompleteTime">
+        <xs:union memberTypes="emptyTag xs:time tHour tIncompleteTime"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="incompleteDate">
+        <xs:union memberTypes="emptyTag xs:date xs:gYearMonth xs:gYear tIncompleteDate"/>
+    </xs:simpleType>
+
+
+    <!--
+        +===========================================================================+
+        | ODM internal type definitions                                             |
+        +===========================================================================+
+    -->
+    <xs:simpleType name="oid">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="oidref">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="value">
+        <xs:restriction base="xs:string"/>
+    </xs:simpleType>
+    <xs:simpleType name="subjectKey">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="repeatKey">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="name">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+    <xs:simpleType name="fileName">
+        <xs:restriction base="xs:anyURI"/>
+    </xs:simpleType>
+
+</xs:schema>

@@ -1,0 +1,10 @@
+# Run outputs and scratch (regenerable) — keep them out of the skill.
+outputs/
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+
+# The skill ships the pre-built NCI CDE index in-tree for the ODM step. The repo-root .gitignore
+# excludes *.duckdb, so re-include this one file (the ODM shell-out needs it on a fresh clone).
+!vendor/python/parsed_forms/nci.duckdb

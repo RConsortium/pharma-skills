@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    targetNamespace="http://www.cdisc.org/ns/odm/v2.0" elementFormDefault="qualified"
+    attributeFormDefault="unqualified">
+
+    <xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+
+    <!--
+        +===========================================================================+
+        | attribute definition groups                                               |
+        | these definitions are NOT to be extended and are internal to ODM USE ONLY |
+        +===========================================================================+
+    -->
+    <xs:attributeGroup name="ReferenceDataAttributeDefinition">
+        <xs:attribute name="StudyOID" type="oidref" use="required"/>
+        <xs:attribute name="MetaDataVersionOID" type="oidref" use="required"/>
+    </xs:attributeGroup>
+
+
+    <!--
+        +===========================================================================+
+        | complexType definitions                                                   |
+        +===========================================================================+
+    -->
+    <xs:complexType name="ODMcomplexTypeDefinition-ReferenceData">
+        <xs:sequence>
+            <xs:element ref="ItemGroupData" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:group ref="AuditRecordSignatureNotationGroup" minOccurs="1"/>
+            <xs:group ref="ReferenceDataElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+        <xs:attributeGroup ref="ReferenceDataAttributeDefinition"/>
+        <xs:attributeGroup ref="ReferenceDataAttributeExtension"/>
+    </xs:complexType>
+
+    <!--
+        +===========================================================================+
+        | element definitions                                                       |
+        +===========================================================================+
+    -->
+    <xs:element name="ReferenceData" type="ODMcomplexTypeDefinition-ReferenceData"/>
+
+</xs:schema>

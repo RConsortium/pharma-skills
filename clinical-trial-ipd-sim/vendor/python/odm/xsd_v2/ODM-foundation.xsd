@@ -1,0 +1,704 @@
+<xs:schema xmlns="http://www.cdisc.org/ns/odm/v2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:odm="http://www.cdisc.org/ns/odm/v2.0"
+	xmlns:xhtml="http://www.w3.org/1999/xhtml" targetNamespace="http://www.cdisc.org/ns/odm/v2.0"
+	elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+	<xs:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+	<xs:import namespace="http://www.w3.org/1999/xhtml" schemaLocation="ODM-xhtml.xsd"/>
+
+	<xs:include schemaLocation="ODM-types.xsd"/>
+	<xs:include schemaLocation="ODM-enumerations.xsd"/>
+	<xs:include schemaLocation="ODM-study.xsd"/>
+	<xs:include schemaLocation="ODM-protocol.xsd"/>
+	<xs:include schemaLocation="ODM-admindata.xsd"/>
+	<xs:include schemaLocation="ODM-referencedata.xsd"/>
+	<xs:include schemaLocation="ODM-clinicaldata.xsd"/>
+
+	<!--
+        +===========================================================================+
+        | attribute definition groups                                               |
+        | these definitions are NOT to be extended and are internal to ODM USE ONLY |
+        +===========================================================================+
+    -->
+	<xs:attributeGroup name="ODMAttributeDefinition">
+		<xs:attribute name="FileType" type="FileType" use="required"/>
+		<xs:attribute name="Granularity" type="Granularity"/>
+		<xs:attribute name="Context" type="Context" default="Exchange"/>
+		<xs:attribute name="FileOID" type="oid" use="required"/>
+		<xs:attribute name="CreationDateTime" type="datetime" use="required"/>
+		<xs:attribute name="PriorFileOID" type="oidref"/>
+		<xs:attribute name="AsOfDateTime" type="datetime"/>
+		<xs:attribute name="ODMVersion" type="ODMVersion"/>
+		<xs:attribute name="Originator" type="text"/>
+		<xs:attribute name="SourceSystem" type="text"/>
+		<xs:attribute name="SourceSystemVersion" type="text"/>
+	</xs:attributeGroup>
+
+	<xs:attributeGroup name="AssociationAttributeDefinition">
+		<xs:attribute name="StudyOID" type="oidref" use="required"/>
+		<xs:attribute name="MetaDataVersionOID" type="oidref" use="required"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="KeySetAttributeDefinition">
+		<xs:attribute name="StudyOID" type="oidref" use="required"/>
+		<xs:attribute name="SubjectKey" type="subjectKey"/>
+		<xs:attribute name="MetaDataVersionOID" type="oidref"/>
+		<xs:attribute name="StudyEventOID" type="oidref"/>
+		<xs:attribute name="StudyEventRepeatKey" type="repeatKey"/>
+		<xs:attribute name="ItemGroupOID" type="oidref"/>
+		<xs:attribute name="ItemGroupRepeatKey" type="repeatKey"/>
+		<xs:attribute name="ItemOID" type="oidref"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="AnnotationAttributeDefinition">
+		<xs:attribute name="SeqNum" type="positiveInteger" use="required"/>
+		<xs:attribute name="TransactionType" type="TransactionType"/>
+		<xs:attribute name="ID" type="xs:ID"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="CommentAttributeDefinition">
+		<xs:attribute name="SponsorOrSite" type="CommentType"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="FlagValueAttributeDefinition">
+		<xs:attribute name="CodeListOID" type="oidref" use="required"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="FlagTypeAttributeDefinition">
+		<xs:attribute name="CodeListOID" type="oidref" use="required"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="CodingAttributeDefinition">
+		<xs:attribute name="Code" type="text" use="optional"/>
+		<xs:attribute name="System" type="xs:anyURI" use="required"/>
+		<xs:attribute name="SystemName" type="text" use="optional"/>
+		<xs:attribute name="SystemVersion" type="text" use="optional"/>
+		<xs:attribute name="Label" type="text" use="optional"/>
+		<xs:attribute name="href" type="xs:anyURI" use="optional"/>
+		<xs:attribute name="ref" type="xs:anyURI" use="optional"/>
+		<xs:attribute name="CommentOID" type="text" use="optional"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="QueryAttributeDefinition">
+		<xs:attribute name="OID" type="oid" use="required"/>
+		<xs:attribute name="Source" type="QuerySourceType" use="required"/>
+		<xs:attribute name="Target" type="text"/>
+		<xs:attribute name="Type" type="QueryType"/>
+		<xs:attribute name="State" type="QueryStateType" use="required"/>
+		<xs:attribute name="LastUpdateDatetime" type="datetime" use="required"/>
+		<xs:attribute name="Name" type="name"/>
+	</xs:attributeGroup>
+	<xs:attributeGroup name="ValueAttributeDefinition">
+		<xs:attribute name="SeqNum" type="positiveInteger"/>
+	</xs:attributeGroup>
+
+	<!--
+        +===========================================================================+
+        | these are purposely empty attributeGroups to permit vendor extensions to  |
+        | the corresponding elements via the standard XML-Schema redefine mechanism |
+        +===========================================================================+
+    -->
+	<xs:attributeGroup name="TranslatedTextAttributeExtension"/>
+	<xs:attributeGroup name="UserNameAttributeExtension"/>
+	<xs:attributeGroup name="PrefixAttributeExtension"/>
+	<xs:attributeGroup name="SuffixAttributeExtension"/>
+	<xs:attributeGroup name="FullNameAttributeExtension"/>
+	<xs:attributeGroup name="GivenNameAttributeExtension"/>
+	<xs:attributeGroup name="FamilyNameAttributeExtension"/>
+	<xs:attributeGroup name="ImageAttributeExtension"/>
+	<xs:attributeGroup name="TelecomAttributeExtension"/>
+	<xs:attributeGroup name="OrganizationAttributeExtension"/>
+	<xs:attributeGroup name="StreetNameAttributeExtension"/>
+	<xs:attributeGroup name="HouseNumberAttributeExtension"/>
+	<xs:attributeGroup name="CityAttributeExtension"/>
+	<xs:attributeGroup name="StateProvAttributeExtension"/>
+	<xs:attributeGroup name="CountryAttributeExtension"/>
+	<xs:attributeGroup name="PostalCodeAttributeExtension"/>
+	<xs:attributeGroup name="GeoPositionAttributeExtension"/>
+	<xs:attributeGroup name="OtherTextAttributeExtension"/>
+	<xs:attributeGroup name="MeaningAttributeExtension"/>
+	<xs:attributeGroup name="LegalReasonAttributeExtension"/>
+	<xs:attributeGroup name="CommentAttributeExtension"/>
+	<xs:attributeGroup name="FlagValueAttributeExtension"/>
+	<xs:attributeGroup name="FlagTypeAttributeExtension"/>
+	<xs:attributeGroup name="CodingAttributeExtension"/>
+	<xs:attributeGroup name="DateTimeStampAttributeExtension"/>
+	<xs:attributeGroup name="ReasonForChangeAttributeExtension"/>
+	<xs:attributeGroup name="SourceIDAttributeExtension"/>
+	<xs:attributeGroup name="IncludeAttributeExtension"/>
+	<xs:attributeGroup name="LocationRefAttributeExtension"/>
+	<xs:attributeGroup name="UserRefAttributeExtension"/>
+	<xs:attributeGroup name="SignatureRefAttributeExtension"/>
+	<xs:attributeGroup name="InvestigatorRefAttributeExtension"/>
+	<xs:attributeGroup name="SiteRefAttributeExtension"/>
+	<xs:attributeGroup name="MetaDataVersionRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyAttributeExtension"/>
+	<xs:attributeGroup name="MetaDataVersionAttributeExtension"/>
+	<xs:attributeGroup name="DocumentRefAttributeExtension"/>
+	<xs:attributeGroup name="LeafAttributeExtension"/>
+	<xs:attributeGroup name="TitleAttributeExtension"/>
+	<xs:attributeGroup name="PDFPageRefAttributeExtension"/>
+	<xs:attributeGroup name="StandardAttributeExtension"/>
+	<xs:attributeGroup name="AnnotatedCRFAttributeExtension"/>
+	<xs:attributeGroup name="SupplementalDocAttributeExtension"/>
+	<xs:attributeGroup name="ValueListDefAttributeExtension"/>
+	<xs:attributeGroup name="WhereClauseDefAttributeExtension"/>
+	<xs:attributeGroup name="ProtocolAttributeExtension"/>
+	<xs:attributeGroup name="WorkflowDefAttributeExtension"/>
+	<xs:attributeGroup name="WorkflowStartAttributeExtension"/>
+	<xs:attributeGroup name="TransitionAttributeExtension"/>
+	<xs:attributeGroup name="TargetTransitionAttributeExtension"/>
+	<xs:attributeGroup name="DefaultTransitionAttributeExtension"/>
+	<xs:attributeGroup name="BranchingAttributeExtension"/>
+	<xs:attributeGroup name="WorkflowEndAttributeExtension"/>
+	<xs:attributeGroup name="CriterionAttributeExtension"/>
+	<xs:attributeGroup name="WorkflowRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyEventGroupRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyEventGroupDefAttributeExtension"/>
+	<xs:attributeGroup name="StudyStructureAttributeExtension"/>
+	<xs:attributeGroup name="TrialPhaseAttributeExtension"/>
+	<xs:attributeGroup name="StudyIndicationsAttributeExtension"/>
+	<xs:attributeGroup name="StudyIndicationAttributeExtension"/>
+	<xs:attributeGroup name="StudyInterventionsAttributeExtension"/>
+	<xs:attributeGroup name="StudyInterventionAttributeExtension"/>
+	<xs:attributeGroup name="StudyObjectivesAttributeExtension"/>
+	<xs:attributeGroup name="StudyObjectiveAttributeExtension"/>
+	<xs:attributeGroup name="StudyEndPointRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyEndPointsAttributeExtension"/>
+	<xs:attributeGroup name="StudyEndPointAttributeExtension"/>
+	<xs:attributeGroup name="StudyTargetPopulationAttributeExtension"/>
+	<xs:attributeGroup name="StudyEstimandsAttributeExtension"/>
+	<xs:attributeGroup name="StudyEstimandAttributeExtension"/>
+	<xs:attributeGroup name="StudyTargetPopulationRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyInterventionRefAttributeExtension"/>
+	<xs:attributeGroup name="ArmAttributeExtension"/>
+	<xs:attributeGroup name="EpochAttributeExtension"/>
+	<xs:attributeGroup name="StudySummaryAttributeExtension"/>
+	<xs:attributeGroup name="StudyParameterAttributeExtension"/>
+	<xs:attributeGroup name="ParameterValueAttributeExtension"/>
+	<xs:attributeGroup name="StudyTimingsAttributeExtension"/>
+	<xs:attributeGroup name="StudyTimingAttributeExtension"/>
+	<xs:attributeGroup name="AbsoluteTimingConstraintAttributeExtension"/>
+	<xs:attributeGroup name="RelativeTimingConstraintAttributeExtension"/>
+	<xs:attributeGroup name="TransitionTimingConstraintAttributeExtension"/>
+	<xs:attributeGroup name="DurationTimingConstraintAttributeExtension"/>
+	<xs:attributeGroup name="StudyEventRefAttributeExtension"/>
+	<xs:attributeGroup name="StudyEventDefAttributeExtension"/>
+	<xs:attributeGroup name="ItemGroupRefAttributeExtension"/>
+	<xs:attributeGroup name="ItemGroupDefAttributeExtension"/>
+	<xs:attributeGroup name="ClassAttributeExtension"/>
+	<xs:attributeGroup name="SubClassAttributeExtension"/>
+	<xs:attributeGroup name="ItemRefAttributeExtension"/>
+	<xs:attributeGroup name="WhereClauseRefAttributeExtension"/>
+	<xs:attributeGroup name="OriginAttributeExtension"/>
+	<xs:attributeGroup name="SourceItemsAttributeExtension"/>
+	<xs:attributeGroup name="SourceItemAttributeExtension"/>
+	<xs:attributeGroup name="ResourceAttributeExtension"/>
+	<xs:attributeGroup name="SelectionAttributeExtension"/>
+	<xs:attributeGroup name="AliasAttributeExtension"/>
+	<xs:attributeGroup name="CheckValueAttributeExtension"/>
+	<xs:attributeGroup name="CodeListRefAttributeExtension"/>
+	<xs:attributeGroup name="ValueListRefAttributeExtension"/>
+	<xs:attributeGroup name="ItemDefAttributeExtension"/>
+	<xs:attributeGroup name="QuestionAttributeExtension"/>
+	<xs:attributeGroup name="DefinitionAttributeExtension"/>
+	<xs:attributeGroup name="PromptAttributeExtension"/>
+	<xs:attributeGroup name="CRFCompletionInstructionsAttributeExtension"/>
+	<xs:attributeGroup name="ImplementationNotesAttributeExtension"/>
+	<xs:attributeGroup name="CDISCNotesAttributeExtension"/>
+	<xs:attributeGroup name="RangeCheckAttributeExtension"/>
+	<xs:attributeGroup name="ErrorMessageAttributeExtension"/>
+	<xs:attributeGroup name="CodeListAttributeExtension"/>
+	<xs:attributeGroup name="CodeListItemAttributeExtension"/>
+	<xs:attributeGroup name="DecodeAttributeExtension"/>
+	<xs:attributeGroup name="ExternalCodeLibAttributeExtension"/>
+	<xs:attributeGroup name="AdminDataAttributeExtension"/>
+	<xs:attributeGroup name="UserAttributeExtension"/>
+	<xs:attributeGroup name="AddressAttributeExtension"/>
+	<xs:attributeGroup name="LocationAttributeExtension"/>
+	<xs:attributeGroup name="SignatureDefAttributeExtension"/>
+	<xs:attributeGroup name="ReferenceDataAttributeExtension"/>
+	<xs:attributeGroup name="ClinicalDataAttributeExtension"/>
+	<xs:attributeGroup name="SubjectDataAttributeExtension"/>
+	<xs:attributeGroup name="StudyEventDataAttributeExtension"/>
+	<xs:attributeGroup name="ItemGroupDataAttributeExtension"/>
+	<xs:attributeGroup name="ItemDataAttributeExtension"/>
+	<xs:attributeGroup name="AnnotationAttributeExtension"/>
+	<xs:attributeGroup name="FlagAttributeExtension"/>
+	<xs:attributeGroup name="SignatureAttributeExtension"/>
+	<xs:attributeGroup name="AuditRecordAttributeExtension"/>
+	<xs:attributeGroup name="AssociationAttributeExtension"/>
+	<xs:attributeGroup name="KeySetAttributeExtension"/>
+	<xs:attributeGroup name="ODMAttributeExtension"/>
+	<xs:attributeGroup name="DescriptionAttributeExtension"/>
+	<xs:attributeGroup name="ConditionDefAttributeExtension"/>
+	<xs:attributeGroup name="FormalExpressionAttributeExtension"/>
+	<xs:attributeGroup name="CodeAttributeExtension"/>
+	<xs:attributeGroup name="MethodDefAttributeExtension"/>
+	<xs:attributeGroup name="MethodSignatureAttributeExtension"/>
+	<xs:attributeGroup name="ParameterAttributeExtension"/>
+	<xs:attributeGroup name="ReturnValueAttributeExtension"/>
+	<xs:attributeGroup name="CommentDefAttributeExtension"/>
+	<xs:attributeGroup name="QueryAttributeExtension"/>
+	<xs:attributeGroup name="ValueAttributeExtension"/>
+	<!--
+        +===========================================================================+
+        | these are purposely empty modelGroups to permit vendor extensions to the  |
+        | corresponding elements via the standard XML-Schema redefine mechanism     |
+        +===========================================================================+
+    -->
+	<xs:group name="IncludeElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="OriginElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SourceItemElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ResourceElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SelectionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AliasElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DocumentRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="LeafElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="OrganizationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ImageElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="LocationRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="MetaDataVersionRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="UserRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SignatureRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="InvestigatorRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SiteRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ODMElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="MetaDataVersionPreIncludeElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="MetaDataVersionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StandardElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AnnotatedCRFElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SupplementalDocElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ValueListDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="WhereClauseRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="WhereClauseDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ProtocolElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="WorkflowDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="WorkflowStartElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="TransitionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="BranchingElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="TargetTransitionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DefaultTransitionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	
+	<xs:group name="CriterionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="WorkflowRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEventGroupRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEventGroupDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyStructureElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="TrialPhaseElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyIndicationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyInterventionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyObjectiveElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEndPointRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEndPointElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyTargetPopulationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEstimandElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="InclusionExclusionCriteriaElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="InclusionCriteriaElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ExclusionCriteriaElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="IntercurrentEventElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SummaryMeasureElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ArmElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="EpochElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudySummaryElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyParameterElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ParameterValueElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyTimingElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AbsoluteTimingConstraintElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="RelativeTimingConstraintElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="TransitionTimingConstraintElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DurationTimingConstraintElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEventRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEventDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemGroupRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemGroupDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ClassElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="QuestionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DefinitionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="PromptElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CRFCompletionInstructionsElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ImplementationNotesElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CDISCNotesElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="RangeCheckElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ErrorMessageElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CodeListRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ValueListRefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CodeListElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CodeListItemElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DecodeElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AdminDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="UserElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AddressElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="LocationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="TelecomElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="GeoPositionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SignatureDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ReferenceDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ClinicalDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SubjectDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="StudyEventDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemGroupDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ItemDataElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AnnotationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CommentElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CodingElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="FlagElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="SignatureElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AuditRecordElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="AssociationElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="KeySetElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="DescriptionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ConditionDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="MethodDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="MethodSignatureElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ParameterElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="ReturnValueElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="FormalExpressionElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="CommentDefElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<xs:group name="QueryElementExtension">
+		<xs:sequence/>
+	</xs:group>
+	<!--
+        +===========================================================================+
+        | complexType definitions                                                   |
+        +===========================================================================+
+    -->
+    <xs:complexType name="ODMcomplexTypeDefinition-ODM">
+    	<xs:sequence>
+    		<xs:element ref="Description" minOccurs="0" maxOccurs="1"/>
+    		<xs:element ref="Study" minOccurs="0" maxOccurs="unbounded"/>
+    		<xs:element ref="AdminData" minOccurs="0" maxOccurs="unbounded"/>
+    		<xs:element ref="ReferenceData" minOccurs="0" maxOccurs="unbounded"/>
+    		<xs:element ref="ClinicalData" minOccurs="0" maxOccurs="unbounded"/>
+    		<xs:element ref="Association" minOccurs="0" maxOccurs="unbounded"/>
+    		<xs:group ref="ODMElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+    	</xs:sequence>
+    	<xs:attributeGroup ref="ODMAttributeDefinition"/>
+    	<xs:attributeGroup ref="ODMAttributeExtension"/>
+    </xs:complexType>
+
+	<xs:complexType name="ODMcomplexTypeDefinition-Association">
+		<xs:sequence>
+			<xs:element ref="KeySet"/>
+			<xs:element ref="KeySet"/>
+			<xs:element ref="Annotation"/>
+			<xs:group ref="AssociationElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="AssociationAttributeDefinition"/>
+		<xs:attributeGroup ref="AssociationAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-KeySet">
+		<xs:sequence>
+			<xs:group ref="KeySetElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="KeySetAttributeDefinition"/>
+		<xs:attributeGroup ref="KeySetAttributeExtension"/>
+	</xs:complexType>
+
+	<xs:complexType name="ODMcomplexTypeDefinition-Annotation">
+		<xs:sequence>
+			<xs:element ref="Comment" minOccurs="0"/>
+			<xs:element ref="Coding" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:element ref="Flag" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:group ref="AnnotationElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="AnnotationAttributeDefinition"/>
+		<xs:attributeGroup ref="AnnotationAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-Comment">
+		<xs:sequence>
+			<xs:element ref="TranslatedText" maxOccurs="unbounded"/>	
+			<xs:group ref="CommentElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="CommentAttributeDefinition"/>
+		<xs:attributeGroup ref="CommentAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-Flag">
+		<xs:sequence>
+			<xs:element ref="FlagValue"/>
+			<xs:element ref="FlagType" minOccurs="0"/>
+			<xs:group ref="FlagElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="FlagAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-FlagValue">
+		<xs:simpleContent>
+			<xs:extension base="name">
+				<xs:attributeGroup ref="FlagValueAttributeDefinition"/>
+				<xs:attributeGroup ref="FlagValueAttributeExtension"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-FlagType">
+		<xs:simpleContent>
+			<xs:extension base="name">
+				<xs:attributeGroup ref="FlagTypeAttributeDefinition"/>
+				<xs:attributeGroup ref="FlagTypeAttributeExtension"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-Coding">
+		<xs:sequence>
+			<xs:group ref="CodingElementExtension" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="CodingAttributeDefinition"/>
+		<xs:attributeGroup ref="CodingAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-Query">
+		<xs:sequence>
+			<xs:element ref="Value"/>
+			<xs:element ref="AuditRecord" minOccurs="0" maxOccurs="unbounded"/>
+			<xs:group ref="QueryElementExtension"/>
+		</xs:sequence>
+		<xs:attributeGroup ref="QueryAttributeDefinition"/>
+		<xs:attributeGroup ref="QueryAttributeExtension"/>
+	</xs:complexType>
+	<xs:complexType name="ODMcomplexTypeDefinition-Value">
+		<xs:simpleContent>
+			<xs:extension base="text">
+				<xs:attributeGroup ref="ValueAttributeDefinition"/>
+				<xs:attributeGroup ref="ValueAttributeExtension"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+
+
+	<!--
+        +===========================================================================+
+        | element definitions                                                       |
+        +===========================================================================+
+    -->
+	<xs:element name="ODM" type="ODMcomplexTypeDefinition-ODM">
+		<xs:unique name="UC-O-1">
+			<xs:selector xpath="odm:Study"/>
+			<xs:field xpath="@OID"/>
+		</xs:unique>
+	</xs:element>
+	<xs:element name="Association" type="ODMcomplexTypeDefinition-Association"/>
+	<xs:element name="KeySet" type="ODMcomplexTypeDefinition-KeySet"/>
+	<xs:element name="Annotation" type="ODMcomplexTypeDefinition-Annotation"/>
+	<xs:element name="Comment" type="ODMcomplexTypeDefinition-Comment"/>
+	<xs:element name="Flag" type="ODMcomplexTypeDefinition-Flag"/>
+	<xs:element name="FlagValue" type="ODMcomplexTypeDefinition-FlagValue"/>
+	<xs:element name="FlagType" type="ODMcomplexTypeDefinition-FlagType"/>
+	<xs:element name="Coding" type="ODMcomplexTypeDefinition-Coding"/>
+	<xs:element name="Query" type="ODMcomplexTypeDefinition-Query"/>
+	<xs:element name="Value" type="ODMcomplexTypeDefinition-Value"/>
+
+</xs:schema>

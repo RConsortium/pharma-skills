@@ -1,0 +1,1196 @@
+{
+  "meta": {
+    "trial": "CATH_TESTING",
+    "nct": "NCT00789880",
+    "step": 4,
+    "generated": "2026-07-16",
+    "n_default": 82,
+    "seed_default": 789880,
+    "study_type": "short mechanistic 2-arm x 3-diagnosis-group trial (VitD3 4000 IU/day vs placebo, 21 days); endpoints are change-from-baseline biomarker deltas, no time-to-event",
+    "priority_hierarchy": "(1) ctgov results JSON (tier1) -> (2) foundation-model sanity defaults (tier2) -> (3) paperclip literature priors (tier3, via literature-search-paperclip skill)",
+    "calibrated_features": [
+      "baseline population marginals (diagnosis group, sex, race, ethnicity, region, age, BMI, Fitzpatrick)",
+      "baseline serum labs (vitamin D, calcium, creatinine, PTH, IgE)",
+      "primary endpoint change: CAMP mRNA lesional & non-lesional (per group x arm)",
+      "primary endpoint change: HBD-3 mRNA lesional & non-lesional (per group x arm)",
+      "secondary endpoint change: IL-13 mRNA lesional & non-lesional (per group x arm)",
+      "adverse-event burden (calibrates to ZERO: no AE >=5%, no SAE)",
+      "disposition (6/82 not completed; reasons WD 3 / PV 2 / AE 1)"
+    ],
+    "uncalibrated_features_target_null": [
+      "RAST (allergen sensitization)",
+      "PASI (psoriasis severity score change)",
+      "saliva CAMP/HBD3/total-protein",
+      "tape-strip CAMP/HBD3",
+      "bacterial colony counts (CFU)",
+      "skin-swab bacterial flora (genomic, stored)",
+      "IL-4 mRNA change",
+      "serum IgE change (d_ige)",
+      "serum vitamin D at Day 21 (mediator; paperclip S7/S9 prior)",
+      "Day-21 calcium/creatinine/PTH dynamics",
+      "vital signs",
+      "physical/oral exam",
+      "concomitant medications",
+      "pregnancy test",
+      "medical history",
+      "psoriasis duration/severity",
+      "height/weight (model)",
+      "baseline absolute cutaneous AMP/TH2/CFU levels (only the CHANGE was posted)",
+      "all latent frailty variances (model; never zeroed per invariant #4)"
+    ],
+    "note": "Uncalibrated features are still simulated from cited priors and still obey every DAG gate; they simply have no posted marginal to tune in Step 6 and are NOT validated against this trial.",
+    "sources": {
+      "S1": {
+        "paperclip_id": "PMC2686169",
+        "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2686169/",
+        "cite": "Liu et al., PLoS ONE 2009",
+        "quote": "the cathelicidin promoter had three VDREs ... VDR activation was required for expression of both antimicrobial genes (CAMP and DEFB4)"
+      },
+      "S2": {
+        "paperclip_id": "2094036101",
+        "url": "https://doi.org/10.1056/nejmoa021481",
+        "cite": "Ong et al., NEJM 2002",
+        "quote": "A deficiency in the expression of antimicrobial peptides may account for the susceptibility of patients with atopic dermatitis to skin infection with S. aureus."
+      },
+      "S3": {
+        "paperclip_id": "PMC10326740",
+        "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10326740/",
+        "cite": "Szabo et al., Acta Derm Venereol 2023",
+        "quote": "LL-37 was the only antimicrobial peptide that was impaired in both non-lesional and lesional atopic dermatitis"
+      },
+      "S4": {
+        "paperclip_id": "PMC2782163",
+        "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2782163/",
+        "cite": "Kim et al., J Korean Med Sci 2005",
+        "quote": "Defensins and cathelicidins (LL-37) ... their expression can be markedly increased in inflammatory skin disease such as psoriasis"
+      },
+      "S5": {
+        "paperclip_id": "1528623386",
+        "url": "https://doi.org/10.4049/jimmunol.179.2.984",
+        "cite": "Albanesi et al., J Immunol 2007",
+        "quote": "IL-4 and IL-13 Negatively Regulate ... beta-Defensin Expression"
+      },
+      "S6": {
+        "paperclip_id": "2098825396",
+        "url": "https://doi.org/10.1111/jdv.12176",
+        "cite": "Hata et al., JEADV 2014 (this trial's main-study RCT publication, PMID 23638978)",
+        "quote": "darker skin types and elevated BMI are important risk factors for vitamin D deficiency in subjects with AD"
+      },
+      "S7": {
+        "paperclip_id": "2128501903",
+        "url": "https://doi.org/10.4172/2161-1165.1000148",
+        "cite": "Jarrett et al., 2014 review",
+        "quote": "Oral vitamin D3 supplementation significantly increases serum vitamin D levels. This relationship is dose-dependent, with a strong correlation observed across numerous studies."
+      },
+      "S8": {
+        "paperclip_id": "2151400905",
+        "url": "https://doi.org/10.1046/j.0905-6157.2003.00106.x",
+        "cite": "Laske et al., 2004",
+        "quote": "Does the severity of atopic dermatitis correlate with serum IgE levels? (serum IgE tracks AD severity / atopy)"
+      },
+      "S9": {
+        "paperclip_id": "4405923810",
+        "url": "https://doi.org/10.21873/invivo.13848",
+        "cite": "Kralova et al., In Vivo 2024 (abstract corpus) - 1000/2000/4000/8000 IU in young healthy adults",
+        "quote": "Effective vitamin D supplementation in healthy young adults can be achieved with a daily dose of 2,000 IU during winter. However, 4,000 IU/day was more effective for maintaining levels above 100 nmol/[L]."
+      }
+    }
+  },
+  "params": {
+    "L0_population": {
+      "p_diagnosis_group": {
+        "value": {
+          "NonAD": 0.39,
+          "AD": 0.415,
+          "Psor": 0.195
+        },
+        "target": {
+          "NonAD": 32,
+          "AD": 34,
+          "Psor": 16,
+          "N": 82
+        },
+        "source": "ctgov: resultsSection/participantFlowModule (STARTED)",
+        "evidence": "Non-AD 16+16=32, AD 16+18=34, Psoriasis 8+8=16, total N=82"
+      },
+      "p_female": {
+        "value": 0.537,
+        "target": {
+          "female": 44,
+          "male": 38,
+          "N": 82
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Sex)",
+        "evidence": "Female 44, Male 38 (Total 82)"
+      },
+      "p_usa": {
+        "value": 1.0,
+        "target": {
+          "USA": 82,
+          "N": 82
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Region of Enrollment)",
+        "evidence": "United States 82 (all participants)"
+      },
+      "p_race": {
+        "value": {
+          "White": 0.659,
+          "Asian": 0.122,
+          "Black": 0.11,
+          "Other": 0.11
+        },
+        "target": {
+          "White": 54,
+          "Asian": 10,
+          "Black": 9,
+          "Other": 9,
+          "N": 82
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Race/Ethnicity, Customized)",
+        "evidence": "White 54, Asian 10, Black 9, Other 9 (American Indian 0, Native Hawaiian/PI 0, >1 race 0)"
+      },
+      "p_hispanic": {
+        "value": 0.11,
+        "target": {
+          "hispanic": 9,
+          "not": 73,
+          "N": 82
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Ethnicity)",
+        "evidence": "Hispanic or Latino 9; Not Hispanic or Latino 73"
+      },
+      "p_fitzpatrick": {
+        "value": {
+          "ExtremelyFair": 0.037,
+          "Fair": 0.244,
+          "Medium": 0.317,
+          "Olive": 0.268,
+          "ModeratelyBrown": 0.049,
+          "MarkedlyBlack": 0.073,
+          "Unknown": 0.012
+        },
+        "target": {
+          "ExtremelyFair": 3,
+          "Fair": 20,
+          "Medium": 26,
+          "Olive": 22,
+          "ModeratelyBrown": 4,
+          "MarkedlyBlack": 6,
+          "Unknown": 1,
+          "N": 82
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Fitzpatrick Skin Scale)",
+        "evidence": "Extremely Fair 3, Fair 20, Medium 26, Olive 22, Moderately Brown 4, Markedly Black 6, Unknown 1"
+      },
+      "age_by_group": {
+        "value": {
+          "NonAD": [
+            31.8,
+            10.57
+          ],
+          "AD": [
+            30.29,
+            10.14
+          ],
+          "Psor": [
+            38.8,
+            11.25
+          ]
+        },
+        "target": {
+          "total_mean": 32.5,
+          "total_sd": 10.9
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Age, Continuous)",
+        "evidence": "arm-pooled per diagnosis group (arm-independent by randomization); Total 32.5 (SD 10.9); Psoriasis highest (40.5/37.1)"
+      },
+      "bmi_by_group": {
+        "value": {
+          "NonAD": [
+            24.55,
+            5.17
+          ],
+          "AD": [
+            25.04,
+            4.05
+          ],
+          "Psor": [
+            27.55,
+            5.68
+          ]
+        },
+        "target": {
+          "total_mean": 25.3,
+          "total_sd": 4.9
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Body Mass Index)",
+        "evidence": "arm-pooled per group; Total 25.3 (SD 4.9); Psoriasis higher (28.0/27.1)"
+      },
+      "age_clip": {
+        "value": [
+          18,
+          70
+        ],
+        "target": null,
+        "source": "ctgov: eligibilityModule",
+        "evidence": "minimumAge 18 Years, maximumAge 70 Years"
+      },
+      "height_by_sex_cm": {
+        "value": {
+          "M": [
+            176,
+            7
+          ],
+          "F": [
+            163,
+            7
+          ]
+        },
+        "target": null,
+        "source": "model: adult-height prior by sex",
+        "evidence": "adult height mean/SD by sex; not posted - weight back-derived so BMI matches the posted marginal"
+      }
+    },
+    "L0_disease": {
+      "psor_duration_min_mo": {
+        "value": 6,
+        "target": null,
+        "source": "ctgov: eligibilityModule / protocol: 8",
+        "evidence": "Definitive diagnosis of typical plaque psoriasis for at least 6 months"
+      },
+      "psor_duration_excess_mean_mo": {
+        "value": 72,
+        "target": null,
+        "source": "model: make_baseline",
+        "evidence": "6 + Exp(mean~72) months for psoriasis subjects; duration not posted (uncalibrated)"
+      },
+      "psor_severity_probs": {
+        "value": {
+          "mild": 0.4,
+          "moderate": 0.4,
+          "severe": 0.2
+        },
+        "target": null,
+        "source": "protocol: 14.2.1 + model",
+        "evidence": "severity mild/moderate/severe reported; distribution is a prior (not posted) - drives baseline PASI"
+      },
+      "mh_logit_intercept": {
+        "value": -2.5,
+        "target": null,
+        "source": "ctgov: eligibilityModule (exclusions) + model",
+        "evidence": "healthy population (Diabetes / kidney disease / autoimmune all excluded) -> sparse MH; P(item)=sigma(-2.5+0.03*(age-40))"
+      },
+      "mh_age_slope": {
+        "value": 0.03,
+        "target": null,
+        "source": "model",
+        "evidence": "mild age gradient on medical-history item prevalence (assumption)"
+      }
+    },
+    "L0_serum_labs": {
+      "vitd_bl_by_group": {
+        "value": {
+          "NonAD": [
+            29.6,
+            12.44
+          ],
+          "AD": [
+            28.64,
+            10.95
+          ],
+          "Psor": [
+            29.8,
+            9.46
+          ]
+        },
+        "target": {
+          "total_mean": 29.2,
+          "total_sd": 11.2
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Serum Vitamin D 25-Hydroxy)",
+        "evidence": "arm-pooled per group; Total 29.2 (SD 11.2) ng/mL"
+      },
+      "vitd_bl_darkskin_coef": {
+        "value": -1.5,
+        "target": null,
+        "source": "paperclip: S6",
+        "evidence": "darker skin types and elevated BMI are important risk factors for vitamin D deficiency in subjects with AD"
+      },
+      "vitd_bl_bmi_coef": {
+        "value": -0.3,
+        "target": null,
+        "source": "paperclip: S6",
+        "evidence": "vitamin D falls with higher BMI - darker skin types and elevated BMI are important risk factors for vitamin D deficiency in subjects with AD"
+      },
+      "calcium_bl_by_group": {
+        "value": {
+          "NonAD": [
+            9.3,
+            0.35
+          ],
+          "AD": [
+            9.45,
+            0.35
+          ],
+          "Psor": [
+            9.3,
+            0.36
+          ]
+        },
+        "target": {
+          "total_mean": 9.4,
+          "total_sd": 0.4
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Serum Calcium)",
+        "evidence": "Total 9.4 (SD 0.4) mg/dL; eligibility requires within normal limits (8.4-10.2)"
+      },
+      "calcium_clip": {
+        "value": [
+          8.4,
+          10.2
+        ],
+        "target": null,
+        "source": "ctgov: eligibilityModule",
+        "evidence": "screening calcium within normal limits (exclusion if not)"
+      },
+      "creat_bl_by_group": {
+        "value": {
+          "NonAD": [
+            0.8,
+            0.16
+          ],
+          "AD": [
+            0.8,
+            0.16
+          ],
+          "Psor": [
+            0.8,
+            0.15
+          ]
+        },
+        "target": {
+          "total_mean": 0.8,
+          "total_sd": 0.2
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Serum Creatinine)",
+        "evidence": "Total 0.8 (SD 0.2) mg/dL"
+      },
+      "creat_clip": {
+        "value": [
+          0.4,
+          1.2
+        ],
+        "target": null,
+        "source": "ctgov: eligibilityModule",
+        "evidence": "creatinine within normal limits"
+      },
+      "pth_bl_by_group": {
+        "value": {
+          "NonAD": [
+            34.3,
+            11.98
+          ],
+          "AD": [
+            35.89,
+            11.26
+          ],
+          "Psor": [
+            31.6,
+            10.74
+          ]
+        },
+        "target": {
+          "total_mean": 34.4,
+          "total_sd": 11.4
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Serum Parathyroid Hormone)",
+        "evidence": "Total 34.4 (SD 11.4) pg/mL"
+      },
+      "pth_vitd_coupling": {
+        "value": -0.2,
+        "target": null,
+        "source": "model",
+        "evidence": "physiologic inverse vitamin-D<->PTH coupling (PTH falls as vitD rises); assumption"
+      },
+      "ige_bl_lognormal_by_group": {
+        "value": {
+          "NonAD": [
+            28.7,
+            1.17
+          ],
+          "AD": [
+            531.2,
+            1.32
+          ],
+          "Psor": [
+            49.3,
+            0.95
+          ]
+        },
+        "target": {
+          "NonAD_mean": 57.05,
+          "AD_mean": 1263.82,
+          "Psor_mean": 77.4,
+          "total_mean": 553.3
+        },
+        "source": "ctgov: baselineCharacteristicsModule (Total Serum IgE) + paperclip: S8",
+        "evidence": "arm-pooled raw mean AD 1263.8 vs Non-AD 57.0 vs Psor 77.4 kU/L -> [median, sigma] by method-of-moments; Does the severity of atopic dermatitis correlate with serum IgE levels? (serum IgE tracks AD severity / atopy)"
+      },
+      "rast_logit": {
+        "value": {
+          "intercept": -1.5,
+          "ad_coef": 1.2,
+          "logige_z_coef": 0.6
+        },
+        "target": null,
+        "source": "paperclip: S8 + model",
+        "evidence": "RAST positivity ~ atopy/IgE; Bern(sigma(-1.5+1.2*1[AD]+0.6*z(logIgE))); NO posted result -> UNCALIBRATED"
+      },
+      "serumstor_destroy_if_screenfail": {
+        "value": true,
+        "target": null,
+        "source": "protocol: 10.4",
+        "evidence": "If a subject screen-fails at V1 on Ca/PTH/creatinine, remaining serum is destroyed and NOT analyzed for IgE or RAST"
+      }
+    },
+    "L0_cutaneous_substrate": {
+      "camp_bl_intercept_by_group": {
+        "value": {
+          "Psor": 6.0,
+          "NonAD": 4.0,
+          "AD": 3.0
+        },
+        "target": null,
+        "source": "paperclip: S3, S4",
+        "evidence": "baseline cathelicidin ordering alpha_Psor>alpha_NonAD>alpha_AD; Defensins and cathelicidins (LL-37) ... their expression can be markedly increased in inflammatory skin disease such as psoriasis / LL-37 was the only antimicrobial peptide that was impaired in both non-lesional and lesional atopic dermatitis"
+      },
+      "camp_bl_lesional_offset": {
+        "value": 1.0,
+        "target": null,
+        "source": "paperclip: S4",
+        "evidence": "lesional > non-lesional AMP in inflammatory skin disease; Defensins and cathelicidins (LL-37) ... their expression can be markedly increased in inflammatory skin disease such as psoriasis"
+      },
+      "camp_th2_suppression_coef": {
+        "value": 0.4,
+        "target": null,
+        "source": "paperclip: S5",
+        "evidence": "TH2 (IL-4/IL-13) suppresses AMP; IL-4 and IL-13 Negatively Regulate ... beta-Defensin Expression"
+      },
+      "hbd3_bl_intercept_by_group": {
+        "value": {
+          "Psor": 5.0,
+          "NonAD": 3.5,
+          "AD": 2.5
+        },
+        "target": null,
+        "source": "paperclip: S4, S5",
+        "evidence": "HBD-3 baseline ordering as cathelicidin; Defensins and cathelicidins (LL-37) ... their expression can be markedly increased in inflammatory skin disease such as psoriasis"
+      },
+      "th2_bl_intercept_by_group": {
+        "value": {
+          "AD": 5.0,
+          "NonAD": 2.0,
+          "Psor": 2.0
+        },
+        "target": null,
+        "source": "paperclip: S5 + model",
+        "evidence": "IL-13/IL-4 baseline highest in AD (TH2 disease); IL-4 and IL-13 Negatively Regulate ... beta-Defensin Expression"
+      },
+      "th2_bl_lesional_offset": {
+        "value": 0.8,
+        "target": null,
+        "source": "model",
+        "evidence": "lesional TH2 > non-lesional (assumption)"
+      },
+      "sal_amp_beta1": {
+        "value": 0.5,
+        "target": null,
+        "source": "protocol: 10.2 + paperclip: S1",
+        "evidence": "saliva AMP reflects the same VitD-AMP axis, normalized to total protein; qRT-PCR for cathelicidin mRNA - UNCALIBRATED"
+      },
+      "sal_totprot_mean_sd": {
+        "value": [
+          1.0,
+          0.25
+        ],
+        "target": null,
+        "source": "protocol: 10.2",
+        "evidence": "total protein by BCA; saliva AMP normalizer - UNCALIBRATED"
+      },
+      "ts_amp_gamma": {
+        "value": {
+          "gamma0": 0.0,
+          "gamma1": 0.8
+        },
+        "target": null,
+        "source": "protocol: 14.2.11",
+        "evidence": "tape-strip AMP estimates biopsy (gold standard) via Pearson correlation - UNCALIBRATED"
+      },
+      "cfu_bl_intercept_by_group": {
+        "value": {
+          "AD": 6.0,
+          "NonAD": 4.5,
+          "Psor": 4.0
+        },
+        "target": null,
+        "source": "paperclip: S2",
+        "evidence": "log CFU baseline highest in AD (AMP-deficient); A deficiency in the expression of antimicrobial peptides may account for the susceptibility of patients with atopic dermatitis to skin infection with S. aureus."
+      },
+      "cfu_amp_coef": {
+        "value": 0.5,
+        "target": null,
+        "source": "paperclip: S2",
+        "evidence": "lower AMP -> higher colony counts; A deficiency in the expression of antimicrobial peptides may account for the susceptibility of patients with atopic dermatitis to skin infection with S. aureus."
+      },
+      "sw_flora_collect_min_per_group": {
+        "value": 6,
+        "target": null,
+        "source": "protocol: 10.5, 11.5.2",
+        "evidence": "skin swabs collected on a subset (>=6 per diagnostic group), stored for future genomic analysis - UNCALIBRATED"
+      },
+      "substrate_noise_sd": {
+        "value": 1.0,
+        "target": null,
+        "source": "model",
+        "evidence": "residual epsilon SD on baseline cutaneous readouts (assumption)"
+      }
+    },
+    "L0_frailties": {
+      "sigma_f_amp": {
+        "value": 0.7,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "shared cutaneous AMP tone; correlates CAMP/HBD3 across lesional, non-lesional, saliva, tape-strip (the primary contrast is within-subject -> MUST correlate)"
+      },
+      "sigma_f_th2": {
+        "value": 0.7,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "shared TH2 tone; correlates IL-13/IL-4 and inversely suppresses AMP"
+      },
+      "sigma_f_vitd_resp": {
+        "value": 0.8,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "per-patient vitamin-D responsiveness; correlates treatment-driven AMP change across a subject's readouts and supplies the VitD-arm excess change variance"
+      },
+      "sigma_f_microbiome": {
+        "value": 0.7,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "shared colonization propensity; correlates lesional/non-lesional CFU and swab flora"
+      },
+      "sigma_f_ae": {
+        "value": 0.6,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "procedural/GI AE propensity; correlates the (rare) AEs within patient (no independent-draw bug)"
+      },
+      "sigma_f_dropout": {
+        "value": 0.8,
+        "target": null,
+        "source": "model: draw_frailties",
+        "evidence": "dropout / non-return-of-drug propensity"
+      }
+    },
+    "A_treatment": {
+      "p_arm_vitd": {
+        "value": 0.5,
+        "target": {
+          "design_ratio": "1:1"
+        },
+        "source": "ctgov: designModule + protocol: 9.1",
+        "evidence": "allocation RANDOMIZED, 1:1 to Vitamin D3 vs placebo within each diagnostic group; Bern(0.5) exogenous"
+      },
+      "ex_dose_iu": {
+        "value": 4000,
+        "target": {
+          "dose": 4000,
+          "unit": "IU",
+          "freq": "QD",
+          "days": 21,
+          "ncapsule": 24
+        },
+        "source": "ctgov: armsInterventionsModule + protocol: 9.1",
+        "evidence": "oral vitamin D3 (cholecalciferol) 4,000 IU/day for 21 days (24 capsules dispensed); route ORAL, frequency QD"
+      },
+      "ex_return_logit_intercept": {
+        "value": -2.4,
+        "target": null,
+        "source": "protocol: 9.5",
+        "evidence": "return prob q=sigma(-2.4+0.9*f_dropout); EXNRET~Binom(24,q); unused medication returned, pill counts at V3"
+      },
+      "ex_return_dropout_coef": {
+        "value": 0.9,
+        "target": null,
+        "source": "protocol: 9.5 + model",
+        "evidence": "higher dropout frailty -> more capsules returned (worse compliance)"
+      }
+    },
+    "Lt_mediator_safety": {
+      "vitd_d21_delta_full_compliance": {
+        "value": 12.0,
+        "target": null,
+        "source": "paperclip: S7, S9",
+        "evidence": "serum 25-OH-D rise (ng/mL) at Day 21 under 4000 IU/day at full compliance (scaled by EXCOMPL/100). Effective vitamin D supplementation in healthy young adults can be achieved with a daily dose of 2,000 IU during winter. However, 4,000 IU/day was more effective for maintaining levels above 100 nmol/[L]. [Jarrett et al., 2014 review: dose-dependent rise]. NOT posted at Day 21 -> UNCALIBRATED"
+      },
+      "vitd_d21_resp_coef": {
+        "value": 4.0,
+        "target": null,
+        "source": "model + paperclip: S7",
+        "evidence": "eta on f_vitd_resp -> per-patient spread of the serum-vitD rise"
+      },
+      "vitd_d21_noise_sd": {
+        "value": 3.0,
+        "target": null,
+        "source": "model",
+        "evidence": "residual SD on Day-21 serum vitamin D (assumption)"
+      },
+      "calcium_d21_ar": {
+        "value": 0.7,
+        "target": null,
+        "source": "model",
+        "evidence": "AR(1) toward 9.4; mild VitD3 calcium bump +0.05, clip 8.4-10.6 - UNCALIBRATED"
+      },
+      "calcium_d21_vitd_bump": {
+        "value": 0.05,
+        "target": null,
+        "source": "protocol: Appendix II + model",
+        "evidence": "VitD3 raises calcium mildly (physiologic); calcium graded per Appendix II"
+      },
+      "creat_d21_ar": {
+        "value": 0.8,
+        "target": null,
+        "source": "model",
+        "evidence": "renal function stable over 21 days - UNCALIBRATED"
+      },
+      "pth_d21_ar": {
+        "value": 0.7,
+        "target": null,
+        "source": "model",
+        "evidence": "PTH AR(1); falls as vitamin D rises (coupling -0.15*deltaVITD) - UNCALIBRATED"
+      },
+      "pth_d21_vitd_coupling": {
+        "value": -0.15,
+        "target": null,
+        "source": "model",
+        "evidence": "physiologic inverse vitamin-D<->PTH coupling (assumption)"
+      },
+      "vitals_ar": {
+        "value": 0.6,
+        "target": null,
+        "source": "protocol: 10.1.2, 14.2.13 + model",
+        "evidence": "vital signs AR(1) around age-appropriate norms; no drug effect expected; safety/shift tables - UNCALIBRATED"
+      },
+      "vitals_norms": {
+        "value": {
+          "SYSBP": [
+            118,
+            10
+          ],
+          "DIABP": [
+            74,
+            8
+          ],
+          "PULSE": [
+            72,
+            9
+          ],
+          "TEMP": [
+            36.8,
+            0.3
+          ],
+          "RESP": [
+            15,
+            2
+          ]
+        },
+        "target": null,
+        "source": "model",
+        "evidence": "age-appropriate vital-sign norms (mean,SD); not posted"
+      },
+      "pe_abnormal_skin_prob_by_group": {
+        "value": {
+          "Psor": 0.9,
+          "AD": 0.9,
+          "NonAD": 0.05
+        },
+        "target": null,
+        "source": "protocol: 10.1.2, Table 10.1 + model",
+        "evidence": "physical/oral exam mostly normal; abnormal-skin flag driven by diagnosis group - UNCALIBRATED"
+      },
+      "pasi_by_severity": {
+        "value": {
+          "mild": 4.0,
+          "moderate": 10.0,
+          "severe": 18.0
+        },
+        "target": null,
+        "source": "protocol: 14.2.10 + model",
+        "evidence": "baseline PASI by psoriasis severity (psoriasis only); VitD3 effects on PASI change analyzed but NO posted result -> UNCALIBRATED"
+      },
+      "pasi_vitd_delta": {
+        "value": -0.5,
+        "target": null,
+        "source": "protocol: 14.2.10 + model",
+        "evidence": "small PASI reduction under VitD3 over 21 days (oral vitD has weak short-term plaque effect); prior only - UNCALIBRATED"
+      },
+      "pasi_noise_sd": {
+        "value": 1.5,
+        "target": null,
+        "source": "model",
+        "evidence": "PASI residual SD"
+      }
+    },
+    "Lt_endpoint_substrate_CALIBRATED": {
+      "camp_change": {
+        "AD": {
+          "lesional": {
+            "placebo_drift": 0.1,
+            "beta_vd": -0.5,
+            "sd_placebo": 2.4,
+            "sd_vitd": 2.8,
+            "target": {
+              "vitd_mean": -0.4,
+              "vitd_sd": 2.8,
+              "placebo_mean": 0.1,
+              "placebo_sd": 2.4,
+              "anova_p": 0.7
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (CAMP)",
+            "evidence": "CAMP mRNA change baseline->Day21 (PRIMARY), AD lesional: VitD3 -0.4 (SD 2.8) vs placebo 0.1 (SD 2.4), ANOVA p=0.7"
+          },
+          "nonlesional": {
+            "placebo_drift": 0.7,
+            "beta_vd": -1.3,
+            "sd_placebo": 2.5,
+            "sd_vitd": 2.0,
+            "target": {
+              "vitd_mean": -0.6,
+              "vitd_sd": 2.0,
+              "placebo_mean": 0.7,
+              "placebo_sd": 2.5,
+              "anova_p": 0.12
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (CAMP)",
+            "evidence": "CAMP mRNA change baseline->Day21 (PRIMARY), AD nonlesional: VitD3 -0.6 (SD 2.0) vs placebo 0.7 (SD 2.5), ANOVA p=0.12"
+          }
+        },
+        "NonAD": {
+          "nonlesional": {
+            "placebo_drift": 0.3,
+            "beta_vd": 0.9,
+            "sd_placebo": 1.7,
+            "sd_vitd": 2.4,
+            "target": {
+              "vitd_mean": 1.2,
+              "vitd_sd": 2.4,
+              "placebo_mean": 0.3,
+              "placebo_sd": 1.7,
+              "anova_p": 0.3
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (CAMP)",
+            "evidence": "CAMP mRNA change baseline->Day21 (PRIMARY), NonAD nonlesional: VitD3 1.2 (SD 2.4) vs placebo 0.3 (SD 1.7), ANOVA p=0.3"
+          }
+        },
+        "Psor": {
+          "lesional": {
+            "placebo_drift": 0.2,
+            "beta_vd": -1.1,
+            "sd_placebo": 3.2,
+            "sd_vitd": 3.0,
+            "target": {
+              "vitd_mean": -0.9,
+              "vitd_sd": 3.0,
+              "placebo_mean": 0.2,
+              "placebo_sd": 3.2,
+              "anova_p": 0.4
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (CAMP)",
+            "evidence": "CAMP mRNA change baseline->Day21 (PRIMARY), Psor lesional: VitD3 -0.9 (SD 3.0) vs placebo 0.2 (SD 3.2), ANOVA p=0.4"
+          },
+          "nonlesional": {
+            "placebo_drift": 0.7,
+            "beta_vd": -1.3,
+            "sd_placebo": 2.4,
+            "sd_vitd": 2.3,
+            "target": {
+              "vitd_mean": -0.6,
+              "vitd_sd": 2.3,
+              "placebo_mean": 0.7,
+              "placebo_sd": 2.4,
+              "anova_p": 0.2
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (CAMP)",
+            "evidence": "CAMP mRNA change baseline->Day21 (PRIMARY), Psor nonlesional: VitD3 -0.6 (SD 2.3) vs placebo 0.7 (SD 2.4), ANOVA p=0.2"
+          }
+        }
+      },
+      "hbd3_change": {
+        "AD": {
+          "lesional": {
+            "placebo_drift": -0.8,
+            "beta_vd": 0.7,
+            "sd_placebo": 2.8,
+            "sd_vitd": 7.3,
+            "target": {
+              "vitd_mean": -0.1,
+              "vitd_sd": 7.3,
+              "placebo_mean": -0.8,
+              "placebo_sd": 2.8,
+              "anova_p": 0.8
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (HBD-3)",
+            "evidence": "HBD3 mRNA change baseline->Day21 (PRIMARY), AD lesional: VitD3 -0.1 (SD 7.3) vs placebo -0.8 (SD 2.8), ANOVA p=0.8"
+          },
+          "nonlesional": {
+            "placebo_drift": 1.4,
+            "beta_vd": -1.5,
+            "sd_placebo": 3.9,
+            "sd_vitd": 3.5,
+            "target": {
+              "vitd_mean": -0.1,
+              "vitd_sd": 3.5,
+              "placebo_mean": 1.4,
+              "placebo_sd": 3.9,
+              "anova_p": 0.2
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (HBD-3)",
+            "evidence": "HBD3 mRNA change baseline->Day21 (PRIMARY), AD nonlesional: VitD3 -0.1 (SD 3.5) vs placebo 1.4 (SD 3.9), ANOVA p=0.2"
+          }
+        },
+        "NonAD": {
+          "nonlesional": {
+            "placebo_drift": 1.2,
+            "beta_vd": -1.0,
+            "sd_placebo": 3.2,
+            "sd_vitd": 2.8,
+            "target": {
+              "vitd_mean": 0.2,
+              "vitd_sd": 2.8,
+              "placebo_mean": 1.2,
+              "placebo_sd": 3.2,
+              "anova_p": 0.4
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (HBD-3)",
+            "evidence": "HBD3 mRNA change baseline->Day21 (PRIMARY), NonAD nonlesional: VitD3 0.2 (SD 2.8) vs placebo 1.2 (SD 3.2), ANOVA p=0.4"
+          }
+        },
+        "Psor": {
+          "lesional": {
+            "placebo_drift": -1.6,
+            "beta_vd": 2.4,
+            "sd_placebo": 4.4,
+            "sd_vitd": 5.3,
+            "target": {
+              "vitd_mean": 0.8,
+              "vitd_sd": 5.3,
+              "placebo_mean": -1.6,
+              "placebo_sd": 4.4,
+              "anova_p": 0.4
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (HBD-3)",
+            "evidence": "HBD3 mRNA change baseline->Day21 (PRIMARY), Psor lesional: VitD3 0.8 (SD 5.3) vs placebo -1.6 (SD 4.4), ANOVA p=0.4"
+          },
+          "nonlesional": {
+            "placebo_drift": -1.5,
+            "beta_vd": 0.0,
+            "sd_placebo": 4.3,
+            "sd_vitd": 3.2,
+            "target": {
+              "vitd_mean": -1.5,
+              "vitd_sd": 3.2,
+              "placebo_mean": -1.5,
+              "placebo_sd": 4.3,
+              "anova_p": 1.0
+            },
+            "source": "ctgov: outcomeMeasuresModule/primaryOutcomes (HBD-3)",
+            "evidence": "HBD3 mRNA change baseline->Day21 (PRIMARY), Psor nonlesional: VitD3 -1.5 (SD 3.2) vs placebo -1.5 (SD 4.3), ANOVA p=1.0"
+          }
+        }
+      },
+      "il13_change": {
+        "AD": {
+          "lesional": {
+            "placebo_drift": 1.1,
+            "beta_vd": -1.8,
+            "sd_placebo": 2.7,
+            "sd_vitd": 2.8,
+            "target": {
+              "vitd_mean": -0.7,
+              "vitd_sd": 2.8,
+              "placebo_mean": 1.1,
+              "placebo_sd": 2.7,
+              "anova_p": 0.2
+            },
+            "source": "ctgov: outcomeMeasuresModule/secondaryOutcomes (IL-13)",
+            "evidence": "IL13 mRNA change baseline->Day21 (SECONDARY), AD lesional: VitD3 -0.7 (SD 2.8) vs placebo 1.1 (SD 2.7), ANOVA p=0.2"
+          },
+          "nonlesional": {
+            "placebo_drift": -0.1,
+            "beta_vd": -0.7,
+            "sd_placebo": 3.2,
+            "sd_vitd": 2.3,
+            "target": {
+              "vitd_mean": -0.8,
+              "vitd_sd": 2.3,
+              "placebo_mean": -0.1,
+              "placebo_sd": 3.2,
+              "anova_p": 0.5
+            },
+            "source": "ctgov: outcomeMeasuresModule/secondaryOutcomes (IL-13)",
+            "evidence": "IL13 mRNA change baseline->Day21 (SECONDARY), AD nonlesional: VitD3 -0.8 (SD 2.3) vs placebo -0.1 (SD 3.2), ANOVA p=0.5"
+          }
+        },
+        "NonAD": {
+          "nonlesional": {
+            "placebo_drift": 0.5,
+            "beta_vd": -0.3,
+            "sd_placebo": 1.5,
+            "sd_vitd": 2.4,
+            "target": {
+              "vitd_mean": 0.2,
+              "vitd_sd": 2.4,
+              "placebo_mean": 0.5,
+              "placebo_sd": 1.5,
+              "anova_p": 0.7
+            },
+            "source": "ctgov: outcomeMeasuresModule/secondaryOutcomes (IL-13)",
+            "evidence": "IL13 mRNA change baseline->Day21 (SECONDARY), NonAD nonlesional: VitD3 0.2 (SD 2.4) vs placebo 0.5 (SD 1.5), ANOVA p=0.7"
+          }
+        },
+        "Psor": {
+          "lesional": {
+            "placebo_drift": -0.1,
+            "beta_vd": -2.0,
+            "sd_placebo": 4.1,
+            "sd_vitd": 4.6,
+            "target": {
+              "vitd_mean": -2.1,
+              "vitd_sd": 4.6,
+              "placebo_mean": -0.1,
+              "placebo_sd": 4.1,
+              "anova_p": 0.2
+            },
+            "source": "ctgov: outcomeMeasuresModule/secondaryOutcomes (IL-13)",
+            "evidence": "IL13 mRNA change baseline->Day21 (SECONDARY), Psor lesional: VitD3 -2.1 (SD 4.6) vs placebo -0.1 (SD 4.1), ANOVA p=0.2"
+          },
+          "nonlesional": {
+            "placebo_drift": 0.9,
+            "beta_vd": -1.2,
+            "sd_placebo": 3.3,
+            "sd_vitd": 2.7,
+            "target": {
+              "vitd_mean": -0.3,
+              "vitd_sd": 2.7,
+              "placebo_mean": 0.9,
+              "placebo_sd": 3.3,
+              "anova_p": 0.3
+            },
+            "source": "ctgov: outcomeMeasuresModule/secondaryOutcomes (IL-13)",
+            "evidence": "IL13 mRNA change baseline->Day21 (SECONDARY), Psor nonlesional: VitD3 -0.3 (SD 2.7) vs placebo 0.9 (SD 3.3), ANOVA p=0.3"
+          }
+        }
+      }
+    },
+    "Lt_endpoint_substrate_UNCALIBRATED": {
+      "il4_change_vitd_delta": {
+        "value": -0.5,
+        "target": null,
+        "source": "protocol: 7.1.1 + paperclip: S5",
+        "evidence": "IL-4 change (TH2) collected per objectives but only IL-13 posted -> UNCALIBRATED; VitD modestly lowers TH2; IL-4 and IL-13 Negatively Regulate ... beta-Defensin Expression"
+      },
+      "il4_change_sd": {
+        "value": 2.8,
+        "target": null,
+        "source": "model",
+        "evidence": "IL-4 change SD prior (mirrors IL-13 scale) - UNCALIBRATED"
+      },
+      "sal_amp_vitd_delta": {
+        "value": 0.5,
+        "target": null,
+        "source": "protocol: 7.1.1, 10.2 + paperclip: S1",
+        "evidence": "saliva CAMP/HBD3 change under VitD (same induction term as biopsy); the cathelicidin promoter had three VDREs ... VDR activation was required for expression of both antimicrobial genes (CAMP and DEFB4) - UNCALIBRATED"
+      },
+      "ts_amp_vitd_delta": {
+        "value": 0.5,
+        "target": null,
+        "source": "protocol: 7.1.1, 14.2.11",
+        "evidence": "tape-strip CAMP/HBD3 change tracks biopsy (Pearson vs gold-standard biopsy) - UNCALIBRATED"
+      },
+      "cfu_d21_ar": {
+        "value": 0.6,
+        "target": null,
+        "source": "paperclip: S2 + protocol: 7.1.1",
+        "evidence": "log CFU AR(1); higher AMP change -> lower CFU (rho); A deficiency in the expression of antimicrobial peptides may account for the susceptibility of patients with atopic dermatitis to skin infection with S. aureus. - UNCALIBRATED"
+      },
+      "cfu_amp_change_coef": {
+        "value": 0.4,
+        "target": null,
+        "source": "paperclip: S2",
+        "evidence": "rho: AMP increase lowers colony counts - UNCALIBRATED"
+      },
+      "cfu_noise_sd": {
+        "value": 0.6,
+        "target": null,
+        "source": "model",
+        "evidence": "log CFU residual SD"
+      },
+      "ige_d21_ar": {
+        "value": 0.95,
+        "target": null,
+        "source": "protocol: 7.1.1, 14.2.9 + model",
+        "evidence": "serum IgE stable over 21 days (small VitD effect); IgE/RAST change collected but NOT posted -> UNCALIBRATED"
+      },
+      "rast_d21_flip_prob": {
+        "value": 0.02,
+        "target": null,
+        "source": "protocol: 14.2.9 + model",
+        "evidence": "RAST rarely changes over 21 days - UNCALIBRATED"
+      },
+      "sw_flora_change_prob": {
+        "value": 0.3,
+        "target": null,
+        "source": "protocol: 14.2.12 + model",
+        "evidence": "swab flora profile change baseline->Day21, stored for future genomic analysis - UNCALIBRATED"
+      }
+    },
+    "Lt_adverse_events_CALIBRATED": {
+      "ae_base_haz_vd_gi": {
+        "value": 0.01,
+        "target": {
+          "any_AE_ge_5pct": 0,
+          "SAE": 0
+        },
+        "source": "ctgov: resultsSection/adverseEventsModule",
+        "evidence": "per-visit hazard of VitD3 GI AE (constipation/gas/bloating). 'There were no serious adverse events. No adverse events occurred at a 5% or greater frequency threshold.' -> tune very low so nothing reaches 5%"
+      },
+      "ae_base_haz_procedural": {
+        "value": 0.01,
+        "target": {
+          "any_AE_ge_5pct": 0,
+          "SAE": 0
+        },
+        "source": "ctgov: resultsSection/adverseEventsModule + protocol: 12, Appendix II",
+        "evidence": "per-visit hazard of procedural AE (blood-draw pain/bruising, tape mild transient erythema, skin biopsy pain/swelling/bleeding). Calibrate to zero (<5%)"
+      },
+      "ae_rr_vd": {
+        "value": 1.3,
+        "target": null,
+        "source": "protocol: 12",
+        "evidence": "VitD3 arm relative risk on GI AE class (expected AEs constipation, gas, bloating)"
+      },
+      "ae_frailty_coef": {
+        "value": 1.0,
+        "target": null,
+        "source": "model",
+        "evidence": "coefficient on f_ae (procedural/GI propensity)"
+      },
+      "ae_p_severe": {
+        "value": 0.02,
+        "target": {
+          "grade4_SAE": 0
+        },
+        "source": "protocol: 12.6.1 + ctgov adverseEventsModule",
+        "evidence": "P(severe) underlying draw; AESER derived (serious only if grade 4 - none observed)"
+      },
+      "fda_grade_thresholds": {
+        "value": "FDA Toxicity Grading Scale 1-4 (deterministic; NEVER tuned)",
+        "target": null,
+        "source": "protocol: 12.6.1",
+        "evidence": "Severity graded 1-4 (FDA Toxicity Grading Scale, Sept 2007): Grade 1 mild, 2 moderate, 3 severe, 4 life-threatening/death"
+      },
+      "ae_relatedness_scale": {
+        "value": "1 Unrelated..5 Definite (categorical)",
+        "target": null,
+        "source": "protocol: 12.6.3",
+        "evidence": "Relationship/attribution to study drug: 1 Unrelated, 2 Unlikely, 3 Possible, 4 Probable, 5 Definite"
+      }
+    },
+    "Lt_disposition_CALIBRATED": {
+      "disc_logit_intercept": {
+        "value": -2.6,
+        "target": {
+          "not_completed": 6,
+          "completed": 76,
+          "N": 82,
+          "pct_not_completed": 0.073
+        },
+        "source": "ctgov: resultsSection/participantFlowModule",
+        "evidence": "P(not completed)=sigma(-2.6+0.8*f_dropout+1.2*1[drug not returned by Day27]); 6/82 (7.3%) did not complete"
+      },
+      "disc_dropout_coef": {
+        "value": 0.8,
+        "target": null,
+        "source": "model",
+        "evidence": "coefficient on f_dropout"
+      },
+      "disc_drugreturn_coef": {
+        "value": 1.2,
+        "target": null,
+        "source": "protocol: 9.1, 14.1",
+        "evidence": "not returning drug by Day 27 => discontinued and replaced"
+      },
+      "disc_reason_probs": {
+        "value": {
+          "WITHDRAWAL BY SUBJECT": 0.5,
+          "PROTOCOL VIOLATION": 0.333,
+          "ADVERSE EVENT": 0.167
+        },
+        "target": {
+          "WITHDRAWAL BY SUBJECT": 3,
+          "PROTOCOL VIOLATION": 2,
+          "ADVERSE EVENT": 1
+        },
+        "source": "ctgov: resultsSection/participantFlowModule",
+        "evidence": "dropWithdraw reasons: Withdrawal by Subject 3, Protocol Violation 2, Adverse Event 1"
+      }
+    },
+    "Admin_and_conmeds": {
+      "site_single_center": {
+        "value": "UCSD",
+        "target": null,
+        "source": "protocol: title page",
+        "evidence": "PROTOCOL CHAIR Richard Gallo, MD, PhD (UCSD); single-center -> SITEID ~ Uniform(UCSD sites)"
+      },
+      "photo_taken": {
+        "value": true,
+        "target": null,
+        "source": "protocol: 11.3",
+        "evidence": "photographs of lesional skin at V2 and V3 -> BX.PHOTO = 'taken' (deterministic)"
+      },
+      "preg_result": {
+        "value": "negative",
+        "target": null,
+        "source": "ctgov: eligibilityModule + protocol: 10.1.2",
+        "evidence": "females of childbearing potential only; pregnancy is an exclusion -> PGRESULT = negative (deterministic)"
+      },
+      "cm_prevalence": {
+        "value": 0.15,
+        "target": null,
+        "source": "protocol: 9.4, 10.1.2 + model",
+        "evidence": "concomitant meds monitored; many classes withheld/excluded per 9.4 -> sparse con-med prevalence; UNCALIBRATED"
+      },
+      "swcollect_prob": {
+        "value": 0.6,
+        "target": null,
+        "source": "protocol: 10.5, 11.5.2",
+        "evidence": "SWCOLLECT (subset >=6/group), SWLOC in {lesional, non-lesional}; stored for future analysis; UNCALIBRATED"
+      }
+    },
+    "Yt_endpoints_DETERMINISTIC": {
+      "change_rule": {
+        "value": "endpoint = value(Day21) - value(baseline); primary contrast = delta_lesional - delta_nonlesional",
+        "target": null,
+        "source": "ctgov: outcomeMeasuresModule + protocol: 7.1.1",
+        "evidence": "every endpoint is a change-from-baseline of a Layer-Lt node (invariant #1: never drawn directly); primary contrast is within-subject lesional-change minus non-lesional-change"
+      },
+      "efficacy_population_rule": {
+        "value": "randomized WITH both a baseline AND a Day-21 AMP biopsy",
+        "target": null,
+        "source": "protocol: 14.1",
+        "evidence": "Efficacy population = randomized with BOTH a baseline AND a day-21 AMP biopsy assessment"
+      }
+    }
+  }
+}

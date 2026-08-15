@@ -1,357 +1,235 @@
 ---
 name: clinical-trial-ipd-sim
-description: End-to-end R/pharmaverse workflow to simulate individual patient data (IPD) for a registered clinical trial using a g-formula causal-DAG simulator. Given an NCT ID with posted protocol + results, derives SDTM-style CRFs, builds evidence-based structural causal models, parameterizes them from ClinicalTrials.gov / literature priors, runs forward simulation in R, creates SDTM/ADaM outputs with pharmaverse packages, and iteratively calibrates marginal statistics to the published results without breaking causal identifiability.
+description: End-to-end R workflow to simulate individual patient data (IPD) for a registered clinical trial using a g-formula causal-DAG simulator. Given an NCT ID with posted results and a protocol PDF, derives CRFs, builds an evidence-based causal DAG, parameterizes structural equations from ClinicalTrials.gov / literature priors, runs an R6 forward simulator, and calibrates marginal statistics to the published results without breaking causal identifiability. Emits CSV CRFs, a validated CDISC ODM v2.0 export, and an interactive DAG page.
 metadata:
   when-to-use: User provides an NCT ID and asks for synthetic IPD / CRF simulation, trial reconstruction, or any phrase like "simulate trial X", "create CRFs for NCT…", "generate digital-twin patients for…".
 ---
 
-# Clinical Trial IPD Causal-DAG Simulator
+# Clinical Trial IPD Causal-DAG Simulator (R)
 
-End-to-end R workflow for generating individual-patient-level CRF data for a
-registered clinical trial. The output is a set of CSV CRFs whose marginal
-statistics match the published trial results AND whose joint distribution
-follows an explicit causal DAG, so the data are usable for downstream
-causal-inference methodology.
+End-to-end R workflow for generating individual-patient-level CRF data for a registered clinical
+trial. The output is a set of CSV CRFs whose marginal statistics match the published trial AND whose
+joint distribution follows an explicit causal DAG, plus a validated CDISC ODM v2.0 form + patients
+and an interactive DAG page.
 
-The implementation target is R-first and pharmaverse-compatible. The Python
-FLAURA2 build used during development remains a worked example of the causal
-logic, but new work should create an R package-style project unless the user
-explicitly asks for Python. See [r_implementation.md](r_implementation.md)
-for the R module layout and package roles.
+The engine is an R6 class `TrialSim` (`R/trial_sim.R`) that every trial subclasses. The **canonical
+reference build — mirror it — is RAVE** (`examples/autoimmune/rave/`, binary endpoint); the
+**continuous-change + ODM exemplar is CATH** (`examples/allergy/cath/`, NCT00789880). Consult the
+closest-archetype example when building a new trial. See [r_implementation.md](r_implementation.md)
+for the R module layout.
 
-This skill generalizes the FLAURA2 causal-DAG workflow into an
-R/pharmaverse implementation target.
+**Reproducible, not byte-identical to any Python build.** R's base RNG cannot reproduce NumPy's
+bitstream, so this port re-implements the structure/logic/gates with its own reproducible draws
+(fixed seed → identical output) and is **re-calibrated in R** to the same published targets. The bar
+is: DAG gates all_pass (fail-closed) + marginals within tolerance — never a byte match.
 
 ## When to use
 
-The user provides an NCT ID **and** the trial has both a posted protocol and
-posted results. Examples:
-
-- "Simulate IPD for NCT04035486" → use this skill
-- "Generate CRFs for the AEGEAN trial" → look up NCT, then use this skill
-- "Create a digital-twin cohort for trial X" → use this skill
-- "I need synthetic patients matching the published KM curves of …" → use this skill
-
-Do **not** use when the user only wants summary-level reconstruction (Cox HR,
-KM medians, AE proportions). For that, reach for tabular reconstruction
-methods (e.g., reconstructed IPD from KM digitization).
+The user provides an NCT ID **and** the trial has both a protocol (user PDF or via find-protocol) and
+posted results. Do **not** use for summary-level reconstruction (Cox HR / KM medians only) — use
+tabular IPD reconstruction for that.
 
 ## Required environment
 
-- R 4.3+ with `renv` for dependency locking.
-- Core simulation/analysis: `dplyr`, `tidyr`, `purrr`, `readr`, `tibble`,
-  `lubridate`, `stringr`, `rlang`, `survival`, `flexsurv`, `broom`, `jsonlite`.
-- Pharmaverse/CDISC stack:
-  - `sdtm.oak` for SDTM-oriented CRF/domain construction from generated source records.
-  - `admiral` for ADaM derivations such as ADSL, ADAE, ADLB, ADTTE.
-  - `haven` for reading/writing SAS transport-adjacent inputs and SAS datasets when needed.
-  - `tidytlg` for TLG generation from ADaM outputs.
-  - `xportr` for XPT metadata handling and transport export.
-  - `datasetjson` for Dataset-JSON export when requested.
-- Network access for the ClinicalTrials.gov API (`https://clinicaltrials.gov/api/v2/studies/{nct}`)
-- Citation-capable literature and standards lookup for causal-parent
-  evidence, natural-history rates, priors, CTCAE, and RECIST references.
-  Record stable source identifiers for all non-CTGov evidence; do not rely
-  on model memory for cited claims.
-- `WebFetch` or equivalent only for fetching specific known URLs
-  (the ClinicalTrials.gov API, a protocol PDF, a publication supplement)
+- **R 4.3+** with `R6`, `dplyr`, `readr`, `tibble`, `jsonlite` (base R otherwise).
+- **A `python3`** with `vendor/python/requirements.txt` installed (`lxml`, `duckdb`, `pandas`,
+  `pypdf`, `requests`) — used for the ODM steps, the DAG render, and find-protocol, all shelled out
+  from R. Point the skill at it with `options(ctids.python="…")` or the `CTIDS_PYTHON` env var, else
+  `python3` on PATH is used. **Never hardcode a personal interpreter path.**
+- Network access for the ClinicalTrials.gov API (design + posted results only — never the protocol).
+- **find-protocol** — vendored at `vendor/python/find_protocol/find_protocol.py`; see
+  [find_protocol.md](find_protocol.md). **Paperclip** — the recommended evidence channel; see
+  [paperclip.md](paperclip.md). Every cited claim carries a Source origin tag + verbatim quote.
 
-## Workflow — six steps
+## Citation format
 
-### Step 1 · Intake from ClinicalTrials.gov
+Every evidence-backed row in `DAG.md`, the parameter table, and the SCM dossier carries its evidence
+**inline, in two columns**:
+- **Source** = an origin tag, exactly one of `ctgov: <field path>` / `paperclip: <id> <url>` /
+  `model: <default>` (`model` is **flagged** — a foundation-model default with no external source).
+- **Evidence** = the **verbatim** quote / exact field text the row rests on — **required on every row**.
 
-1. Fetch the trial JSON record:
-   `https://clinicaltrials.gov/api/v2/studies/{NCT_ID}?format=json`
-2. Extract:
-   - **Design**: arms, randomization ratio, stratification factors, primary/secondary endpoints
-   - **Eligibility**: inclusion/exclusion criteria → baseline population priors
-   - **Outcomes table**: per-arm event counts, medians, hazard ratios with 95% CIs
-   - **Adverse events table**: per-arm SOC/PT counts at any-grade, Gr ≥3, SAE
-   - **Protocol document URL** (under `ProtocolSection.IPDSharingStatementModule` or `LargeDocumentsModule`)
-3. Locate the **schedule of activities (SoA)** in the protocol PDF/HTML.
-   If the SoA cannot be parsed automatically, ask the user to point at the
-   relevant pages, or scaffold a default visit grid based on the dosing schedule.
-   If ClinicalTrials.gov does not provide a protocol, search for the protocol
-   or supplementary appendix in the New England Journal of Medicine (NEJM).
-   If neither source has a protocol, ask the user to provide one and do not
-   proceed until it is available.
-4. Persist the intake to `intake/{NCT_ID}.json` so later steps don't re-fetch.
+## Workflow — eight steps
 
-**Output of step 1**: structured trial summary with design, endpoint targets,
-AE targets, and SoA visit grid.
+### Step 1 · Intake from ClinicalTrials.gov + protocol acquisition
+1. Fetch `https://clinicaltrials.gov/api/v2/studies/{NCT}?format=json`; extract design (arms,
+   allocation, stratifiers, endpoints), eligibility → baseline priors, the outcomes table, and the AE table.
+2. **Results gate** — if `hasResults` is false / `resultsSection` is empty, **STOP and ask**; continue
+   only with the user's explicit approval of an alternative calibration source (protocol design-stage
+   assumptions and/or a publication), tagged as an assumption, not a result.
+3. **Protocol** — use the user's PDF; else run find-protocol (HuggingFace `trialdesignbench/source`);
+   else **STOP and ask — never scrape the web**. Read the Schedule of Activities (SoA) from it.
+4. Persist intake to `{trial}_output/intake/{NCT}.json`.
 
-### Step 2 · CRF derivation from the protocol
+### Step 2 · CRF derivation + blank ODM form
+Define the CRF **once**, from the SoA: forms × visits × variables. Write the human view
+`{trial}_output/CRF_spec.md` and the machine schema `{trial}_output/odm/crf_picks.json` (same field
+set). Use [templates/crf_schema_template.md](templates/crf_schema_template.md) as the starting shape.
 
-Read the protocol's SoA and generate a CDISC-style CRF schema:
+**Coverage rule — the SoA decides what EXISTS; the results table only decides what gets CALIBRATED.**
+Put every variable the SoA collects into the frame (even with no posted result — it is emitted from
+cited priors and left uncalibrated, `target: null`). Cross-check the field set against the SoA
+row-by-row, then run the **CDISC SDTM completeness sweep** (checklist in
+[templates/crf_schema_template.md](templates/crf_schema_template.md)): (1) tag every form with its
+SDTM 2-letter domain code **and confirm the code matches the domain's real meaning** — map by content,
+watch for collisions (a disease-activity form labelled `DA` is not Drug Accountability), and record
+each code mismatch as its **own** mis-coded/collision finding (a clean gap list does not mean the
+coding is clean); (2) confirm a **DM** form (the only mandatory domain); (3) sweep the collected-class
+domains for anything the SoA collects but the form list dropped (**DV/HO/DA/DD/SC/SS/CO** are the usual
+misses). A concept may ride on a related standard form (accountability on `EX`) — but a ride-along
+counts as a home only if it is **lossless** (a fold that drops collected levels — e.g. only *former*
+smokers get an MH row — is still a gap), and disease-specific clinical indices with no standard domain
+(BVAS, PASI) go in a sponsor-defined Findings domain. The SoA cross-check and this sweep are both
+**agent checks** — nothing downstream enforces them; the trial-design/derived scaffolding domains are
+out of scope (we do not convert to SDTM).
 
-| Form | Visits collected | Variables | Source |
-|---|---|---|---|
-| Demographics | Screening | AGE, SEX, RACE, COUNTRY, ARM | Protocol §X |
-| Cancer/Disease History | Screening | Diagnosis, stage, biomarker stratifiers | Protocol §X |
-| Lab Hematology | Cycle days, maintenance | WBC, ANC, HGB, PLT, LYMPH | SoA |
-| Tumor Assessment | q6w (or per protocol) | SLD, response, new lesions | RECIST 1.1 |
-| Adverse Events | Each visit | AE term, grade, severity, action, relatedness | CTCAE |
-| Disposition | EOT | Reason for discontinuation | SoA |
-| Survival Follow-Up | Survival period | PFS time/event, OS time/event | Endpoint definitions |
-| … | … | … | … |
+**Applicability rule — some collected fields only EXIST for a sub-population.** A subject's
+demographics/characteristics decide which measurements are even possible: lesional-skin readings need a
+lesion, a pregnancy test needs a female subject, a disease-severity score needs that disease. Declare
+these as `applicability_rules()` on the trial subclass — `list(form, cols, applicable = function(dm) …)`
+— and the engine blanks those fields for the subjects a rule excludes, while the `g_logical_consistency`
+gate (Step 6) re-checks it fail-closed: a value where the measurement cannot exist, or a blank where it
+must, fails the build. Value-only invariants (age within eligibility, no pregnancy record for a male) go
+in `consistency_rules()`. This is what keeps impossible demographic↔data combinations out of the CSVs —
+declare the rule, never hand-blank per trial.
 
-Use [templates/crf_schema_template.md](templates/crf_schema_template.md) as
-the starting structure. Defer to the protocol's SoA when present; fall back
-to FLAURA2-style defaults when the user accepts.
-
-**Output of step 2**: a `crf_schema.md` listing each form, its column set,
-and the visit grid at which each form is collected. For R builds, also
-create `metadata/sdtm_spec.csv` and `metadata/adam_spec.csv` stubs that can
-drive `sdtm.oak`, `admiral`, `xportr`, and `datasetjson`.
-
-### Step 3 · Build evidence-based structural causal models
-
-For every variable in the CRF schema, specify its DAG parents and the
-functional form of its structural equation.
-
-**Process:**
-1. Categorize variables into the four DAG layers:
-   - **L₀ — Baseline** (eligibility-shaped covariates and patient frailties)
-   - **A — Treatment** (arm assignment, randomization)
-   - **Lₜ — Time-varying state** (labs, tumor, AEs, dose modifications, ECOG)
-   - **Yₜ — Endpoints** (PFS, OS, response — derived from trajectory)
-2. For each variable, gather cited evidence on its causal parents. Never
-   assert a causal edge from memory. Look for:
-   - Trial protocol (stratification factors → baseline parent edges)
-   - Disease-area review papers (e.g., for NSCLC: TP53 → response, EGFR-type → PFS)
-   - Drug mechanism papers (e.g., chemo → myelosuppression timing/depth)
-   - CTCAE / RECIST documents (deterministic rules from labs/SLD → AE/response)
-   - Prior published simulators or natural-history models
-3. Document the DAG using [templates/scm_spec_template.md](templates/scm_spec_template.md).
-   Each row: `variable | parents | functional form | evidence source`.
-4. Introduce **latent frailty random effects** for any cluster of related
-   AE preferred terms or correlated lab values that share a biological
-   pathway. Examples:
-   - `f_heme` shared by ANC/HGB/PLT (myelosuppression susceptibility)
-   - `f_GI` shared by nausea/vomiting/diarrhea/stomatitis (chemo emesis)
-   - `f_ILD` for the rare-but-irreversible class effect of EGFR-TKIs
-   - `f_dropout` for unobserved patient-level dropout propensity
-   These frailties are the mechanism that makes the simulated AEs
-   correlated within patient — without them, AE types are independent
-   draws conditional on arm, which is the bug we fixed in the FLAURA2
-   v6 simulator.
-
-**Output of step 3**: `dag_spec.md` with one row per variable, parents,
-structural equation, and source.
-
-### Step 4 · Parameterize the SCMs
-
-For each structural equation, set its parameters from a hierarchy of priors:
-
-1. **ClinicalTrials.gov results JSON** (highest priority; closest to ground truth)
-   - Per-arm AE preferred-term counts → mono and combo per-visit hazards
-   - Per-arm SAE rates → severity multipliers
-   - Per-arm KM medians, HR with 95% CI → time-to-resistance scale + treatment effect
-   - Discontinuation rates by reason → discontinuation-hazard intercepts
-2. **Foundation-model knowledge** (sanity-check defaults)
-   - CTCAE thresholds for lab grading (deterministic, never tuned)
-   - RECIST 1.1 rules for response classification (deterministic)
-   - Standard drug mechanism timing (e.g., pemetrexed nadir at day 8–10)
-3. **Literature priors** (filling gaps) — gather these from cited
-   publications, protocol supplements, or standards documents; never from
-   uncited memory:
-   - natural-history rates, incidence baselines
-   - disease-area review articles
-   - keep each record's `source_id` alongside the parameter value
-
-**Implementation pattern (R version)**:
+`crf_picks.json` shape: `study`, `metadata_oid/name`, `created`, `visits[]`, `forms[]` — each form has
+`oid` (`FO.{NCT}.{FORM}`), `visits[]`, `section_oid/name`, `repeating` (`Simple` if >1 row/subject),
+and `fields[]`. Each field OID is `IT.{NCT}.{FORM}.{COLUMN}` (trailing segment = the CSV column the
+simulator emits) and is EITHER an NCI pick `{"oid":…, "cde":"<id>v<ver>"}` or custom
+`{"oid":…, "custom":{"name":"…","type":"text|integer|float|date"}}`. For each field, search NCI and
+bind a CDE **only** on a semantically exact top hit, else leave it custom (a wrong bind is worse than
+custom; the library is oncology-skewed). From R:
 
 ```r
-# log-scale parameterization makes treatment effects multiplicative
-log_scale <- log(BASE_DAYS_TO_EVENT) +
-  LOG_HR_FROM_CTGOV * as.numeric(arm == "combo") +
-  STRATIFIER_LOG_EFFECT * stratifier +
-  FRAILTY_LOADING * latent_frailty
+source("R/skill_root.R"); source("R/odm.R")            # (or run any run_*.R, which loads the engine)
+nci_search("neutrophil count", 5)                       # picker aid
+odm_build_template("{trial}_output/odm/crf_picks.json", "{trial}_output")   # build_spec→emit_odm→check_odm
 ```
 
-**Output of step 4**: a parameter table where each row maps parameter name
-→ value → derivation source (CTGov field path, or PMID, or sanity default).
+`odm_build_template()` writes `odm/crf_spec.json` + `odm/crf_template.xml` and validates it fail-closed
+(Gate 1 = official `ODM.xsd`, Gate 2 = references resolve). The field set is the **contract** the
+simulator must emit.
+
+### Step 3 · Build the evidence-based causal DAG
+For every CRF variable, specify DAG parents + structural-equation form, categorized into the four
+layers **L₀ baseline / A treatment / Lₜ time-varying / Yₜ endpoints** (endpoints are DERIVED from the
+trajectory, never sampled). Gather every causal edge through paperclip (never from memory). Introduce
+**latent frailties** per correlated AE/lab cluster (drawn once per patient, shared across equations —
+this is what makes within-patient AEs correlated; never zeroed). Write `{trial}_output/DAG.md`
+(one row per variable: parents · equation · Source · Evidence) using
+[templates/scm_spec_template.md](templates/scm_spec_template.md). For a **non-randomized group** (e.g.
+CATH's diagnosis strata), model it as a baseline stratum from a cited prior and randomize the arm
+*within* it — argue exchangeability conditionally and flag the contrast **observational**; never a
+silent coin-flip. You MAY also emit `{trial}_output/dag.json` (`{nodes, edges}`) to drive the render.
+
+### Step 4 · Parameterize the structural equations
+Set parameters from a priority hierarchy: (1) the CTGov results JSON, (2) fixed foundation-model rules
+(CTCAE/FDA/RECIST grading — deterministic, **never tuned**), (3) literature priors via paperclip.
+Uncalibrated variables (`target: null`) are parameterized from tiers 2–3 and flagged not-validated.
+Pick the pattern for the endpoint archetype (time-to-event log-HR; continuous-change additive; binary
+= threshold on the landmark trajectory). Parameters live in a per-trial params object (a list, or a
+JSON snapshot the trial loads) — the **only** calibration surface. Multi-arm: one coefficient per
+non-reference arm.
 
 ### Step 5 · G-formula forward simulation
-
-Implement the simulator in R with strict topological propagation:
+Implement the trial as a `TrialSim` R6 subclass (mirror `examples/autoimmune/rave/rave.R`): set the
+config (`prefix`, `nct`, `sched`, `admin_censor_day`, `emitters`, `default_n`, `default_seed`) and the
+three hooks — `make_baseline(subj)`, `simulate_trajectory(patient, jit)`, `derive_endpoints(patient)`.
+The base class supplies the per-patient loop, the CSV writer, the independent date-jitter substream
+(`new_substream`, so the #182/#183 date fixes never shift the main draw order), and `reconcile_ae_ds`
+(#184). Draw from the main stream via the `np_*` wrappers in `R/rng.R`; endpoints are read off the
+trajectory. Run it:
 
 ```r
-For each patient:
-    1. Sample L₀ (baseline + latent frailties) from priors
-    2. Sample A (treatment arm) from randomization
-    3. For each visit t in chronological order:
-        a. Update drug-exposure indicators from prior dose state
-        b. Sample Lₜ from f(Lₜ₋₁, A, drug_exposure, frailties)   # labs, SLD
-        c. Derive AEs from Lₜ where deterministic (CTCAE on labs);
-           sample non-deterministic AEs from frailty + arm hazard
-        d. Apply dose-modification rules from AE thresholds
-        e. Update ECOG and discontinuation hazards
-    4. Derive Yₜ = endpoints from trajectory
-        - PFS_DAY = first(progression_day, death_day, admin_censor)
-        - PFS_EVENT = 1 iff event observed before censor
-    5. Project trajectory → CRF rows (pure projection, no fresh sampling)
+Rscript examples/<area>/<trial>/run_<trial>.R [N] [SEED] [OUT_DIR]
 ```
 
-R module layout:
-- `R/dag_state.R` — patient state as tibbles/lists, frailty draws, visit grid.
-- `R/baseline.R` — L₀ generation.
-- `R/longitudinal.R` — Lₜ propagation.
-- `R/outcomes.R` — Yₜ derivation from trajectory.
-- `R/emit_source.R` — pure trajectory projection to source-style CRF records.
-- `R/sdtm.R` — SDTM domain construction, using `sdtm.oak` patterns where possible.
-- `R/adam.R` — ADaM derivations with `admiral`.
-- `R/tlg.R` — analysis tables/listings/graphs with `tidytlg`.
-- `R/export.R` — CSV, XPT via `xportr`, Dataset-JSON via `datasetjson`.
-- `R/run.R` — orchestrator.
+**Contract check** — as soon as the first CSVs exist, before calibrating:
 
-Read [r_implementation.md](r_implementation.md) before writing or editing
-the R implementation.
-
-**Output of step 5**: populated source CRFs, SDTM-style domains, ADaM
-datasets, and requested export formats for the requested N.
-
-### Step 6 · Calibration loop (with causality preservation)
-
-This is the most subtle step. The naïve approach — "the AE rate is too low,
-add a bigger constant to the AE probability" — works to fix marginals but
-**often violates causality** if it bypasses the parent variables. The
-calibration loop must change parameters of structural equations, never
-their structure.
-
-#### Calibration invariants — **DO NOT VIOLATE**
-
-The following are forbidden during calibration regardless of how much
-discrepancy the marginal stats show:
-
-1. ❌ **Do not draw an endpoint independently of its trajectory parents.**
-   Example violation: drawing PFS_TIME from a Weibull conditioned only on
-   arm to "fix" the median PFS. Correct: tighten `time_to_resistance`
-   scale/shape so the SLD trajectory hits PD criteria at the right time.
-2. ❌ **Do not add new direct edges from arm to outcomes** that bypass the
-   intermediate variables (labs, AEs, dose, response). All treatment-effect
-   pathways must flow through the modeled mediators.
-3. ❌ **Do not derive a child node's value from its own descendants**
-   (cycles in the DAG).
-4. ❌ **Do not collapse independence across patient-shared frailties** —
-   e.g., do not set `f_heme = 0` for all patients to "remove" a correlation;
-   instead change the variance of `f_heme` if its effect is too strong.
-5. ❌ **Do not turn a deterministic CTCAE/RECIST rule into a random draw**
-   to inflate AE rates. The grading function is fixed; the lab value
-   distribution is what's tunable.
-
-#### Calibration loop — allowed knobs
-
-For each marginal mismatch, the loop adjusts only structural-equation
-*parameters*, never the *structure*. Allowed adjustments:
-
-| Mismatch direction | Allowed knob |
-|---|---|
-| Median PFS too short / long | Scale and shape of `time_to_resistance` Weibull, post-resistance growth rate `g`, RECIST nadir-detection lag |
-| HR too weak / strong | Treatment-arm coefficient on `time_to_resistance` (the only direct A-edge) |
-| AE rate too high / low | Per-visit hazard `base_haz`, frailty variance, reporting probability `p_report` |
-| Severe-AE share too high / low | `p_severe` parameter of non-lab AE generator; CTCAE thresholds untouched |
-| Lab toxicity too deep / shallow | Drug-induced drag in lab AR(1) equations; AR coefficients α to control cascading |
-| Discontinuation rate too high / low | Intercept and AE-burden coefficient in discontinuation hazard |
-| AE-AE correlation too low | Increase frailty variance for the relevant cluster (e.g., `f_GI`) |
-| Within-patient lab autocorrelation | AR(1) coefficient α (closer to 1 → more cascade) |
-
-#### Loop algorithm
-
-```
-LOAD targets = ctgov_results(NCT)
-LOAD invariants = ["all DAG edges in dag_spec.md"]
-
-REPEAT up to N_iter (default 8):
-    SIMULATE current_params → CSVs
-    METRICS = compute_marginals(CSVs)
-        - per-arm median PFS + 95% CI
-        - HR (Cox) with 95% CI
-        - Any AE / Gr ≥3 AE / SAE / discontinuation rates per arm
-        - Top 10 PT-level AE rates per arm
-    GATES = run_dag_gates(CSVs)
-        - AE↔lab linkage (deterministic AEs)
-        - Within-patient AE-AE correlation (frailty cluster)
-        - PFS_DAY = trajectory progression (correlation = 1.0)
-        - Stratifier → endpoint effects in expected direction
-
-    ASSERT GATES all pass            # NEVER break causality
-    IF MAX_DISCREPANCY(METRICS, targets) < TOL: BREAK
-
-    PROPOSE param updates that move METRICS toward targets, restricted
-    to the "allowed knobs" table. Prefer single-parameter changes with
-    clear marginal effect; avoid coupled changes that could mask DAG bugs.
-
-    APPLY updates → params_next
-    LOG params_next, METRICS, gate results
+```r
+odm_check_columns("{trial}_output/odm/crf_picks.json", "{trial}_output/crfs")   # exit 0 required
 ```
 
-The loop **fails closed** — if any DAG gate fails after a parameter update,
-the update is reverted and the loop reports a structural problem rather
-than continuing to chase marginals. Causal identification is paramount.
+It flags any drift between the schema and the emitted columns, both directions.
 
-**Output of step 6**: final calibrated CSVs, parameter audit trail, gate
-results, and a side-by-side table comparing simulated vs. published
-metrics.
+### Step 6 · Calibration loop (causality-preserving) + statistical review
+Calibrate only features with a posted result; leave `target: null` features at their priors (they are
+still simulated and still must pass every gate). Tune structural-equation **parameters only, never
+structure** — see the invariants in [calibration.md](calibration.md). Each iteration: simulate →
+`measure_marginals()` → run the two gate families and **assert them fail-closed**:
+- **(a) machine realism/date gates** (visit-date variance #183, AE-onset dispersion #182,
+  continuous-time discontinuation #183, AE↔DS traceability #184), and
+- **(b) per-trial causal-structure gates** (the trial's `run_dag_gates` — AE↔lab linkage,
+  arm→mediator direction, endpoint=trajectory, stratifier sign, frailty-cluster correlation), and
+- **(c) logical-consistency gate** (`g_logical_consistency`) — the trial's `applicability_rules()` +
+  `consistency_rules()` re-checked on the CSVs: every field is filled exactly when it applies to the
+  subject, and no impossible demographic↔data combination appears (see Step 2).
 
-## Concrete deliverables
+Gates read the **emitted CSVs**, never engine state, and the AE↔DS gate keys on the emitted reason
+field. `run()` already runs the trial's gates fail-closed (`stop()` on any failure). Use
+`calibration_report(sim, …)` to simulate + compare an already-calibrated trial, or `calibrate(sim,
+targets, knob_map, …)` for a new one (single-knob damped coordinate descent, ≤8 iters, reverts any
+gate-breaking update). A many-small-cell continuous endpoint may not land every cell within tolerance
+at small N — that is expected and does not fail the build; the verdict is gates all_pass.
 
-When this skill completes, the working directory contains:
+**At the end of each trial run, run the statistical-reviewer skill** on the emitted bundle as an
+independent realism check (do not hardcode fixes to pass it — feed its findings back as spec/parameter
+improvements).
 
-- `intake/{NCT}.json` — raw and parsed CTGov record
-- `crf_schema.md` — list of forms × visits × variables
-- `dag_spec.md` — variable / parents / structural equation / evidence
-- `params/` — per-iteration parameter snapshots (audit trail)
-- `R/` — R modules implementing the simulator and SDTM/ADaM/export pipeline
-- `metadata/` — SDTM/ADaM/export metadata specs for `sdtm.oak`, `admiral`,
-  `xportr`, and `datasetjson`
-- `renv.lock` — reproducible R dependency lockfile
-- `<output>/source/*.csv` — source-style generated CRFs
-- `<output>/sdtm/*.csv` and, when requested, `.xpt` / Dataset-JSON exports
-- `<output>/adam/*.csv` and, when requested, `.xpt` / Dataset-JSON exports
-- `<output>/analysis/` — KM curves, primary endpoint analysis, AE tables, calibration report
+### Step 7 · Fill + validate ODM v2.0
+Insert the final patients into the Step-2 blank form and re-validate (the form is not rebuilt):
 
-## Worked example
+```r
+odm_fill("{trial}_output/odm/crf_template.xml", "{trial}_output/crfs", "{trial}_output/odm/odm.xml")
+```
 
-The FLAURA2 build (NCT04035486) used during development demonstrates the
-causal model and calibration targets. Treat it as a reference to port into R:
+`odm_fill()` errors if any CSV column has no field in the template, then validates fail-closed
+(`check_odm`: official XSD + references resolve). Output: `{trial}_output/odm/odm.xml`.
 
-- Intake JSON fields used: `Outcomes`, `AdverseEvents`, `EligibilityCriteria`, `ArmsInterventions`
-- CRF schema: 26 forms across screening / treatment / follow-up
-- DAG: represented in the generated `dag_spec.md` format, with one row per
-  node documenting parents, structural equation, and evidence source
-- Parameters: calibrated to median PFS combo 23.5 mo (pub 25.5), mono 19.3 mo (pub 16.7), HR 0.64 (pub 0.62)
-- Gates passed: AE↔lab linkage (mean ANC at Neutropenia AE = 0.52 vs 4.29 without), GI AE within-patient r ≈ 0.28, PFS↔trajectory r = 1.000
+### Step 8 · Render the trial to HTML
+`run(render_html=TRUE)` (the default) automatically renders `{trial}_output/index.html` — an
+interactive Cytoscape DAG + the rendered `DAG.md`/`CRF_spec.md`/`README.md` — after the gates pass.
+Best-effort: a missing `DAG.md`/renderer never breaks the run. The render also writes a secondary
+copy under a sibling `docs/trials/` of the skill folder (a convenience for a docs dashboard, outside
+the run bundle and harmless); `index.html` in the run folder is the deliverable. The page title comes
+from the output-folder name, so name it `{TRIAL}_output`. Re-run `render_docs("{trial}_output")` to
+refresh after writing `README.md` last or editing `DAG.md`.
 
-Refer to it as a causal template; do not copy code blindly. New
-implementation work should port the same structure into `R/` and should use
-pharmaverse packages for standards, ADaM derivations, TLGs, and exports.
-Every trial has its own SoA, biomarker stratifiers, and AE profile.
+## Concrete deliverables (`{trial}_output/`)
+```
+README.md          # run manifest (trial/NCT/N/seed/date + per-gate PASS) + folder map
+intake/{NCT}.json  # step 1
+CRF_spec.md        # step 2 (human view)
+DAG.md             # step 3 (cited)
+params/            # steps 4 & 6 snapshots
+crfs/              # step 5/6 — {trial}_CRF_*.csv (the deliverable)
+analysis/          # step 6 — marginals, sim-vs-published, gate results
+odm/               # crf_picks.json + crf_spec.json + crf_template.xml (step 2) + odm.xml (step 7)
+index.html         # step 8 — interactive DAG + rendered docs
+```
+`intake/`, `CRF_spec.md`, `DAG.md`, `params/`, and `odm/crf_picks.json` are **authored** across Steps
+1–4 (for the shipped examples they live under `examples/<area>/<trial>/`); `crfs/`, `analysis/`,
+`README.md`, `odm/*.xml`, and `index.html` are **generated**. The shipped `run_<trial>.R` entry points
+stage the authored `DAG.md` + `odm/crf_picks.json` into the run folder and then build the ODM export
+**best-effort** (skipped with a note if no ODM-deps python is configured), so a single
+`Rscript examples/<area>/<trial>/run_<trial>.R` yields the full bundle. A brand-new trial authors those
+inputs itself (Steps 2–4) and runs the ODM commands explicitly.
+
+The engine (`R/` + `examples/<area>/<trial>/`) lives outside the run folder; `params/` + the RNG seed
+make a run reproducible without copying code.
+
+## Worked examples
+- **RAVE** (`examples/autoimmune/rave/`, NCT00104299) — binary complete-remission-at-6-months; 12 forms,
+  6 causal gates, calibrated marginals within TOL=0.07. `Rscript examples/autoimmune/rave/run_rave.R`.
+- **CATH** (`examples/allergy/cath/`, NCT00789880) — continuous change-from-baseline biomarkers; 17
+  forms, observational diagnosis strata, ~zero serious AEs by design, the ODM demo.
+  `Rscript examples/allergy/cath/run_cath.R`.
 
 ## Common pitfalls
-
-1. **Treating the calibration loop as parameter optimization without DAG
-   constraints.** It must be optimization *subject to* the DAG gates.
-2. **Letting the visit grid extend past the data cutoff.** Set
-   `ADMIN_CENSOR_DAY` from CTGov's data-cutoff date so PFS censoring
-   matches the published analysis.
-3. **Using global RNG state in ad hoc R code and expecting reproducibility
-   across calibration iterations.** Use one controlled seed and consume RNG
-   in a fixed order; otherwise minor parameter changes will appear to cause
-   large output changes simply from RNG-state shifts.
-4. **Independent-draw shortcut for non-lab AEs.** Without a shared
-   frailty, every AE type is conditionally independent given arm — the
-   bug fixed in v6. Always introduce a frailty per AE cluster.
-5. **Drawing endpoints directly.** PFS_TIME must be derived from the
-   trajectory, not sampled from a parametric distribution conditioned
-   on arm. The original FLAURA2 v6 sim violated this; the current
-   causal reference build does not.
-
-## Companion skills / hooks
-
-- `crf-calibration-loop` (sub-skill at [calibration.md](calibration.md)) —
-  the iterative loop with causality-preserving parameter updates,
-  invocable independently when the user wants to tune an existing run.
-- Verification gate functions live alongside the simulator code as
-  `verify_dag_*.R`; they should be runnable as a pre-commit-style hook
-  before any CSVs are released.
+1. Calibrating without the DAG gates — it must be optimization *subject to* the gates.
+2. Letting the visit grid run past the data cutoff — set `admin_censor_day` from the CTGov cutoff.
+3. Drawing date jitter from the main RNG — it must come from `new_substream(seed, subj)`; drawing from
+   the shared stream shifts every downstream draw and silently breaks calibration.
+4. Drawing endpoints directly instead of deriving them from the trajectory.
+5. Independent-draw AEs — always give an AE cluster a shared frailty, or types are independent given arm.
