@@ -92,11 +92,12 @@ all subsequent derivations. Call this once on the raw dataset.
 
 ```r
 # REVIEW: Set pat_var to the column holding the subject/patient identifier
-#   in this raw dataset. Set raw_src to a stable label for the CRF form.
+#   in this raw dataset. Set raw_src to the raw dataset object name (e.g. "ae_raw",
+#   "vs_raw") — pharmaverse convention uses the dataset name, not a CRF form label.
 ae_oak <- generate_oak_id_vars(
   raw_dat = ae_raw,
   pat_var = "patient_number",   # confirm column name from Step 1 inspection
-  raw_src = "AE_FORM"           # stable label for this raw source
+  raw_src = "ae_raw"            # pharmaverse convention: use the raw dataset name
 )
 # Adds: oak_id (row key), raw_source (form label), patient_number (subj ID)
 ```
@@ -350,7 +351,7 @@ stacking pattern — derive each TESTCD separately, then `bind_rows()`.
 
 # Parameter 1: Systolic Blood Pressure
 sysbp <- generate_oak_id_vars(vs_raw, pat_var = "patient_number",
-                               raw_src = "VS_FORM") |>
+                               raw_src = "vs_raw") |>
   hardcode_ct(tgt_var = "VSTESTCD", tgt_val = "SYSBP",
               raw_dat  = vs_raw, raw_var = "SYSBP_result",
               ct_spec  = ct_spec, ct_clst = "VSTESTCD") |>
@@ -363,7 +364,7 @@ sysbp <- generate_oak_id_vars(vs_raw, pat_var = "patient_number",
 
 # Parameter 2: Diastolic Blood Pressure — same pattern, different raw_var
 diabp <- generate_oak_id_vars(vs_raw, pat_var = "patient_number",
-                               raw_src = "VS_FORM") |>
+                               raw_src = "vs_raw") |>
   hardcode_ct(tgt_var = "VSTESTCD", tgt_val = "DIABP", ...) |>
   ...
 
@@ -397,7 +398,7 @@ decision that a QC reviewer must verify. Required locations:
 
 | Location | What to annotate |
 |---|---|
-| `generate_oak_id_vars()` | `pat_var` column name and `raw_src` label |
+| `generate_oak_id_vars()` | `pat_var` column name; `raw_src` must be the raw dataset name (e.g. `"ae_raw"`) |
 | Every `assign_datetime()` | `raw_fmt` format string — must match actual raw data |
 | Every `assign_ct()` | `ct_clst` codelist name — wrong codelist silently miscodes |
 | Every `condition_add()` | The business rule the condition implements |
