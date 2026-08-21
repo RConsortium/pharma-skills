@@ -1,0 +1,33 @@
+{
+  "id": "github-issue-142",
+  "prompt": "I need to create two outputs from the pharmaversesdtm package:\n\n1. Add baseline vital sign variables (HEIGHTBL, WEIGHTBL, BMIBL) to an existing ADSL dataset using data from the VS domain.\n2. Create a full ADVS BDS ADaM dataset from the VS domain, including analysis values, baseline flags, change from baseline, and normal range indicators.\n\nUse the admiral R package for all derivations. Input data should come from pharmaversesdtm. The reference output for ADVS is pharmaverseadam::advs.",
+  "expected_output": "Two R script outputs:\n\n1. **ADSL** \u2014 the input ADSL dataset augmented with HEIGHTBL, WEIGHTBL, and BMIBL, each sourced from the corresponding baseline VS record (VSBLFL == \"Y\").\n2. **ADVS** \u2014 a BDS ADaM dataset containing one record per subject per parameter per visit, with PARAMCD, PARAM, AVAL, AVALC, ADT, ADY, ABLFL, BASE, CHG, PCHG, and ANRIND populated. Reference: pharmaverseadam::advs.",
+  "files": [
+    "pharmaversesdtm::vs \u2014 Vital Signs SDTM domain (input)",
+    "pharmaversesdtm::dm \u2014 Demographics SDTM domain (for subject spine)",
+    "pharmaverseadam::adsl \u2014 Subject-level ADaM (for merging into ADVS and for ADSL augmentation)",
+    "pharmaverseadam::advs \u2014 Reference output for ADVS",
+    "All datasets are available via the pharmaversesdtm and pharmaverseadam R packages."
+  ],
+  "assertions": [
+    "The script must use the admiral R package for all ADaM derivations.",
+    "The ADSL output must include the variables HEIGHTBL, WEIGHTBL, and BMIBL.",
+    "HEIGHTBL must be derived from baseline VS records where VSTESTCD == \"HEIGHT\" and VSBLFL == \"Y\" using derive_vars_merged().",
+    "WEIGHTBL must be derived from baseline VS records where VSTESTCD == \"WEIGHT\" and VSBLFL == \"Y\" using derive_vars_merged().",
+    "BMIBL must be derived from baseline VS records where VSTESTCD == \"BMI\" and VSBLFL == \"Y\", or computed from HEIGHTBL and WEIGHTBL.",
+    "The ADVS dataset must contain at minimum the columns: USUBJID, PARAMCD, PARAM, AVAL, AVALC, ADT, ADY, ABLFL, BASE, CHG, PCHG, ANRIND.",
+    "ADT must be derived from VSDTC using an admiral date derivation function (e.g., derive_vars_dt()).",
+    "ADY must be derived as study day relative to TRTSDT (or reference start date) using derive_vars_dy().",
+    "ABLFL must equal \"Y\" only for the designated baseline record per subject per parameter, and must be NA otherwise.",
+    "BASE must equal AVAL for records where ABLFL == \"Y\", and must be the baseline AVAL carried to all other records for the same subject and parameter.",
+    "CHG must equal AVAL - BASE for numeric parameters (where BASE is non-missing).",
+    "PCHG must equal 100 * CHG / BASE for numeric parameters (where BASE is non-zero and non-missing).",
+    "ANRIND must be populated as \"LOW\", \"NORMAL\", or \"HIGH\" based on ANRLO and ANRHI reference ranges from the VS domain.",
+    "The script must run to completion without errors using pharmaversesdtm input data.",
+    "The structure of the ADVS output (variable names, number of records) must be comparable to pharmaverseadam::advs."
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adsl"
+  ]
+}
