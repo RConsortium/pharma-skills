@@ -141,7 +141,8 @@ called first** before any mapping function.
 generate_oak_id_vars(
   raw_dat,
   pat_var,    # column in raw_dat holding subject identifier
-  raw_src     # string label for this CRF form / data source
+  raw_src     # raw dataset name — must equal the R object name (e.g. "ae_raw", "cm_raw")
+              # per sdtm.oak spec: "equal to the raw dataset (eCRF) name or eDT dataset name"
 )
 ```
 
