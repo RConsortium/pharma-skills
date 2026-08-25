@@ -63,6 +63,14 @@ def fetch_issue_comments_via_api(issue_number: str, repo: str = GITHUB_REPO) -> 
         )
         with urllib.request.urlopen(request, timeout=30) as response:
             page_comments = json.loads(response.read().decode("utf-8"))
+        if not isinstance(page_comments, list):
+            # A 200 response whose body isn't a comments array (e.g. an API
+            # error payload like {"message": "..."}) — treat as a fetch
+            # failure rather than silently iterating dict keys as comments.
+            raise RuntimeError(
+                f"Unexpected non-list response fetching comments for issue "
+                f"{issue_number}: {page_comments!r}"
+            )
         if not page_comments:
             break
         comments.extend(page_comments)
