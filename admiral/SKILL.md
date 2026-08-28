@@ -31,7 +31,7 @@ Choose the child skill that matches the target ADaM dataset type:
 | BDS — Findings (ADVS, ADLB) | `admiral/admiral-bds` | Parameters, baseline, change from baseline |
 | OCCDS — Adverse Events | `admiral/admiral-adae` | TEAE flag, severity, seriousness, causality |
 | Tumor Response (ADRS) | `admiral/admiral-adrs` | RECIST response, confirmed ORR, BOR, clinical benefit |
-| TTE — Time to Event | `admiral/admiral-adtte` | *(planned)* |
+| TTE — Time to Event | `admiral/admiral-adtte` | Event/censor sources, AVAL in days, CNSR/CNSDTDSC |
 
 ADSL must be derived before any BDS or OCCDS dataset — population flags and
 treatment variables from ADSL are merged into all downstream datasets.
