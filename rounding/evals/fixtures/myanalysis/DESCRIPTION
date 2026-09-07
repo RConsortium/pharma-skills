@@ -1,0 +1,9 @@
+Package: myanalysis
+Title: Synthetic Reporting Fixture for the Rounding Skill Benchmark
+Version: 0.1.0
+Description: A deliberately seeded R package used as the frozen benchmark
+    target for the `rounding` skill. It contains known-compliant and
+    known-noncompliant rounding sites with a documented answer key.
+    It is not a real analysis package and must not be used for reporting.
+License: MIT + file LICENSE
+Encoding: UTF-8

@@ -1,0 +1,12 @@
+---
+title: "Summary tables"
+---
+
+The helper below is illustrative. Do not call `round(` on a percentage
+before a threshold comparison; the string "formatC(" in this sentence is
+prose, not a call.
+
+```{r}
+demo <- c(1.25, 2.5, 76.05)
+round(demo, 1)
+```

@@ -18,6 +18,8 @@ These skills produce artifacts that can feed into clinical trial design and regu
 | [admiral/admiral-bds](admiral/admiral-bds/) | Derive ADaM BDS findings datasets (ADVS, ADLB) from SDTM VS/LB domains. Covers parameter assignment, baseline flagging, change from baseline, visit windowing, and ADLB normal range derivations. |
 | [clinical-trial-ipd-sim](clinical-trial-ipd-sim/) | Generate synthetic IPD, source CRFs, SDTM, ADaM, and exports for registered clinical trials using an R/pharmaverse g-formula causal-DAG workflow calibrated to posted protocol and results. |
 | [statistical-reviewer](statistical-reviewer/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
+| [rounding](rounding/) | Verify rounding compliance -- ties away
+from zero, round-once-at-display, fixed display precision with trailing zeros. |
 
 ## Installation
 
