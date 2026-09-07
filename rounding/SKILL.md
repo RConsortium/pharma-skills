@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.4"
+  version: "0.5"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -83,6 +83,15 @@ Collect these before scanning. A rule the request is silent on is
    -- a witness at the wrong precision does not test the site. Unexecuted
    claims are not evidence.
 
+   Write `report.md` incrementally -- skeleton first, witnesses second. Draft
+   the inventory table and Coverage before perfecting any witness script, so
+   a run always delivers a report even if time runs short. Keep witness
+   scripts small: source the target read-only and reuse the probe's
+   dependency-free half-away arithmetic inline (`sign(x) *
+   trunc(abs(x) * 10^d + 0.5) / 10^d`, plus `+ 0` for the signed-zero guard)
+   rather than building a large bespoke harness. A report with before-only
+   witnesses and a stated fix pattern beats no report.
+
    Every finding needs two executed witnesses: the **before**, showing the
    observed value against the policy value, and the **after**, showing that the
    fix you recommend actually produces the policy value. A recommendation no one
@@ -110,12 +119,24 @@ shared helper is wrong in one direction or the other.
 Split by *distinct behavior*, not by syntax. Two calls to the same operation on
 the same path with the same precision -- both bounds of a confidence interval,
 say -- share one row; note that it covers two call sites. Splitting them inflates
-the inventory without adding a verdict.
+the inventory without adding a verdict. Conversely, quantization and display
+formatting in the same function are distinct behaviors and get separate rows:
+`(x * 10) %/% 1 / 10` (Tie) vs `paste0(n, "%")` (Display) is two rows, not one.
 
 Every in-scope operation gets a row, including compliant and allowlisted ones.
-An allowlisted helper is a reviewed `PASS` **in the inventory**; recording it only
-in the allowlist table drops it out of the count a reader uses to check your
-coverage, which is the opposite of what an allowlist is for.
+Give the allowlisted helper its own definition-site row (e.g.
+`R/rounding-helpers.R:10` `trunc(abs(x) * scale + 0.5)` as a reviewed `PASS`
+with tie-vector evidence), in addition to the per-call-site rows that use it.
+Recording it only in the allowlist table drops it out of the count a reader
+uses to check your coverage, which is the opposite of what an allowlist is for.
+
+When early rounding and its downstream display are paired (BR-002), mark
+Stage `FAIL` on both rows and state they are one finding -- the early site is
+the primary defect, the downstream row carries the same Stage verdict so the
+pair stays together when sorted or filtered.
+
+In Coverage, quote the scanner's `files_scanned` and `total_hits` verbatim;
+do not recount `R/` files by hand.
 
 Signed zero is part of BR-001, not a fourth rule. A site that renders `-0`
 fails the tie rule; do not open a separate verdict column for it, and do not
@@ -138,7 +159,11 @@ acts alone; decimals bring in cause 2. This is why the probe, not source
 reading, is the evidence.
 
 Also check that no displayed value is a signed zero: a small negative value
-formatted at the display precision can render as `-0` or `-0.0`.
+formatted at the display precision can render as `-0` or `-0.0`. Probe this
+only with in-domain inputs for that entry path. An out-of-domain negative
+probe (e.g. negative counts for a rate that takes counts and durations) is
+recorded as not scored -- input unreachable -- never as a `FAIL`. Score `FAIL`
+only when a reachable input can render a signed zero.
 
 ## Allowlist
 
