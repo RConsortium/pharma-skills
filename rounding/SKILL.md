@@ -1,15 +1,15 @@
 ---
 name: rounding
 description: >
-  Audit R code that prepares clinical-report statistics for SAS-compatible
-  rounding compliance (ties away from zero, round-once-at-display,
-  fixed display precision with trailing zeros). Use this skill whenever the
-  user asks to review, check, verify, or fix rounding in R code,
-  mentions SAS rounding, half-away-from-zero,
-  display precision, trailing zeros, early rounding, or names round(),
+  Audit R code that prepares CSR/TLF statistics for SAS-compatible rounding
+  compliance (ties away from zero, round-once-at-display, fixed trailing-zero
+  precision). Make sure to use this skill whenever the user asks to review,
+  check, verify, or fix rounding, mentions SAS rounding, half-away-from-zero,
+  display precision, trailing zeros, early rounding, mock tables showing 76
+  not 76.00, percentages off by 1 at the half point, or names round(),
   formatC(), sprintf(), format(), signif(), prettyNum(), cards::round5,
-  tidytlg::roundSAS, or janitor::round_half_up in a CSR/TLF/report context --
-  even if they don't say the word "rounding".
+  tidytlg::roundSAS, or janitor::round_half_up in a clinical-report context --
+  even if they don't say the word rounding.
 license: MIT
 metadata:
   author: Pharma Skills community
@@ -27,6 +27,49 @@ The point of the review is not to find `round()`. It is to establish which
 operations can change a number a reader sees or a number that decides which
 rows they see, and then to prove what each one actually does. Those are
 different questions, and only the second one needs a machine.
+
+## When to Use
+
+Use this skill when the user asks to:
+
+- audit, check, verify, or fix rounding in R reporting code (even if they
+  don't say the word "rounding")
+- compare R and SAS rounding, or mentions ties-away-from-zero / half-away
+- debug trailing-zero or fixed-precision display (e.g. mock tables show
+  `76` where the spec requires `76.00`, or `2%` where it requires `2.0%`)
+- investigate percentages or statistics "off by 1 at the half point"
+- review TLF/CSR/display code that calls `round()`, `formatC()`, `sprintf()`,
+  `format()`, `signif()`, `prettyNum()`, `cards::round5`, `tidytlg::roundSAS`,
+  or `janitor::round_half_up`, or describes early rounding / round-once-at-display
+
+See also *When NOT to use this skill* at the end.
+
+## Examples
+
+**Example 1 -- trailing zeros look wrong:**
+
+Input: "Our mock AE tables show `76` where the spec says two decimals, and one
+percent column shows `2%` instead of `2.0%`. Spec is in `precision-spec.yml`.
+Source is `myanalysis/R/`. Save what you find to `report.md`."
+
+Output: `report.md` with Coverage, Findings for `R/render.R:13` (`as.character`
+→ `76` vs `76.00`) and `R/rounding-helpers.R:19` (`paste0` → `2%` vs `2.0%`),
+each with an executed string witness and a fixed-character fix
+(`formatC(..., format="f")` / `sprintf` / `as_char=TRUE`). Tie/Stage rules are
+named as checked or explicitly `NOT ASSESSABLE`, not silently dropped.
+
+**Example 2 -- SAS tie-method audit:**
+
+Input: "Audit `myanalysis/R/**/*.R` against SAS-compatible ties-away-from-zero
+(`2.5 -> 3`). Entry points are `report_*()`, spec is `precision-spec.yml`,
+output to `report.md`."
+
+Output: `report.md` with 14 inventory rows (one per operation-and-entry-path),
+each with Tie/Stage/Display verdicts, before/after executed witnesses (e.g.
+`base::round(2.5)=2` vs policy `3`), paired-stage tracing for
+`R/report-change.R:6` + `R/render.R:5`, explicit two-cause attribution for
+`formatC`/`round` divergence, and embedded `probe-tie-behavior.R` stdout
+including `R.version.string`.
 
 ## Bundled resources
 
@@ -104,8 +147,28 @@ Collect these before scanning. A rule the request is silent on is
 6. **Verdict and write.** Per row: Tie / Stage / Display as `PASS` / `FAIL` /
    `NOT ASSESSABLE`; Overall is `FAIL` if any rule fails, `NOT ASSESSABLE`
    if none fails and at least one is uncheckable, else `PASS`. Compliant
-   helper-plus-formatter paths pass -- do not rewrite them. Complete
-   `assets/report-template.md` as `report.md`, the only deliverable.
+   helper-plus-formatter paths pass -- do not rewrite them.
+
+   ALWAYS use the exact structure in `assets/report-template.md` (see
+   *Report structure* below). That template is the only deliverable; do not
+   invent sections or rename them.
+
+## Report structure
+
+ALWAYS use this exact template from `assets/report-template.md`:
+
+```markdown
+# Rounding compliance report -- <package> <version/commit>
+Target / Environment / Policy / Status / Verdict (one line each)
+## Summary -- one row per (operation, entry path) with Tie/Stage/Display/Overall
+## Appendix A. Coverage -- files scanned, hits, excluded sites with file:line + reason
+## Appendix B. Evidence (executed) -- policy-vs-actual witnesses per row
+## Appendix C. Limitations -- missing specs, blind spots, uninstalled helpers
+## Appendix D. Witness log -- pasted scripts/probe-tie-behavior.R stdout
+```
+
+Fill every section from executed output; an empty section is a missing section,
+not a clean section.
 
 ## One row per operation *and* entry path
 
