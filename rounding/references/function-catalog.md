@@ -6,6 +6,15 @@ lines is still found. It classifies every hit into one of four labels. Carry
 those labels into the report: they are what lets a reader separate reproducible
 output from your reasoning.
 
+## Reporting paths define scope
+
+Scan from the repository root. Installed `R/` code is only one reporting
+surface: executable chunks in vignettes, READMEs, and other `.Rmd`/`.qmd`/`.Rnw`
+files are in scope when they calculate or prepare statistics for a table,
+listing, figure annotation, or report file. They do not need to be called by an
+export. Exclude layout/encoding math and ordinary tests with reasons, but do not
+exclude reporting examples merely because they live under `vignettes/`.
+
 ## `catalog/quantize` -- rounded numeric out
 
 `round()`, `signif()`, `ceiling()`, `floor()`, `trunc()`, `cards::round5()`,

@@ -6,10 +6,12 @@ with trailing zeros.
 
 ## What it does
 
-Given a pinned R source tree and an approved display-precision specification,
+Given a pinned repository and an approved display-precision specification,
 the skill inventories every operation that can change a displayed number or a
-number that decides which rows appear, proves what each one does with executed
-witnesses, and drafts a report for a named rule owner to classify.
+number that decides which rows appear. It scans installed R code plus executable
+reporting logic in scripts, READMEs, and vignettes (`.R`, `.Rmd`, `.qmd`,
+`.Rnw`), proves behavior with executed witnesses, and drafts a report for a
+named rule owner to classify.
 
 BR-001: Values intended as exact decimal ties are rounded half away from zero. A displayed value is never a negative zero.
 

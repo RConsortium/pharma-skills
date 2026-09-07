@@ -13,7 +13,7 @@
 # them. A file with no hits is listed with `hits: 0`; that is a scan result,
 # not a clearance.
 
-SCANNER_VERSION <- "2.0"
+SCANNER_VERSION <- "2.1"
 
 args <- commandArgs(trailingOnly = TRUE)
 include_tests <- "--include-tests" %in% args
@@ -179,6 +179,14 @@ cat(sprintf("scanner_version: %s\n", SCANNER_VERSION))
 cat(sprintf("root: %s\n", root))
 cat("r_version:", R.version.string, "\n")
 cat(sprintf("files_scanned: %d\n", length(files)))
+ext <- sub("^.*[.]", "", files)
+ext[tolower(ext) == "r"] <- "R"
+ext[tolower(ext) == "rmd"] <- "Rmd"
+ext[tolower(ext) == "qmd"] <- "qmd"
+ext[tolower(ext) == "rnw"] <- "Rnw"
+by_type <- table(ext)
+cat("files_by_type:", paste(sprintf("%s=%d", names(by_type), by_type),
+  collapse = " "), "\n")
 per_file <- table(vapply(hits, function(h) h$file, ""))
 for (f in files) {
   r <- rel(f)

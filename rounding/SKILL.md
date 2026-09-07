@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.5"
+  version: "0.6"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -44,32 +44,15 @@ Use this skill when the user asks to:
 
 See also *When NOT to use this skill* at the end.
 
-## Examples
+## Scope example
 
-**Example 1 -- trailing zeros look wrong:**
-
-Input: "Our mock AE tables show `76` where the spec says two decimals, and one
-percent column shows `2%` instead of `2.0%`. Spec is in `precision-spec.yml`.
-Source is `myanalysis/R/`. Save what you find to `report.md`."
-
-Output: `report.md` with Coverage, Findings for `R/render.R:13` (`as.character`
-→ `76` vs `76.00`) and `R/rounding-helpers.R:19` (`paste0` → `2%` vs `2.0%`),
-each with an executed string witness and a fixed-character fix
-(`formatC(..., format="f")` / `sprintf` / `as_char=TRUE`). Tie/Stage rules are
-named as checked or explicitly `NOT ASSESSABLE`, not silently dropped.
-
-**Example 2 -- SAS tie-method audit:**
-
-Input: "Audit `myanalysis/R/**/*.R` against SAS-compatible ties-away-from-zero
-(`2.5 -> 3`). Entry points are `report_*()`, spec is `precision-spec.yml`,
-output to `report.md`."
-
-Output: `report.md` with 14 inventory rows (one per operation-and-entry-path),
-each with Tie/Stage/Display verdicts, before/after executed witnesses (e.g.
-`base::round(2.5)=2` vs policy `3`), paired-stage tracing for
-`R/report-change.R:6` + `R/render.R:5`, explicit two-cause attribution for
-`formatC`/`round` divergence, and embedded `probe-tie-behavior.R` stdout
-including `R.version.string`.
+A repository audit is not limited to installed package code. Treat executable
+reporting examples in `Rmd`/`qmd` as report entry paths too: a vignette that
+computes a mean, percentage, CI, or p-value and sends it to `rtf_*()`,
+`write_rtf()`, a table, or a listing is in scope even when no exported
+`report_*()` function calls it. Tests and pure rendering/layout examples stay
+visible in Coverage and are excluded unless they themselves generate report
+statistics.
 
 ## Bundled resources
 
@@ -96,8 +79,9 @@ Collect these before scanning. A rule the request is silent on is
   reported statistic. A statistic with no entry is `NOT ASSESSABLE`.
 - **Tie policy and its version**, plus the comparison helper the rule owner
   selected and that package's version.
-- **Entry points**: which exported functions produce reported output (often
-  `report_*()`). Reachability from an entry point is what makes a site in scope.
+- **Entry paths**: exported report functions, scripts, and executable chunks in
+  `.Rmd`/`.qmd`/`.Rnw` that calculate or prepare reported statistics. A caller
+  need not be exported: observable reporting behavior makes it in scope.
 - **Rule owner**: the named person who will classify each finding. Record the
   name in the report. An unnamed gate is not a gate.
 - **Allowlist** (optional): sites the rule owner has already classified. See
@@ -109,15 +93,20 @@ Collect these before scanning. A rule the request is silent on is
    the source to settle whatever it can settle. Ask about a gap you cannot
    close, but do not let one unanswered question stop the parts of the review
    it does not touch -- see *Missing inputs* below.
-2. **Scan (first pass only).** Read `references/function-catalog.md`, run
-   `scripts/scan-rounding-calls.R`, preserve the full output. Then infer where
-   else rounding can hide: the script never clears a file. Label each candidate
-   `catalog`, `wrapper`, `operator`, or `exploratory` and keep those labels to
-   the end, so a reader can tell reproducible output from your reasoning.
-3. **Trace and triage.** From each entry point follow package-local calls.
-   Keep reachable operations as rows; move the rest to Coverage as excluded
-   with reasons. Trace paired sites (early rounding + downstream display or
-   decision) together.
+2. **Scan the whole repository (first pass only).** Read
+   `references/function-catalog.md`, then run `scripts/scan-rounding-calls.R`
+   at the repository root—not just `R/`. Confirm Coverage accounts separately
+   for every discovered `.R`, `.r`, `.Rmd`, `.rmd`, `.qmd`, and `.Rnw` file;
+   use `--include-tests` when tests contain reporting fixtures or executable
+   examples. Preserve the full output. The scanner never clears a file, so
+   inspect zero-hit literate files and infer where dynamic rounding can hide.
+   Label candidates `catalog`, `wrapper`, `operator`, or `exploratory`.
+3. **Trace and triage.** Follow each reporting path, including standalone
+   vignette/helper chunks that compute statistics before table or file output.
+   Export status is irrelevant. Keep each reachable reporting operation as a
+   row; move layout, encoding, solver, plotting, and ordinary test-only hits to
+   Coverage with reasons. Trace paired sites (early rounding + downstream
+   display or decision) together.
 4. **Resolve against the rules.** For each row state namespace, method/class,
    and version, then read the matching `references/br-00x-*.md` for the FAIL
    signature and fix.

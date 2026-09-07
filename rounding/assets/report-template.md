@@ -19,7 +19,8 @@ Fix (advisory): <one-line helper + formatter + neg-zero guard, e.g. `tidytlg::ro
 
 ## Appendix A. Coverage
 
-- Scanned <N> R files (`R/`, `vignettes/`, etc.); <K> catalog hits, <in-scope> in-scope rows, <excluded> excluded.
+- Scanned <N> source files from the repository root; report counts by type (`R=<n> Rmd=<n> qmd=<n> Rnw=<n>`), <K> catalog hits, <in-scope> in-scope rows, <excluded> excluded.
+- State which literate reporting files (`Rmd`/`qmd`/`Rnw`) were treated as entry paths; a vignette is not excluded merely because it is not exported.
 - Full scanner output pasted (do not summarize -- paste verbatim).
 - Excluded (never scored), each with file:line + reason:
   - `R/...:NN` — reason (e.g. inside `solver_*()`, plot coordinates, character input, not reachable from `report_*()`)
