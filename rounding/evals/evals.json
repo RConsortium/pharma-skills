@@ -1,0 +1,63 @@
+{
+  "skill_name": "rounding",
+  "source": "RConsortium/pharma-skills issue #208; ai4csr 06/07-workflow-rounding",
+  "answer_key": "fixtures/ANSWER-KEY.md",
+  "environment": "R 4.6.1, aarch64-apple-darwin25.4.0, verified 2026-09-06",
+  "evals": [
+    {
+      "id": 1,
+      "name": "full-three-rule-audit",
+      "prompt": "We're about to use the R package `myanalysis` to produce efficacy summary tables for a CSR, and our stats lead set the reporting policy: round to nearest with exact ties away from zero at the specified display precision (2.5 -> 3, -2.5 -> -3, SAS-compatible). She doesn't trust the trailing zeros in the mock tables either.\n\nThe package source is at `fixtures/myanalysis/` and her approved display-precision spec is `fixtures/precision-spec.yml`. Audit `myanalysis/R/**/*.R`. Treat exported `report_*()` functions as the report entry points and follow package-local calls from them. She is the rule owner and will classify whatever you find.\n\nWrite the audit to `report.md` in the output directory, with any demo scripts you run and their captured output alongside it.",
+      "files": ["fixtures/myanalysis/", "fixtures/precision-spec.yml"],
+      "expected_output": "report.md with an inventory row per (operation, entry path), Coverage, Findings, Clean checks, Limitations, and embedded executed witnesses. Matches fixtures/ANSWER-KEY.md.",
+      "assertions": [
+        {"id": "a1",  "text": "Flags R/report-means.R:6 with Tie method = FAIL, showing an executed witness of observed 2 vs policy 3 for input 2.5"},
+        {"id": "a2",  "text": "Traces R/report-change.R:6 together with its downstream display call and reports Rounding stage = FAIL, with the executed witness early-rounded 1.5 vs round-once 1.4 for c(1.25,1.25,1.75) at one decimal"},
+        {"id": "a3",  "text": "Flags the as.character() display path reached from report_exposure() with Display precision = FAIL, observed \"76\" against the spec's required \"76.00\""},
+        {"id": "a4",  "text": "Flags R/report-counts.R:7 where round(pct,0) precedes the row-inclusion threshold, showing that a term at exactly 2.5% is wrongly dropped"},
+        {"id": "a5",  "text": "Finds the %/% quantization inside pct_label() (R/rounding-helpers.R:18) and reports Tie method = FAIL"},
+        {"id": "a6",  "text": "Finds the run-time dispatched formatting call in R/report-listing.R (do.call(sprintf, ...)), which produces zero scanner hits, and reports its tie divergence"},
+        {"id": "a7",  "text": "Flags the missing trailing zero in pct_label()'s paste0 output (2.0 renders as \"2%\" where the spec requires \"2.0%\")"},
+        {"id": "a8",  "text": "Reports round_half_away() as a PASS with tie-vector evidence and does not recommend rewriting it"},
+        {"id": "a9",  "text": "Reports the report_rates() helper-plus-formatter path as compliant, with no finding raised against it"},
+        {"id": "a10", "text": "Marks report_ci() NOT ASSESSABLE on at least one rule, names the absent precision-spec entry as the reason, and does not assume a precision"},
+        {"id": "a11", "text": "Lists the solver_*, plot_* and vignette hits in Coverage as excluded with reasons, and scores none of them as findings"},
+        {"id": "a12", "text": "Attributes formatC/round divergence to two distinct causes (tie mode and binary representation) and does not claim formatC uses banker's rounding"},
+        {"id": "a13", "text": "Embeds executed output rather than asserted values: the report contains probe stdout including R.version.string, and any demo script it wrote runs successfully when re-run"},
+        {"id": "a14", "text": "Gives a Display precision fix as fixed character output (formatC/sprintf/as_char), never a numeric-only helper"},
+        {"id": "a15", "text": "Names the rule owner and states that classification is hers; makes no source edit and posts nothing"},
+        {"id": "a16", "text": "Coverage states the number of files examined and does not treat a file with zero scanner hits as cleared"},
+        {"id": "a17", "text": "Distinguishes the shared formatC site at R/render.R:5 by entry path rather than giving it one collapsed verdict"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "trailing-zeros-narrow-ask",
+      "prompt": "Our mock tables for the AE section show `76` where the spec says two decimals, and one of the percent columns shows `2%` instead of `2.0%`. Can you look through `fixtures/myanalysis/R/` and tell me where those are coming from and how to fix them? Spec is in `fixtures/precision-spec.yml`. Save what you find to `report.md`.",
+      "files": ["fixtures/myanalysis/", "fixtures/precision-spec.yml"],
+      "expected_output": "Locates both display-precision defects with executed string witnesses, recommends fixed character output, and names the tie and stage rules as either checked or explicitly unchecked rather than silently narrowing.",
+      "assertions": [
+        {"id": "b1", "text": "Locates the as.character() call reached from report_exposure() as the source of \"76\""},
+        {"id": "b2", "text": "Locates pct_label()'s paste0 output as the source of \"2%\""},
+        {"id": "b3", "text": "Compares strings rather than numbers, showing an executed witness such as as.character(76.00) giving \"76\" against the required \"76.00\""},
+        {"id": "b4", "text": "Recommends fixed character output and states that a numeric-only rounding helper does not fix trailing zeros"},
+        {"id": "b5", "text": "Names the tie-method and rounding-stage rules as checked or explicitly unchecked rather than silently narrowing to display precision"},
+        {"id": "b6", "text": "Does not edit the fixture source"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "missing-precision-spec",
+      "prompt": "Please check `fixtures/myanalysis/R/` for SAS-style rounding compliance — we want ties going away from zero like SAS does, not R's default. I don't have a display spec written down anywhere, just go with what looks reasonable. Put the results in `report.md`.",
+      "files": ["fixtures/myanalysis/"],
+      "expected_output": "Reports tie-method findings that the source alone supports, and marks display precision NOT ASSESSABLE naming the missing spec, rather than inventing precision requirements.",
+      "assertions": [
+        {"id": "c1", "text": "Marks display precision NOT ASSESSABLE (or equivalent) and names the absent specification as what is missing"},
+        {"id": "c2", "text": "Does not invent a per-statistic display precision and then score against it"},
+        {"id": "c3", "text": "Still reports the tie-method findings the source itself supports, such as the hardcoded round(mean(pct), 0) in report_means()"},
+        {"id": "c4", "text": "Asks the user for the specification, or states plainly that the review is incomplete without it"},
+        {"id": "c5", "text": "Does not silently proceed as though the audit were complete"}
+      ]
+    }
+  ]
+}

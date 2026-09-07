@@ -34,3 +34,4 @@ clinical-trial-simulation/**/*.html
 
 # Local /simulate launcher (per-user; do not ship)
 /.claude/commands/simulate.md
+rounding-workspace/

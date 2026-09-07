@@ -1,33 +1,29 @@
 # Rounding compliance report -- <package> <version/commit>
 
-Target: <repo link or folder path>
+Target: [<repo link pinned to commit>](<url>) or folder path: <path>
 Environment: <R.version.string; rounding package versions>
-Policy: <tie policy and version>; Entry points: <e.g. report_*()>
+Policy: <tie policy and version>;
+Status: **Draft for review.** No source was changed and nothing was posted.
+Verdict: **<PASS / FAIL / NOT ASSESSABLE>** (FAIL if any row fails, NOT ASSESSABLE if none fails and at least one is uncheckable, else PASS).
 
-## Inventory (one row per in-scope operation)
+## Summary
 
-| # | File:line | Report entry path | Resolved function (ns/method/class/ver) | Precision spec | Executed witness | Tie | Stage | Display | Overall | Recommendation |
-|---|-----------|-------------------|------------------------------------------|----------------|------------------|-----|-------|---------|---------|----------------|
-| 1 | R/...:NN  | report_x() -> f() | base::round, ...                         | 0 digits, ...  | code + output    | FAIL| ...   | ...     | FAIL    | ...            |
+| Site | What | Tie | Stage | Display | Overall |
+|------|------|-----|-------|---------|---------|
+| R/...:NN | <formatter + digits> | <PASS/FAIL> | <PASS/FAIL> | <PASS/FAIL> | <PASS/FAIL> |
 
-Overall is FAIL if any rule fails, NOT ASSESSABLE if none fails and at
-least one is uncheckable, else PASS. Compliant helper-plus-formatter paths
-pass with evidence and are not rewritten.
+Fix (advisory): <one-line helper + formatter + neg-zero guard>
 
-## Coverage
+## Appendix
 
-- Files examined: <N> (list or glob)
-- Scan output: <paste scripts/scan-rounding-calls.R stdout>
-- Catalog candidates: <K> (every match incl. excluded)
-- In-scope rows: <N-in> (all present, none missing)
-- Excluded hits: <M> (solver_*/plot_*/out-of-reach, each file:line + reason;
-  never scored)
+### A. Coverage
+- Scanned <N> R files; <K> catalog hits, <N-in> in-scope. Excluded (never scored): <file:line + reason each>.
 
-## Findings (FAIL rows only -- file:line, policy-vs-actual witness, fix witness)
+### B. Evidence (executed)
+- <policy-vs-actual witnesses, e.g. formatC(2.5)="2" vs "3", "-0" vs never "-0"; stage round-once and trailing-zero checks>
 
-## Clean checks (PASS rows with evidence, not rewritten)
+### C. Limitations
+- <missing specs, binary-representation caveats, uninstalled helpers, untraced paths>
 
-## Limitations (NOT ASSESSABLE rows, unchecked rules, binary-representation
-caveats)
-
-## Witness log (paste scripts/probe-tie-behavior.R stdout)
+### D. Witness log
+- <paste scripts/probe-tie-behavior.R stdout, trimmed to key lines>

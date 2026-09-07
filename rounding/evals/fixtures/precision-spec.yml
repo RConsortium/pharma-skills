@@ -1,0 +1,60 @@
+# Approved display-precision specification for the `myanalysis` fixture.
+#
+# This is the controlled input a rule owner supplies alongside the source.
+# The skill must not invent an entry that is absent here.
+
+rule_set: "BR-001 / BR-002 / BR-003"
+rule_version: "1.0"
+rule_owner: "A. Reviewer, Biometrics (rule owner for this review)"
+comparison_behavior: "half away from zero: 2.5 -> 3, -2.5 -> -3; a displayed value is never a signed zero"
+entry_point_pattern: "report_*"
+
+statistics:
+  - id: mean_pct
+    label: "Mean percentage of subjects with an event"
+    entry_point: "report_means()"
+    digits: 0
+    trailing_zeros: true
+
+  - id: change_mean
+    label: "Mean change from baseline"
+    entry_point: "report_change()"
+    digits: 1
+    trailing_zeros: true
+
+  - id: exposure_total
+    label: "Total exposure in person-months"
+    entry_point: "report_exposure()"
+    digits: 2
+    trailing_zeros: true
+
+  - id: event_rate
+    label: "Exposure-adjusted event rate per 100 person-months"
+    entry_point: "report_rates()"
+    digits: 2
+    trailing_zeros: true
+
+  - id: incidence_pct
+    label: "Incidence percentage in the adverse-event table"
+    entry_point: "report_counts()"
+    digits: 1
+    trailing_zeros: true
+    row_threshold: 2.5
+    row_threshold_basis: "the unrounded percentage decides row inclusion"
+
+  - id: listing_value
+    label: "Subject-level analysis value in the listing"
+    entry_point: "report_listing()"
+    digits: 1
+    trailing_zeros: true
+
+# Approved allowlist. An entry means the rule owner has already classified the
+# site, so it is reported as a reviewed PASS rather than re-triaged each run.
+# It stays visible in Coverage, and any change to the named source returns it
+# to review.
+allowlist:
+  - site: "R/rounding-helpers.R::round_half_away()"
+    rule: BR-001
+    reason: "Reviewed 2026-09-06: half-away arithmetic verified on exact ties at 0, 1 and 2 decimals."
+    source_version: "myanalysis 0.1.0"
+    approved_by: "A. Reviewer"

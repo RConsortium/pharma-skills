@@ -13,40 +13,64 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.2"
+  version: "0.4"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
-# Rounding compliance review 
+# Rounding compliance review
 
 Advisory review only. Find candidates, reproduce behavior with executed code,
 and draft findings for a named human to classify. Do not edit source, change
 policy, approve a classification, or post an external issue.
 
+The point of the review is not to find `round()`. It is to establish which
+operations can change a number a reader sees or a number that decides which
+rows they see, and then to prove what each one actually does. Those are
+different questions, and only the second one needs a machine.
+
 ## Bundled resources
 
 | File | What it contains | When to use |
 |------|-----------------|-------------|
-| `references/br-001-tie-method.md` | Tie rule, FAIL signature, versioned-helper fix | Step 4, when BR-001 is in scope |
+| `references/function-catalog.md` | In-scope/excluded functions, where rounding hides | Step 2 |
+| `references/br-001-tie-method.md` | Tie rule, two causes, FAIL signature, versioned-helper fix | Step 4, when BR-001 is in scope |
 | `references/br-002-rounding-stage.md` | Stage rule, FAIL signature, remove-early-rounding fix | Step 4, when BR-002 is in scope |
 | `references/br-003-display-precision.md` | Display rule, FAIL signature, fixed-character fix | Step 4, when BR-003 is in scope |
-| `references/function-catalog.md` | In-scope/excluded functions, wrapper search | Step 2 |
-| `references/worked-example-metalite.md` | metalite.ae v0.1.4 answer key | Steps 3 and 5, to calibrate coverage and probes |
-| `scripts/scan-rounding-calls.R` | First-pass file inventory + catalog scan | Step 2; its output is never complete coverage |
-| `scripts/probe-tie-behavior.R` | Fixed tie/stage/display witnesses + environment | Step 5, embed stdout |
+| `scripts/scan-rounding-calls.R` | Parse-tree inventory: catalog calls, quantizing operators, wrapper closure | Step 2; its output is never complete coverage |
+| `scripts/probe-tie-behavior.R` | Executed tie/stage/display witnesses; `--digits` for per-site precision | Step 5, embed stdout |
 | `assets/report-template.md` | `report.md` structure | Step 6 |
 
 Do NOT read or run these upfront. Use each only when the step directs.
 
+## Required inputs
+
+Collect these before scanning. A rule the request is silent on is
+`NOT ASSESSABLE` -- name it as unchecked rather than inventing it.
+
+- **Target**: a local folder or a repo link pinned to a commit, read-only. Pin
+  it: an unpinned reference silently stops reproducing when the source moves.
+- **Precision spec**: required digits and trailing-zero expectation per
+  reported statistic. A statistic with no entry is `NOT ASSESSABLE`.
+- **Tie policy and its version**, plus the comparison helper the rule owner
+  selected and that package's version.
+- **Entry points**: which exported functions produce reported output (often
+  `report_*()`). Reachability from an entry point is what makes a site in scope.
+- **Rule owner**: the named person who will classify each finding. Record the
+  name in the report. An unnamed gate is not a gate.
+- **Allowlist** (optional): sites the rule owner has already classified. See
+  below.
+
 ## Procedure
 
-1. **Confirm inputs.** Target (repo link or a local folder, read-only), precision spec per reported
-   statistic, tie policy and entry points (defaults: half away from zero), and the `report.md` path. 
-   A rule the request is silent on is `NOT ASSESSABLE` -- do not invent it.
+1. **Confirm inputs.** Resolve the list above and the `report.md` path, using
+   the source to settle whatever it can settle. Ask about a gap you cannot
+   close, but do not let one unanswered question stop the parts of the review
+   it does not touch -- see *Missing inputs* below.
 2. **Scan (first pass only).** Read `references/function-catalog.md`, run
-   `scripts/scan-rounding-calls.R`, preserve the output -- then infer where
-   else rounding can hide: the script never clears a file. Label each
-   candidate `catalog` or `exploratory`.
+   `scripts/scan-rounding-calls.R`, preserve the full output. Then infer where
+   else rounding can hide: the script never clears a file. Label each candidate
+   `catalog`, `wrapper`, `operator`, or `exploratory` and keep those labels to
+   the end, so a reader can tell reproducible output from your reasoning.
 3. **Trace and triage.** From each entry point follow package-local calls.
    Keep reachable operations as rows; move the rest to Coverage as excluded
    with reasons. Trace paired sites (early rounding + downstream display or
@@ -54,20 +78,118 @@ Do NOT read or run these upfront. Use each only when the step directs.
 4. **Resolve against the rules.** For each row state namespace, method/class,
    and version, then read the matching `references/br-00x-*.md` for the FAIL
    signature and fix.
-5. **Prove.** Run `scripts/probe-tie-behavior.R` and embed its stdout in the
-   report, plus per-finding before/after witnesses. Unexecuted claims are not
-   evidence.
+5. **Prove.** Run `scripts/probe-tie-behavior.R` and embed its stdout, then
+   re-run it with `--digits N` for each distinct precision the target displays
+   -- a witness at the wrong precision does not test the site. Unexecuted
+   claims are not evidence.
+
+   Every finding needs two executed witnesses: the **before**, showing the
+   observed value against the policy value, and the **after**, showing that the
+   fix you recommend actually produces the policy value. A recommendation no one
+   has run is a guess, and it is the part of the report a reader is most likely
+   to paste into the codebase. If the selected package helper is not installed,
+   demonstrate the fix *pattern* with the probe's dependency-free half-away
+   arithmetic and say that is what you did -- still recommend the versioned
+   package, and note that its exact behavior at inexact ties was not confirmed
+   here.
 6. **Verdict and write.** Per row: Tie / Stage / Display as `PASS` / `FAIL` /
    `NOT ASSESSABLE`; Overall is `FAIL` if any rule fails, `NOT ASSESSABLE`
    if none fails and at least one is uncheckable, else `PASS`. Compliant
    helper-plus-formatter paths pass -- do not rewrite them. Complete
    `assets/report-template.md` as `report.md`, the only deliverable.
 
+## One row per operation *and* entry path
+
+The same site can be compliant on one path and defective on another. A shared
+formatter that receives a value already rounded half-away is a no-op; the same
+formatter receiving an unrounded value is itself the rounding step, and
+`formatC()` and `sprintf()` are not half-away. Give each
+(operation, entry path) pair its own row. A single collapsed verdict for a
+shared helper is wrong in one direction or the other.
+
+Split by *distinct behavior*, not by syntax. Two calls to the same operation on
+the same path with the same precision -- both bounds of a confidence interval,
+say -- share one row; note that it covers two call sites. Splitting them inflates
+the inventory without adding a verdict.
+
+Every in-scope operation gets a row, including compliant and allowlisted ones.
+An allowlisted helper is a reviewed `PASS` **in the inventory**; recording it only
+in the allowlist table drops it out of the count a reader uses to check your
+coverage, which is the opposite of what an allowlist is for.
+
+Signed zero is part of BR-001, not a fourth rule. A site that renders `-0`
+fails the tie rule; do not open a separate verdict column for it, and do not
+fail a downstream no-op formatter for a signed zero its caller produced --
+the finding belongs to the operation that created the value.
+
+## Two causes, never one
+
+When a formatting call diverges from policy, say which of these is acting --
+usually both, and they can push in opposite directions:
+
+1. **Tie mode.** `base::round()` is half-to-even at a true tie.
+2. **Binary representation.** Most decimal ties are not stored exactly, so the
+   result follows the stored value rather than the printed one.
+
+Do not compress this into "the function uses banker's rounding". That claim is
+false for `formatC()` and `sprintf()`, and it predicts the wrong direction for
+half the inputs. At zero decimals every `x.5` tie is stored exactly, so cause 1
+acts alone; decimals bring in cause 2. This is why the probe, not source
+reading, is the evidence.
+
+Also check that no displayed value is a signed zero: a small negative value
+formatted at the display precision can render as `-0` or `-0.0`.
+
+## Allowlist
+
+An allowlist entry is a classification the rule owner already made, not a
+reason to stop looking. An entry needs a reason, a source version, and an
+approver. Report the site as a reviewed `PASS`, keep it visible in Coverage,
+and return it to full review if the named source has changed since approval --
+otherwise the allowlist quietly becomes a blind spot. Never add, edit, or infer
+an entry yourself; proposing one to the rule owner is the most you may do.
+
+## Missing inputs: narrow the verdict, don't abandon the review
+
+Most gaps make particular cells unassessable rather than making the review
+impossible, and the two need opposite responses.
+
+First, try to close the gap from the source. `NAMESPACE` and `@export` tags
+usually settle the entry points; a call with a literal `digits` argument
+carries its own precision. A gap you can close by reading is not a blocker, and
+listing it as one is a false blocker that costs the reader a real audit.
+
+If a gap survives that, audit everything it does not touch and mark only the
+affected cells `NOT ASSESSABLE`, naming the specific missing item. A statistic
+with no precision entry has an unassessable Display verdict. That says nothing
+about its tie method, nothing about its rounding stage, and nothing whatever
+about the other statistics -- a site whose precision is written into the source
+as `round(x, 0)` is fully assessable on the tie rule no matter what the spec
+omits.
+
+Do not let the source stand in for the spec, though. A roxygen comment saying
+"2 decimals" is the code describing itself, so grading the code against it is
+circular. Use such a comment to choose probe precisions, never to award a
+Display `PASS`.
+
+A review that reports nothing because one input was missing is worse than one
+that proves what it can and states exactly what it could not: the reader learns
+nothing from the first and can act on the second.
+
 ## Stop and escalate
 
-Stop when the rule version, precision, tie intent, source, or comparison
-behavior is unresolved, files are unreadable, a script fails, or a documented
-conflicting convention exists. Record the blocker and stop.
+Stop the whole review only when no trustworthy evidence is obtainable at all:
+
+- the source cannot be read or located;
+- no report entry point can be identified, even from `NAMESPACE`;
+- `probe-tie-behavior.R` reports an unexpected result -- this environment does
+  not behave as the rule references describe, so no witness from it can be
+  trusted;
+- the target documents a convention that conflicts with the stated policy, so
+  which rule applies is a question for the rule owner, not for you.
+
+Record the blocker and stop. Everything else is a `NOT ASSESSABLE` cell in a
+report you still deliver.
 
 ## When NOT to use this skill
 
