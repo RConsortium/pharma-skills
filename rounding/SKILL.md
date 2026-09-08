@@ -1,32 +1,58 @@
 ---
 name: rounding
 description: >
-  Audit R code that prepares clinical-report statistics for SAS-compatible
-  rounding compliance (ties away from zero, round-once-at-display,
-  fixed display precision with trailing zeros). Use this skill whenever the
-  user asks to review, check, verify, or fix rounding in R code,
-  mentions SAS rounding, half-away-from-zero,
-  display precision, trailing zeros, early rounding, or names round(),
+  Audit R code that prepares CSR/TLF statistics for SAS-compatible rounding
+  compliance (ties away from zero, round-once-at-display, fixed trailing-zero
+  precision). Make sure to use this skill whenever the user asks to review,
+  check, verify, or fix rounding, mentions SAS rounding, half-away-from-zero,
+  display precision, trailing zeros, early rounding, mock tables showing 76
+  not 76.00, percentages off by 1 at the half point, or names round(),
   formatC(), sprintf(), format(), signif(), prettyNum(), cards::round5,
-  tidytlg::roundSAS, or janitor::round_half_up in a CSR/TLF/report context --
-  even if they don't say the word "rounding".
+  tidytlg::roundSAS, or janitor::round_half_up in a clinical-report context --
+  even if they don't say the word rounding.
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.5"
+  version: "0.7"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
 # Rounding compliance review
 
-Advisory review only. Find candidates, reproduce behavior with executed code,
-and draft findings for a named human to classify. Do not edit source, change
-policy, approve a classification, or post an external issue.
+Default to an advisory report. Do not edit source, change policy, or approve a
+classification. When the user explicitly asks to file a finding, create one
+fix-ready issue in the **audited repository**, not in this skill's repository.
 
 The point of the review is not to find `round()`. It is to establish which
 operations can change a number a reader sees or a number that decides which
 rows they see, and then to prove what each one actually does. Those are
 different questions, and only the second one needs a machine.
+
+## When to Use
+
+Use this skill when the user asks to:
+
+- audit, check, verify, or fix rounding in R reporting code (even if they
+  don't say the word "rounding")
+- compare R and SAS rounding, or mentions ties-away-from-zero / half-away
+- debug trailing-zero or fixed-precision display (e.g. mock tables show
+  `76` where the spec requires `76.00`, or `2%` where it requires `2.0%`)
+- investigate percentages or statistics "off by 1 at the half point"
+- review TLF/CSR/display code that calls `round()`, `formatC()`, `sprintf()`,
+  `format()`, `signif()`, `prettyNum()`, `cards::round5`, `tidytlg::roundSAS`,
+  or `janitor::round_half_up`, or describes early rounding / round-once-at-display
+
+See also *When NOT to use this skill* at the end.
+
+## Scope example
+
+A repository audit is not limited to installed package code. Treat executable
+reporting examples in `Rmd`/`qmd` as report entry paths too: a vignette that
+computes a mean, percentage, CI, or p-value and sends it to `rtf_*()`,
+`write_rtf()`, a table, or a listing is in scope even when no exported
+`report_*()` function calls it. Tests and pure rendering/layout examples stay
+visible in Coverage and are excluded unless they themselves generate report
+statistics.
 
 ## Bundled resources
 
@@ -53,8 +79,9 @@ Collect these before scanning. A rule the request is silent on is
   reported statistic. A statistic with no entry is `NOT ASSESSABLE`.
 - **Tie policy and its version**, plus the comparison helper the rule owner
   selected and that package's version.
-- **Entry points**: which exported functions produce reported output (often
-  `report_*()`). Reachability from an entry point is what makes a site in scope.
+- **Entry paths**: exported report functions, scripts, and executable chunks in
+  `.Rmd`/`.qmd`/`.Rnw` that calculate or prepare reported statistics. A caller
+  need not be exported: observable reporting behavior makes it in scope.
 - **Rule owner**: the named person who will classify each finding. Record the
   name in the report. An unnamed gate is not a gate.
 - **Allowlist** (optional): sites the rule owner has already classified. See
@@ -66,15 +93,20 @@ Collect these before scanning. A rule the request is silent on is
    the source to settle whatever it can settle. Ask about a gap you cannot
    close, but do not let one unanswered question stop the parts of the review
    it does not touch -- see *Missing inputs* below.
-2. **Scan (first pass only).** Read `references/function-catalog.md`, run
-   `scripts/scan-rounding-calls.R`, preserve the full output. Then infer where
-   else rounding can hide: the script never clears a file. Label each candidate
-   `catalog`, `wrapper`, `operator`, or `exploratory` and keep those labels to
-   the end, so a reader can tell reproducible output from your reasoning.
-3. **Trace and triage.** From each entry point follow package-local calls.
-   Keep reachable operations as rows; move the rest to Coverage as excluded
-   with reasons. Trace paired sites (early rounding + downstream display or
-   decision) together.
+2. **Scan the whole repository (first pass only).** Read
+   `references/function-catalog.md`, then run `scripts/scan-rounding-calls.R`
+   at the repository root—not just `R/`. Confirm Coverage accounts separately
+   for every discovered `.R`, `.r`, `.Rmd`, `.rmd`, `.qmd`, and `.Rnw` file;
+   use `--include-tests` when tests contain reporting fixtures or executable
+   examples. Preserve the full output. The scanner never clears a file, so
+   inspect zero-hit literate files and infer where dynamic rounding can hide.
+   Label candidates `catalog`, `wrapper`, `operator`, or `exploratory`.
+3. **Trace and triage.** Follow each reporting path, including standalone
+   vignette/helper chunks that compute statistics before table or file output.
+   Export status is irrelevant. Keep each reachable reporting operation as a
+   row; move layout, encoding, solver, plotting, and ordinary test-only hits to
+   Coverage with reasons. Trace paired sites (early rounding + downstream
+   display or decision) together.
 4. **Resolve against the rules.** For each row state namespace, method/class,
    and version, then read the matching `references/br-00x-*.md` for the FAIL
    signature and fix.
@@ -104,8 +136,39 @@ Collect these before scanning. A rule the request is silent on is
 6. **Verdict and write.** Per row: Tie / Stage / Display as `PASS` / `FAIL` /
    `NOT ASSESSABLE`; Overall is `FAIL` if any rule fails, `NOT ASSESSABLE`
    if none fails and at least one is uncheckable, else `PASS`. Compliant
-   helper-plus-formatter paths pass -- do not rewrite them. Complete
-   `assets/report-template.md` as `report.md`, the only deliverable.
+   helper-plus-formatter paths pass -- do not rewrite them.
+
+   ALWAYS use the exact structure in `assets/report-template.md` (see
+   *Report structure* below) for the audit deliverable; do not invent or rename
+   report sections.
+
+7. **File a target-repository issue only when explicitly authorized.** First
+   search the target repository's open issues for the exact paths/rules to
+   avoid duplicates. For each actionable FAIL, create at most one issue in the
+   target repository with: affected `file:line` paths; actual versus required
+   behavior; a minimal executed reproduction; a bounded remediation pattern;
+   acceptance criteria covering positive and negative ties, round-once stage
+   where applicable, fixed-width display, and signed zero; and the pinned
+   target commit. Link the audit report, verify the issue after posting, and
+   report its URL. If the target is read-only, authorization is missing, or the
+   finding is only `NOT ASSESSABLE`, leave a local issue draft instead.
+
+## Report structure
+
+ALWAYS use this exact template from `assets/report-template.md`:
+
+```markdown
+# Rounding compliance report -- <package> <version/commit>
+Target / Environment / Policy / Status / Verdict (one line each)
+## Summary -- one row per (operation, entry path) with Tie/Stage/Display/Overall
+## Appendix A. Coverage -- files scanned, hits, excluded sites with file:line + reason
+## Appendix B. Evidence (executed) -- policy-vs-actual witnesses per row
+## Appendix C. Limitations -- missing specs, blind spots, uninstalled helpers
+## Appendix D. Witness log -- pasted scripts/probe-tie-behavior.R stdout
+```
+
+Fill every section from executed output; an empty section is a missing section,
+not a clean section.
 
 ## One row per operation *and* entry path
 
@@ -215,6 +278,14 @@ Stop the whole review only when no trustworthy evidence is obtainable at all:
 
 Record the blocker and stop. Everything else is a `NOT ASSESSABLE` cell in a
 report you still deliver.
+
+## Target-issue mode
+
+Use this mode only for a user-authorized, evidence-backed `FAIL`. The issue is
+a handoff to an implementer, not another audit: give it one defect cluster,
+source anchors, the exact observed/policy values, a non-prescriptive fix
+boundary, and executable acceptance tests. Never open an issue merely to
+repeat scanner candidates, layout/encoding exclusions, or missing policy.
 
 ## When NOT to use this skill
 

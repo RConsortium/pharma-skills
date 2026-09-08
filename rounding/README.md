@@ -6,10 +6,12 @@ with trailing zeros.
 
 ## What it does
 
-Given a pinned R source tree and an approved display-precision specification,
+Given a pinned repository and an approved display-precision specification,
 the skill inventories every operation that can change a displayed number or a
-number that decides which rows appear, proves what each one does with executed
-witnesses, and drafts a report for a named rule owner to classify.
+number that decides which rows appear. It scans installed R code plus executable
+reporting logic in scripts, READMEs, and vignettes (`.R`, `.Rmd`, `.qmd`,
+`.Rnw`), proves behavior with executed witnesses, and drafts a report for a
+named rule owner to classify.
 
 BR-001: Values intended as exact decimal ties are rounded half away from zero. A displayed value is never a negative zero.
 
@@ -17,8 +19,9 @@ BR-002: Calculations use unrounded values; rounding occurs once, when the final 
 
 BR-003: Display precision is specified for each reported statistic and preserved, including trailing zeros.
 
-It is an advisory drafting aid, not a QC replacement. It changes no source,
-approves no classification, and posts nothing.
+It is an advisory drafting aid, not a QC replacement. It changes no source or
+policy. When the user explicitly authorizes a fix-ready finding, it may create
+one deduplicated issue in the audited repository after evidence is verified.
 
 ## Usage
 
@@ -43,13 +46,17 @@ first and audit the working tree read-only.
 
 - `report.md` (inventory table + Coverage, Findings, Clean checks, Limitations,
   decisions required, with embedded executed witnesses)
+- With explicit authorization: one verified, fix-ready issue in the audited
+  repository (never in this skill repository unless it is the audit target)
 
 ## Requirements
 
 - R (>= 4.0) with `Rscript`. The scripts are base-R only; a half-away package
   (`cards`, `tidytlg`, `janitor`) is cross-checked when installed but is not
   required to produce witnesses.
-- No source edits, policy changes, or external posting.
+- No source edits or policy changes. External issues require explicit user
+  authorization, an evidence-backed FAIL, duplicate search, and read-back
+  verification.
 
 ## Benchmark
 
