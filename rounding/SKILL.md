@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.8"
+  version: "0.9"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -75,8 +75,12 @@ Collect these before scanning. A rule the request is silent on is
 
 - **Target**: a local folder or a repo link pinned to a commit, read-only. Pin
   it: an unpinned reference silently stops reproducing when the source moves.
-- **Precision spec**: required digits and trailing-zero expectation per
-  reported statistic. A statistic with no entry is `NOT ASSESSABLE`.
+- **Precision spec**: preferred digits and trailing-zero expectation per
+  reported statistic. If absent, infer digits from the reporting context
+  (literal `digits`, function defaults, table labels, and paired examples) and
+  default trailing-zero expectation to `true`. Record the inference and its
+  source; use `NOT ASSESSABLE` only when the context supplies no defensible
+  precision.
 - **Tie policy and its version**, plus the comparison helper the rule owner
   selected and that package's version.
 - **Entry paths**: exported report functions, scripts, and executable chunks in
@@ -246,18 +250,12 @@ usually settle the entry points; a call with a literal `digits` argument
 carries its own precision. A gap you can close by reading is not a blocker, and
 listing it as one is a false blocker that costs the reader a real audit.
 
-If a gap survives that, audit everything it does not touch and mark only the
-affected cells `NOT ASSESSABLE`, naming the specific missing item. A statistic
-with no precision entry has an unassessable Display verdict. That says nothing
-about its tie method, nothing about its rounding stage, and nothing whatever
-about the other statistics -- a site whose precision is written into the source
-as `round(x, 0)` is fully assessable on the tie rule no matter what the spec
-omits.
-
-Do not let the source stand in for the spec, though. A roxygen comment saying
-"2 decimals" is the code describing itself, so grading the code against it is
-circular. Use such a comment to choose probe precisions, never to award a
-Display `PASS`.
+If a gap survives that, infer the narrowest defensible display expectation from
+the reporting context: literal `digits`, function defaults, table labels, and
+paired examples. Default trailing zeros to required. Record the inference with
+its exact source and assess the Display cell against it. Use `NOT ASSESSABLE`
+only if no such context exists. That says nothing about its tie method, nothing
+about its rounding stage, and nothing whatever about the other statistics.
 
 A review that reports nothing because one input was missing is worse than one
 that proves what it can and states exactly what it could not: the reader learns
