@@ -60,3 +60,15 @@ Paste `scripts/probe-tie-behavior.R` stdout verbatim (include the default run + 
 ## Decisions Required (for the rule owner)
 
 List each `FAIL` / `NOT ASSESSABLE` row and the classification the owner must make. No approval is recorded here.
+
+## Target issue handoff (only when explicitly authorized)
+
+For one actionable FAIL cluster, prepare a target-repository issue with:
+
+- pinned commit and affected `file:line` paths;
+- actual versus policy behavior and the minimal executed reproduction;
+- a bounded fix pattern, without changing source in this review;
+- acceptance criteria: positive/negative ties, round-once stage where relevant,
+  fixed-width display, and no signed zero;
+- link to this report. Search for a duplicate, post only with authorization,
+  then read the issue back and record its URL.

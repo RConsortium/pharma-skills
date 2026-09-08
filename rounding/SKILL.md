@@ -13,15 +13,15 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.6"
+  version: "0.7"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
 # Rounding compliance review
 
-Advisory review only. Find candidates, reproduce behavior with executed code,
-and draft findings for a named human to classify. Do not edit source, change
-policy, approve a classification, or post an external issue.
+Default to an advisory report. Do not edit source, change policy, or approve a
+classification. When the user explicitly asks to file a finding, create one
+fix-ready issue in the **audited repository**, not in this skill's repository.
 
 The point of the review is not to find `round()`. It is to establish which
 operations can change a number a reader sees or a number that decides which
@@ -139,8 +139,19 @@ Collect these before scanning. A rule the request is silent on is
    helper-plus-formatter paths pass -- do not rewrite them.
 
    ALWAYS use the exact structure in `assets/report-template.md` (see
-   *Report structure* below). That template is the only deliverable; do not
-   invent sections or rename them.
+   *Report structure* below) for the audit deliverable; do not invent or rename
+   report sections.
+
+7. **File a target-repository issue only when explicitly authorized.** First
+   search the target repository's open issues for the exact paths/rules to
+   avoid duplicates. For each actionable FAIL, create at most one issue in the
+   target repository with: affected `file:line` paths; actual versus required
+   behavior; a minimal executed reproduction; a bounded remediation pattern;
+   acceptance criteria covering positive and negative ties, round-once stage
+   where applicable, fixed-width display, and signed zero; and the pinned
+   target commit. Link the audit report, verify the issue after posting, and
+   report its URL. If the target is read-only, authorization is missing, or the
+   finding is only `NOT ASSESSABLE`, leave a local issue draft instead.
 
 ## Report structure
 
@@ -267,6 +278,14 @@ Stop the whole review only when no trustworthy evidence is obtainable at all:
 
 Record the blocker and stop. Everything else is a `NOT ASSESSABLE` cell in a
 report you still deliver.
+
+## Target-issue mode
+
+Use this mode only for a user-authorized, evidence-backed `FAIL`. The issue is
+a handoff to an implementer, not another audit: give it one defect cluster,
+source anchors, the exact observed/policy values, a non-prescriptive fix
+boundary, and executable acceptance tests. Never open an issue merely to
+repeat scanner candidates, layout/encoding exclusions, or missing policy.
 
 ## When NOT to use this skill
 
