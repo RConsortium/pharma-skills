@@ -51,9 +51,7 @@ first and audit the working tree read-only.
 
 ## Requirements
 
-- R (>= 4.0) with `Rscript`. The scripts are base-R only; a half-away package
-  (`cards`, `tidytlg`, `janitor`) is cross-checked when installed but is not
-  required to produce witnesses.
+- R (>= 4.0) with `Rscript`. The scripts are base-R only.
 - No source edits or policy changes. External issues require explicit user
   authorization, an evidence-backed FAIL, duplicate search, and read-back
   verification.

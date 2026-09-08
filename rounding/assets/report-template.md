@@ -1,7 +1,7 @@
 # Rounding compliance report -- <package> <version/commit>
 
 Target: [<repo link pinned to commit>](<url>) or folder path: <path>
-Environment: <R.version.string; rounding package versions>
+Environment: <R.version.string>
 Policy: <tie policy and version; e.g. half away from zero 2.5->3, rule owner: Name>
 Status: **Draft for review.** No source was changed and nothing was posted.
 Verdict: **<PASS / FAIL / NOT ASSESSABLE>** (FAIL if any row fails, NOT ASSESSABLE if none fails and at least one is uncheckable, else PASS).
@@ -21,7 +21,7 @@ Fix (advisory): <one-line helper + formatter + neg-zero guard, e.g. `tidytlg::ro
 
 - Scanned <N> source files from the repository root; report counts by type (`R=<n> Rmd=<n> qmd=<n> Rnw=<n>`), <K> catalog hits, <in-scope> in-scope rows, <excluded> excluded.
 - State which literate reporting files (`Rmd`/`qmd`/`Rnw`) were treated as entry paths; a vignette is not excluded merely because it is not exported.
-- Full scanner output pasted (do not summarize -- paste verbatim).
+- Record the scanner totals and relevant `file:line` evidence; do not paste full scanner output.
 - Excluded (never scored), each with file:line + reason:
   - `R/...:NN` — reason (e.g. inside `solver_*()`, plot coordinates, character input, not reachable from `report_*()`)
 - Note: `R/report-listing.R` reports `hits: 0`; that is a scan result (dynamic `do.call` invisible to parse tree), not a clearance. Label any `exploratory` sites you add by reading the source.
@@ -46,16 +46,7 @@ Attribute `formatC`/`sprintf` divergence to two causes (tie mode + binary repres
 
 - Missing inputs: <which rule/row is NOT ASSESSABLE and what is missing, e.g. `report_ci()` has no entry in `precision-spec.yml`>
 - Blind spots: dynamic dispatch (`do.call`, `get`, `match.fun`), S3/S4 methods, dependency internals
-- Uninstalled helpers: <which versioned helper was recommended but not installed; whether built-in half-away arithmetic was used to demonstrate the pattern>
 - Untraced paths: <any entry path not fully traced>
-
-## Appendix D. Witness log
-
-Paste `scripts/probe-tie-behavior.R` stdout verbatim (include the default run + each `--digits N` run). Must include `R.version.string` and package versions. Unexecuted claims are not evidence.
-
-```
-<paste stdout here>
-```
 
 ## Decisions Required (for the rule owner)
 

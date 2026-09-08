@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.7"
+  version: "0.8"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -63,7 +63,7 @@ statistics.
 | `references/br-002-rounding-stage.md` | Stage rule, FAIL signature, remove-early-rounding fix | Step 4, when BR-002 is in scope |
 | `references/br-003-display-precision.md` | Display rule, FAIL signature, fixed-character fix | Step 4, when BR-003 is in scope |
 | `scripts/scan-rounding-calls.R` | Parse-tree inventory: catalog calls, quantizing operators, wrapper closure | Step 2; its output is never complete coverage |
-| `scripts/probe-tie-behavior.R` | Executed tie/stage/display witnesses; `--digits` for per-site precision | Step 5, embed stdout |
+| `scripts/probe-tie-behavior.R` | Executed tie/stage/display witnesses; `--digits` for per-site precision | Step 5 |
 | `assets/report-template.md` | `report.md` structure | Step 6 |
 
 Do NOT read or run these upfront. Use each only when the step directs.
@@ -110,7 +110,7 @@ Collect these before scanning. A rule the request is silent on is
 4. **Resolve against the rules.** For each row state namespace, method/class,
    and version, then read the matching `references/br-00x-*.md` for the FAIL
    signature and fix.
-5. **Prove.** Run `scripts/probe-tie-behavior.R` and embed its stdout, then
+5. **Prove.** Run `scripts/probe-tie-behavior.R`, then
    re-run it with `--digits N` for each distinct precision the target displays
    -- a witness at the wrong precision does not test the site. Unexecuted
    claims are not evidence.
@@ -128,7 +128,7 @@ Collect these before scanning. A rule the request is silent on is
    observed value against the policy value, and the **after**, showing that the
    fix you recommend actually produces the policy value. A recommendation no one
    has run is a guess, and it is the part of the report a reader is most likely
-   to paste into the codebase. If the selected package helper is not installed,
+   to paste into the codebase. If the selected package helper cannot be run,
    demonstrate the fix *pattern* with the probe's dependency-free half-away
    arithmetic and say that is what you did -- still recommend the versioned
    package, and note that its exact behavior at inexact ties was not confirmed
@@ -163,8 +163,7 @@ Target / Environment / Policy / Status / Verdict (one line each)
 ## Summary -- one row per (operation, entry path) with Tie/Stage/Display/Overall
 ## Appendix A. Coverage -- files scanned, hits, excluded sites with file:line + reason
 ## Appendix B. Evidence (executed) -- policy-vs-actual witnesses per row
-## Appendix C. Limitations -- missing specs, blind spots, uninstalled helpers
-## Appendix D. Witness log -- pasted scripts/probe-tie-behavior.R stdout
+## Appendix C. Limitations -- missing specs and blind spots
 ```
 
 Fill every section from executed output; an empty section is a missing section,
