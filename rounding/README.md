@@ -6,7 +6,7 @@ with trailing zeros.
 
 ## What it does
 
-Given a pinned repository and an approved display-precision specification,
+Given a pinned repository and a display-precision specification when available,
 the skill inventories every operation that can change a displayed number or a
 number that decides which rows appear. It scans installed R code plus executable
 reporting logic in scripts, READMEs, and vignettes (`.R`, `.Rmd`, `.qmd`,
@@ -37,7 +37,9 @@ first and audit the working tree read-only.
 ## Inputs
 
 - Pinned source tree and the report entry points
-- Display-precision spec per reported statistic
+- Display-precision spec per reported statistic when available; otherwise the
+  audit infers digits from reporting context and assumes trailing zeros are
+  required, recording the rationale
 - Tie policy and version, and the comparison helper the rule owner selected
 - The rule owner's name
 - Optional allowlist of sites already classified

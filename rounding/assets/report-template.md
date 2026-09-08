@@ -3,6 +3,7 @@
 Target: [<repo link pinned to commit>](<url>) or folder path: <path>
 Environment: <R.version.string>
 Policy: <tie policy and version; e.g. half away from zero 2.5->3, rule owner: Name>
+Display inference: <approved spec, or contextual digits source; trailing zeros default to required>
 Status: **Draft for review.** No source was changed and nothing was posted.
 Verdict: **<PASS / FAIL / NOT ASSESSABLE>** (FAIL if any row fails, NOT ASSESSABLE if none fails and at least one is uncheckable, else PASS).
 
@@ -44,7 +45,7 @@ Attribute `formatC`/`sprintf` divergence to two causes (tie mode + binary repres
 
 ## Appendix C. Limitations
 
-- Missing inputs: <which rule/row is NOT ASSESSABLE and what is missing, e.g. `report_ci()` has no entry in `precision-spec.yml`>
+- Display inference: <approved spec or contextual source for digits; `NOT ASSESSABLE` only when neither exists>
 - Blind spots: dynamic dispatch (`do.call`, `get`, `match.fun`), S3/S4 methods, dependency internals
 - Untraced paths: <any entry path not fully traced>
 
