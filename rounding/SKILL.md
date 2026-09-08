@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.9"
+  version: "0.10"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -76,11 +76,11 @@ Collect these before scanning. A rule the request is silent on is
 - **Target**: a local folder or a repo link pinned to a commit, read-only. Pin
   it: an unpinned reference silently stops reproducing when the source moves.
 - **Precision spec**: preferred digits and trailing-zero expectation per
-  reported statistic. If absent, infer digits from the reporting context
-  (literal `digits`, function defaults, table labels, and paired examples) and
-  default trailing-zero expectation to `true`. Record the inference and its
-  source; use `NOT ASSESSABLE` only when the context supplies no defensible
-  precision.
+  reported statistic. If absent, infer only from non-circular reporting context
+  (table labels, paired examples, or a stated default); code's own `digits` or
+  comments set probe precision but cannot establish compliance. Default trailing
+  zeros to required when the context supports a precision; otherwise use `NOT
+  ASSESSABLE`. Record the inference and its source.
 - **Tie policy and its version**, plus the comparison helper the rule owner
   selected and that package's version.
 - **Entry paths**: exported report functions, scripts, and executable chunks in
@@ -242,25 +242,13 @@ an entry yourself; proposing one to the rule owner is the most you may do.
 
 ## Missing inputs: narrow the verdict, don't abandon the review
 
-Most gaps make particular cells unassessable rather than making the review
-impossible, and the two need opposite responses.
+First close gaps from the source: `NAMESPACE` and `@export` tags settle entry
+points, while literal `digits` selects a probe precision. They do not establish
+Display compliance: code describing its own decimals is circular evidence.
 
-First, try to close the gap from the source. `NAMESPACE` and `@export` tags
-usually settle the entry points; a call with a literal `digits` argument
-carries its own precision. A gap you can close by reading is not a blocker, and
-listing it as one is a false blocker that costs the reader a real audit.
-
-If a gap survives that, infer the narrowest defensible display expectation from
-the reporting context: literal `digits`, function defaults, table labels, and
-paired examples. Default trailing zeros to required. Record the inference with
-its exact source and assess the Display cell against it. Use `NOT ASSESSABLE`
-only if no such context exists. That says nothing about its tie method, nothing
-about its rounding stage, and nothing whatever about the other statistics.
-
-A review that reports nothing because one input was missing is worse than one
-that proves what it can and states exactly what it could not: the reader learns
-nothing from the first and can act on the second.
-
+Audit every unaffected rule. Infer Display only from non-circular reporting
+context; otherwise mark that cell `NOT ASSESSABLE`, name the missing item, and
+deliver the partial report.
 ## Stop and escalate
 
 Stop the whole review only when no trustworthy evidence is obtainable at all:
