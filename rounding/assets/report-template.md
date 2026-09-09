@@ -29,6 +29,10 @@ Fix (advisory): <one-line helper + formatter + neg-zero guard, e.g. `tidytlg::ro
 
 ## Appendix B. Evidence (executed)
 
+Probe: <R.version.string>; `checks_run: 7 invariants_held: 7 unexpected: 0`
+(full logs as sidecars, not pasted). A numeric-only rounding helper does
+not fix trailing zeros; use fixed character output below.
+
 For each row, two witnesses:
 
 - **Before** -- observed value vs policy value at the site's own precision.

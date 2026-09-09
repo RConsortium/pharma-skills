@@ -13,7 +13,7 @@ description: >
 license: MIT
 metadata:
   author: Pharma Skills community
-  version: "0.10"
+  version: "0.11"
   rules-version: "BR-001/002/003 v1.0"
 ---
 
@@ -117,7 +117,10 @@ Collect these before scanning. A rule the request is silent on is
 5. **Prove.** Run `scripts/probe-tie-behavior.R`, then
    re-run it with `--digits N` for each distinct precision the target displays
    -- a witness at the wrong precision does not test the site. Unexecuted
-   claims are not evidence.
+   claims are not evidence. Embed `R.version.string` plus the probe
+   `checks_run / invariants_held / unexpected` line inline; keep full logs
+   as sidecars. State explicitly that a numeric-only helper cannot fix
+   trailing zeros.
 
    Write `report.md` incrementally -- skeleton first, witnesses second. Draft
    the inventory table and Coverage before perfecting any witness script, so
