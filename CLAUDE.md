@@ -17,7 +17,8 @@ pharma_skills/
 │   ├── admiral-adsl/          ← Subject-level dataset (ADSL)
 │   ├── admiral-bds/           ← BDS findings datasets (ADVS, ADLB)
 │   ├── admiral-adae/          ← Adverse events dataset (ADAE)
-│   └── admiral-adrs/          ← Tumor response dataset (ADRS, RECIST)
+│   ├── admiral-adrs/          ← Tumor response dataset (ADRS, RECIST)
+│   └── admiral-adtte/         ← Time-to-event dataset (ADTTE)
 ├── _automation/               ← Automation skills (see below)
 │   ├── benchmark-runner/      ← A/B benchmark orchestration
 │   ├── issue-to-eval/         ← GitHub Issue → evals.json converter
