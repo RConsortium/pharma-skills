@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.24
-  trialsimulator_min_version: "1.23.0"
+  version: 0.3.0
+  trialsimulator_min_version: "1.37.0"
 ---
 
 # TrialSimulator Skill
@@ -65,7 +65,7 @@ is the source of truth.
 
 ## Package source
 
-This skill requires TrialSimulator **≥ 1.23.0** (the minimum declared
+This skill requires TrialSimulator **≥ 1.37.0** (the minimum declared
 in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
 which is the source of truth — keep this number in sync with it). 
 **At load, only a local `packageVersion("TrialSimulator")`
@@ -129,7 +129,7 @@ Always assemble in this order. Each step depends on the previous.
 1. endpoint()              — define each endpoint per arm × endpoint
 2. arm()                   — one per treatment arm
    arm$add_endpoints()        — attach endpoints
-3. trial()                 — sample size, duration, enroller, dropout, stratification
+3. trial()                 — sample size, accrual, dropout, stratification
    regimen()                  — (optional) build a treatment-switching regimen
    trial$add_regimen()        — (optional) attach it; MUST precede add_arms
    trial$add_arms()           — attach arms with sample ratios
@@ -207,15 +207,34 @@ calls for that kind of operation.
 - *Data access in actions*: `$get_locked_data(milestone_name)`
 - *Result plumbing in actions*:
   `$save(value, name, overwrite)` / `$bind(value, name)` / `$save_custom_data(value, name, overwrite)` / `$get(name)` / `$get_output(cols, simplify, tidy)`
+- *Trial status queries in actions*:
+  `$get_current_time()` (time of the current milestone),
+  `$get_milestone_time(milestone_name)`, `$get_sample_ratio()`,
+  `$get_arms_name()` (excludes removed arms)
 - *Adaptive modifications, only inside action functions, only when
   the design adapts*:
-  `$set_duration(duration)`, `$resize(n_patients)`,
-  `$remove_arms(arms_name)`, `$update_sample_ratio(arm_names, sample_ratios)`,
+  `$resize(n_patients)`,
+  `$remove_arms(arms_name, additional_followup)`,
+  `$stop_followup(..., additional_followup)` (`...` = patient filter;
+  both take a mandatory `additional_followup`: `0`, a time, or `Inf`
+  of extra follow-up past the milestone),
+  `$update_sample_ratio(arm_names, sample_ratios)`,
   `$update_generator(arm_name, endpoint_name, generator, ...)`,
+  `$update_accrual_rate(accrual_rate)` (`end_time` measured from the
+  milestone, not trial start),
+  `$update_milestone(name, when, action, ...)` (revise a
+  not-yet-triggered milestone's trigger and/or action),
   `$add_arms(sample_ratio, ...)` (mid-trial; same method as setup, used
   for adaptive arm addition like dose-ranging, basket, or platform designs),
   `$crossover(what, how, when, delay)` (milestone-triggered treatment
   crossover for patients still in the trial)
+- *Interim decision support in actions, for a TTE comparison under a
+  one-interim + one-final design*:
+  `$conditionalPower(milestone, formula, placebo, alternative, alpha,
+  D, effect, ...)`,
+  `$eventNumberReestimationFromConditionalPower(milestone, formula,
+  placebo, alternative, alpha, target_cp, effect, ..., D_cap)`.
+  Read the `conditionalPower` vignette before using either.
 - *Combination test in actions, for seamless / dose-selection designs*:
   `$dunnettTest(formula, placebo, treatments, milestones, alternative,
   planned_info, ...)`, `$closedTest(dunnett_test, treatments, milestones,
@@ -233,7 +252,7 @@ setup methods, `$get_locked_data`, and the result-plumbing methods.
 
 **`Controllers`** (the controller object):
 
-- `$run(n, n_workers, plot_event, silent, dry_run)`, `$get_output(...)`
+- `$run(n, n_workers, plot_event, silent, tidy)`, `$get_output(...)`
 
 **Arm objects:** `$add_endpoints(...)` only.
 
@@ -277,7 +296,7 @@ follow the conversation with no R reference open.
 |---|---|
 | "use `fitLogrank` for the OS test" | "OS is tested with a one-sided log-rank test" |
 | "milestone fires at `enrollment(n=500, min_treatment_duration=6)`" | "the analysis is performed 6 months after the last patient is enrolled" |
-| "we'll call `set_duration(54)` if pooled events < 220" | "the trial duration is extended from 48 to 54 months if pooled events at month 24 fall below 220" |
+| "we'll call `update_milestone('final', when = eventNumber(...))` if CP is low" | "the final analysis is postponed from 270 to 300 OS events if conditional power at the interim falls below 30%" |
 | "boundary z = 2.523 from `asOF` spending" | "interim efficacy boundary z = 2.523 (Lan-DeMets O'Brien-Fleming spending, IF = 0.71)" |
 | "`StaggeredRecruiter` with `accrual_rate = data.frame(...)`" | "piecewise-constant accrual: 5/mo for the first 3 months, 15/mo for the next 3, then 25/mo until enrollment completes" |
 | "the action saves `gate_pass`" | "the gate decision is recorded for each replicate" |
@@ -522,6 +541,18 @@ Procedures, in roughly increasing complexity:
    data.frame layout, and how PFS + OS can be tested under one
    closed procedure with α split between them.
 
+5. **Adaptive enrichment** — population selection rather than arm
+   selection. Enrichment designs are flexible: the number of stages,
+   the interim decision rule, the combination function, and the
+   intersection test are all design choices to collect from the
+   user, not givens. For how such a design maps onto milestones,
+   actions, and adaptation methods, **read the `enrichmentDesign`
+   vignette as a worked reference** — it implements one variant
+   (two stages, a five-zone conditional-power decision, inverse
+   normal combination, closed test with Simes' test); adapt its
+   pattern to the user's actual design rather than assuming those
+   choices.
+
 If none of these fit the user's design, ask for more details and
 implement a custom procedure (weighted Hochberg, parallel
 gatekeeping with logical restrictions, complex multi-population
@@ -613,7 +644,8 @@ Validate iteratively: sanity at `n = 3-5` to catch real errors, a
 short calibration at `n = 20-50` to estimate per-replicate cost, then
 production at the size the operating characteristics require (1000+
 for power; 10000+ for Type I error). Re-source the script between
-runs rather than reusing a controller.
+runs rather than reusing a controller — the package enforces this:
+a second `$run()` on the same controller errors without `reset()`.
 
 One TS-specific quirk: at very small `n`, stochastic milestone
 triggers occasionally fail to fire in a replicate, producing errors

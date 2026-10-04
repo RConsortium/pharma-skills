@@ -144,7 +144,7 @@ parameters used, (c) caveats inline if any.
                                        gsDesign / multcomp / ...) were used
 3. Treatment Arms and Endpoints      — per arm: endpoint(...) calls +
                                        arm() + add_endpoints(), bundled
-4. Trial Configuration               — n, duration, accrual, dropout, stratification
+4. Trial Configuration               — n, accrual, dropout, stratification
 5. Milestones                        — per milestone (trigger + what fires)
 6. Milestone Actions                 — per action (full body verbatim);
                                        analysis, adaptation, and saves
@@ -332,7 +332,7 @@ restating numbers.
 - **`software default`** — a default prescribed by the package or skill convention (e.g., `seed = NULL`, `silent = TRUE`, `plot_event = FALSE`). No rationale required.
 - **`PLACEHOLDER`** — a decision rule, combination test, or boundary marked for replacement before design finalization. Must be prominently flagged in the table (bold + `PLACEHOLDER:` prefix) and listed again in §8.
 
-Always include rows for: endpoint distribution parameters per arm, readout times for non-TTE endpoints, correlation structure (and the generator implementing it), sample size, duration, accrual schedule, dropout, stratification factors, milestone trigger thresholds, and any helper-derived literals.
+Always include rows for: endpoint distribution parameters per arm, readout times for non-TTE endpoints, correlation structure (and the generator implementing it), sample size, accrual schedule, dropout, stratification factors, milestone trigger thresholds, and any helper-derived literals.
 
 **Worked example:**
 
@@ -428,8 +428,7 @@ fine when many arms differ only in numeric values.
 ### 4. Trial Configuration
 
 Show the `trial(...)` call. Explain:
-- Sample size and duration (and whether `set_duration`/`resize` will
-  modify them adaptively).
+- Sample size (and whether `resize` will modify it adaptively).
 - Accrual schedule and the rationale (e.g., "30/mo for the first 6
   months reflects ramp-up; 50/mo thereafter").
 - Dropout: which distribution and the helper that produced its
@@ -454,7 +453,8 @@ trial timeline without reading code.
 
 Action functions are the work performed at each milestone — they may
 analyze locked data, adapt the trial (`$resize`, `$update_generator`,
-`$remove_arms`, `$add_arms`, `$set_duration`), save flags and
+`$remove_arms`, `$add_arms`, `$stop_followup`, `$update_milestone`,
+`$update_accrual_rate`, `$crossover`), save flags and
 diagnostics, or do nothing (`doNothing`). This section documents all
 of it.
 

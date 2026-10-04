@@ -16,7 +16,7 @@ endpoint(name, type, readout = NULL, generator, ...)
 
 **Rules:**
 
-- Time units in `readout`, `dropout`, and trial `duration` must be consistent throughout.
+- Time units in `readout`, `dropout`, and accrual must be consistent throughout.
 - Custom TTE generators must include a `<name>_event` column (1 = event, 0 = censored). Built-in generators (e.g., `rexp`, `PiecewiseConstantExponentialRNG`) handle this automatically for a single TTE endpoint.
 - Any function whose first argument is not `n` must be wrapped before passing as `generator` (e.g., `sample()` must be wrapped; `rbinom`, `rnorm` do not).
 - `...` can be used to share one generator across arms with different parameter values (e.g., `hr = 0.7`); arms can also use completely independent generators — both are valid.
@@ -108,7 +108,7 @@ ep <- endpoint(
   type      = c("tte", "tte", "tte"),
   generator = CorrelatedPfsAndOs4,
   transition_probability = <4x4_matrix>,
-  duration               = <large_integer>,  # set larger than trial duration
+  duration               = <large_integer>,  # larger than any follow-up the design can reach
   death_name             = "os",
   progression_name       = "pfs",
   response_name          = "response"
@@ -236,7 +236,7 @@ arm(name, ...)
 
 | Arg | Type | Required | Notes |
 |-----|------|----------|-------|
-| `name` | character | yes | Arm identifier; used in `get_locked_data()` and analysis formulas |
+| `name` | character | yes | Arm identifier; used in `get_locked_data()` and analysis formulas. `@` and `;` are reserved (regimen-trajectory encoding) and rejected even when the trial uses no regimen. |
 | `...` | filter conditions | no | `dplyr::filter`-compatible; subset of generator output to use as trial data; omit to use all output |
 
 **Post-construction:** `arm_obj$add_endpoints(ep1, ep2, ...)` — accepts one or more endpoint objects in a single call.
@@ -256,27 +256,33 @@ exp1$add_endpoints(ep_primary, ep_secondary, ep_baselines)
 ## trial()
 
 ```r
-trial(name, n_patients, duration, description = name, seed = NULL,
-      enroller, dropout = NULL, stratification_factors = NULL, silent = FALSE, ...)
+trial(name, n_patients, description = name, seed = NULL,
+      enroller = StaggeredRecruiter, dropout = NULL,
+      stratification_factors = NULL, silent = FALSE, ...)
 ```
 
 | Arg | Type | Required | Notes |
 |-----|------|----------|-------|
 | `name` | character | yes | Trial identifier |
 | `n_patients` | integer | yes | Initial max enrollment; adjustable via `$resize()` |
-| `duration` | numeric | yes | Trial timeframe; adjustable via `$set_duration()` |
 | `seed` | numeric/NULL | no | NULL = auto per-replicate |
-| `enroller` | function | yes | **Always `StaggeredRecruiter`** — the only enroller this skill supports. Never a custom function or any other value. |
+| `enroller` | function | no | Defaults to `StaggeredRecruiter` — the only accepted value; omit it. |
 | `dropout` | function | no | Returns dropout time vector of length n. **One global dropout function per trial — applies to ALL endpoints uniformly per patient.** Each patient draws a single dropout time; that time censors every TTE endpoint and zeroes out any non-TTE readouts whose readout-time exceeds it. There is no API for endpoint-specific dropout. See helpers.md "Global dropout — no per-endpoint variation". |
 | `stratification_factors` | character | no | Names of baseline endpoints (`type = "baseline"`); enables stratified randomization |
 | `silent` | logical | no | Suppress messages |
 | `...` | any | no | Passed to `enroller` and `dropout` |
 
 **Rules:**
-- Units of `duration`, `dropout`, and non-tte `readout` must be consistent.
+- Units of `dropout`, non-tte `readout`, and `accrual_rate` must be consistent.
 - Baseline covariates are assumed to have the same distribution across arms.
-- **`trial()` MUST set `enroller = StaggeredRecruiter` and MUST also supply `accrual_rate`** (passed via `...`). `accrual_rate` is a data.frame with columns `end_time` and `piecewise_rate`. The two go together — `StaggeredRecruiter` is non-functional without `accrual_rate`.
+- **`trial()` MUST supply `accrual_rate`** (passed via `...` to the
+  default `StaggeredRecruiter`, which is non-functional without it).
+  `accrual_rate` is a data.frame with columns `end_time` and `piecewise_rate`.
 - **The last `end_time` MUST be `Inf`** with a positive rate (open-ended), so the schedule can supply any `n` — the engine may request several × the planned size for resizing.
+- **`add_arms()` deep-copies the arms it registers** (and `add_regimen()`
+  the regimen). Complete an arm's configuration before registering;
+  later changes to the caller's objects do not affect the trial, and a
+  registered arm is changed only through the trial's adaptation methods.
 
 **Example:**
 ```r
@@ -285,8 +291,6 @@ accrual <- data.frame(end_time = c(6, Inf), piecewise_rate = c(10, 20))
 tr <- trial(
   name         = "my_trial",
   n_patients   = 300,
-  duration     = 36,
-  enroller     = StaggeredRecruiter,
   accrual_rate = accrual,
   dropout      = rexp,
   rate         = -log(0.95) / 12     # 5% dropout by month 12
@@ -331,7 +335,7 @@ enrollment(n, ..., arms = NULL, min_treatment_duration = 0)
 |-----|------|-------|
 | `n` | integer | Number of randomized patients |
 | `...` | filter conditions | `dplyr::filter`-compatible; count only matching patients |
-| `arms` | character vector | Arms to count; NULL = all active arms |
+| `arms` | character vector | Arms to count; NULL = arms in the trial when the milestone is evaluated (a removed arm is excluded) |
 | `min_treatment_duration` | numeric | Trigger only after patients have been on treatment for at least this long |
 
 ```r
@@ -352,12 +356,34 @@ eventNumber(endpoint, n, ..., arms = NULL)
 | `endpoint` | character | Endpoint name matching `endpoint(name = ...)` |
 | `n` | integer | Target event count (TTE) or observation count (non-TTE) |
 | `...` | filter conditions | Count only matching subset |
-| `arms` | character vector | Arms to count; NULL = all active arms |
+| `arms` | character vector | Arms to count; NULL = arms in the trial when the milestone is evaluated (a removed arm is excluded) |
 
 ```r
 eventNumber(endpoint = "os", n = 150)                           # 150 OS events
 eventNumber(endpoint = "os", n = 100, arms = c("exp", "ctrl"))  # 100 events in specific arms
 ```
+
+**`arms` after a data-driven `remove_arms()`** — which arms get removed
+is unknown when later milestones are defined; three patterns cover
+their conditions (see `?remove_arms` for examples):
+
+- `arms = NULL` — resolves at evaluation time to the arms still in the
+  trial; anything removed by then is excluded.
+- **List every arm of the design** — a removed arm passes validation
+  (it was once in the trial) and its events within any granted
+  `additional_followup` are counted; warns unless silent. This is how
+  the *total* sample size or event count is reached after a dose drops.
+- **Subset depending on which arm was removed** (e.g. placebo plus
+  the dropped dose only) — neither pattern above expresses this: the
+  subset's members are known only at runtime. Register the later
+  milestone with a placeholder condition and, in the same action that
+  calls `remove_arms()`, rewrite it with the resolved names:
+  `update_milestone(name = 'final', when = eventNumber(endpoint = 'os',
+  n = 300, arms = c('placebo', dropped)))`. The placeholder is never
+  evaluated: milestones trigger in registration order, and the update
+  takes effect before the later milestone is checked.
+
+A name that was never an arm of the trial is an error.
 
 **Combining conditions:**
 ```r
@@ -371,6 +397,10 @@ when = eventNumber(endpoint = "os", n = 150) | calendarTime(time = 36)  # whiche
 ```r
 milestone(name, when, action = doNothing, ...)
 ```
+
+The trial ends when its last milestone triggers — a planned trial
+duration is expressed as the last milestone's condition (e.g.
+`calendarTime(time = 48)`).
 
 | Arg | Type | Required | Notes |
 |-----|------|----------|-------|
@@ -390,6 +420,19 @@ action_interim <- function(trial, ...) {
 m <- milestone(name = "interim", when = eventNumber(endpoint = "os", n = 75), action = action_interim)
 ```
 
+**Revising a milestone mid-trial:** register every milestone upfront —
+a milestone whose trigger or action depends on interim results is then
+revised from within an action function via
+`trial$update_milestone(name, when = NULL, action = NULL, ...)`.
+`NULL` leaves that part unchanged; when a new `action` is supplied,
+the `...` given here replace the old action's fixed arguments
+entirely. The update is queued until the current action returns, the
+as-designed milestone is restored between replicates, an
+already-triggered milestone cannot be updated, and milestones must
+still trigger in registration order (an update that would let a
+later-registered milestone fire first stops the simulation with an
+error).
+
 ---
 
 ## listener()
@@ -404,6 +447,9 @@ listener(silent = FALSE)
 
 Monitors the trial and executes action functions when milestone conditions are met.
 **Milestones are attached to the listener, not to the trial:** `l$add_milestones(m1, m2, ...)`.
+Registering a duplicate milestone name is an error — to modify a
+registered, not-yet-triggered milestone, use `update_milestone()`
+within an action function.
 
 ---
 

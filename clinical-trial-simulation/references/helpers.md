@@ -16,15 +16,15 @@ https://zhangh12.github.io/TrialSimulator/reference/.
 
 ## Enroller
 
-`trial()` **MUST always** set `enroller = StaggeredRecruiter` — it is the
-only enroller this skill supports; never a custom function. Setting it
-**requires** passing `accrual_rate` (via `trial(..., accrual_rate = <data.frame>)`);
-the two are inseparable. `StaggeredRecruiter` is **for
-`trial(enroller = ...)` only — never as an `endpoint(generator = ...)`**.
+`StaggeredRecruiter` is the default — and only accepted — enroller of
+`trial()`: omit `enroller`; never a custom function, and never as an
+`endpoint(generator = ...)`. It is non-functional without
+`accrual_rate`, which **MUST** be supplied via
+`trial(..., accrual_rate = <data.frame>)`.
 
 | Function | Purpose |
 |---|---|
-| `StaggeredRecruiter(n, accrual_rate)` | Piecewise-constant-rate accrual. `accrual_rate` is `data.frame(end_time, piecewise_rate)`. Pass via `trial(..., enroller = StaggeredRecruiter, accrual_rate = <data.frame>)`. |
+| `StaggeredRecruiter(n, accrual_rate)` | Piecewise-constant-rate accrual. `accrual_rate` is `data.frame(end_time, piecewise_rate)`. Pass via `trial(..., accrual_rate = <data.frame>)`. |
 
 Tip — **simulating a recruitment pause or zero-accrual window**
 (e.g., a hold for safety review after an interim, a site not yet
@@ -42,6 +42,13 @@ accrual_rate <- data.frame(
 
 Do **not** fake a pause with a tiny positive rate: a finite window with
 `window-length × piecewise_rate < 1` is rejected with an error. Use `0`.
+
+The pattern above is for **pre-planned** pauses, known at design time.
+A revision or pause decided *at* a milestone (data-driven) uses
+`trial$update_accrual_rate(accrual_rate)` inside the action instead —
+there, `end_time` is measured from the milestone ("from now on"), not
+from trial start, and a leading `piecewise_rate = 0` window is the
+pause.
 
 ---
 
@@ -172,7 +179,8 @@ generators need.
 | Dropout at 1 landmark | exponential is the simple default: `dropout = rexp, rate = -log(1-p)/t`. If the user has a different model in mind (e.g., heavier early dropout, time-varying), build a custom dropout function whose first argument is `n` and pass it as `trial(dropout = my_fn, ...)`. |
 | Constant uniform accrual | none — `accrual_rate = data.frame(end_time = Inf, piecewise_rate = N)` |
 | Ramp-up accrual | none — multi-row `accrual_rate` |
-| Recruitment pause window | none — set `piecewise_rate = 0` for the pause window |
+| Recruitment pause window (pre-planned) | none — set `piecewise_rate = 0` for the pause window |
+| Revise / pause accrual at an interim decision | `trial$update_accrual_rate()` in the action; `end_time` measured from the milestone |
 
 ### Bridge: piecewise-exp marginal in a NORTA copula
 
@@ -240,12 +248,19 @@ margin) — and that must be justified, not assumed.
 | Function | Method | Covariate adjustment | Notes |
 |---|---|---|---|
 | `fitCoxph(formula, placebo, data, alternative, scale, ...)` | Cox PH | yes | `scale = "hazard ratio"` or `"log hazard ratio"` — no default; specify explicitly. `formula` is `Surv(time, event) ~ arm [+ covars + strata(...)]`. |
-| `fitLogrank(formula, placebo, data, alternative, ...)` | log-rank | no, but supports `strata(...)` | Same `Surv(...)` formula. |
+| `fitLogrank(formula, placebo, data, alternative, ...)` | log-rank | no, but supports `strata(...)` | Same `Surv(...)` formula. When the statistic is undefined (zero variance, e.g. no events in a subset) it warns and returns placeholder `z = 0`, `p = 0.5` instead of erroring — expect this in tiny sanity runs. |
 | `fitLogistic(formula, placebo, data, alternative, scale, ...)` | logistic regression | yes | `scale = "coefficient" \| "odds ratio" \| "risk ratio" \| "risk difference"` — no default; specify explicitly. |
 | `fitLinear(formula, placebo, data, alternative, ...)` | linear model (ATE via `emmeans`) | yes | |
 | `fitFarringtonManning(endpoint, placebo, data, alternative, ...)` | rate-difference test for binary | no | `endpoint` is a column name string, not a formula. |
 
 `alternative` is `"greater"` or `"less"` — one-sided is enforced.
+
+> **Miettinen–Nurminen ≡ Farrington–Manning at reasonable sample
+> sizes.** The two score tests for a rate difference are equivalent
+> (they differ only by a small-sample bias-correction factor). If a
+> Miettinen–Nurminen test is required, use `fitFarringtonManning`
+> with `delta = 0` — the score test using the pooled-proportion
+> variance.
 
 > **Get `alternative` right — it determines whether the simulation
 > answers the right question.** The direction of "treatment is
@@ -319,8 +334,11 @@ counts, sample size by arm — already there. Access via
 ``out[["n_events_<interim>_<os>"]]``.
 
 `controller$get_output(tidy = TRUE)` drops these from the returned
-data frame; use it when the auto-saved columns aren't needed for
-reporting. **Caution:** if a custom `save()` name matches the regex
+data frame; `controller$run(tidy = TRUE)` goes further and never
+saves the per-arm table (`n_events_<milestone>_<arms>`, the most
+expensive of these columns) in the first place — per-endpoint totals
+and milestone times are still saved. Use either when the auto-saved
+columns aren't needed for reporting. **Caution:** if a custom `save()` name matches the regex
 `^n_events_<.*?>_<.*?>$` or `^milestone_time_<.*?>$`, it gets dropped
 too. Pick distinctive custom names.
 
