@@ -6,7 +6,7 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.4.1
+  version: 0.4.2
   trialsimulator_min_version: "1.39.0"
 ---
 
@@ -48,15 +48,19 @@ After the announcement line, briefly greet the user and ask about
 the trial setting — never ask what design type, discover it through
 conversation (see "Two user modes" below).
 
+**Read the core references at load.** Together with the version
+check, read `references/building_blocks.md`, `references/helpers.md`,
+and `references/report.md` before the first response.
+
 ## Files in this skill
 
 - `SKILL.md` (this file) — framework, conversation principles, build order, workflow
-- `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system
-- `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas
+- `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system; read at load (see "Loading announcement")
+- `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas; read at load
+- `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file); read at load
 - `references/code_snippets.md` — worked snippets composing milestones, actions, and adaptations into common designs (currently adaptive designs: group sequential, promising zone, MAMS, enrichment, basket, RAR, …); consult when the user's design matches one
 - `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
 - `references/parallel_targets.md` — `targets` pipeline for parallel runs; read only when a simulation is large enough to parallelize
-- `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
 - `scripts/conversation_log.R` — renders the session's conversation into `conversation/prompt.html` (see "Conversation log")
 
 These files cache the most common things to save tokens. When confused
