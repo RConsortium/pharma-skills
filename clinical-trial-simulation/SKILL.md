@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.3.0
-  trialsimulator_min_version: "1.37.0"
+  version: 0.4.0
+  trialsimulator_min_version: "1.38.1"
 ---
 
 # TrialSimulator Skill
@@ -53,6 +53,7 @@ conversation (see "Two user modes" below).
 - `SKILL.md` (this file) — framework, conversation principles, build order, workflow
 - `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system
 - `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas
+- `references/code_snippets.md` — worked snippets composing milestones, actions, and adaptations into common designs (currently adaptive designs: group sequential, promising zone, MAMS, enrichment, basket, RAR, …); consult when the user's design matches one
 - `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
 - `references/parallel_targets.md` — `targets` pipeline for parallel runs; read only when a simulation is large enough to parallelize
 - `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
@@ -65,7 +66,7 @@ is the source of truth.
 
 ## Package source
 
-This skill requires TrialSimulator **≥ 1.37.0** (the minimum declared
+This skill requires TrialSimulator **≥ 1.38.1** (the minimum declared
 in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
 which is the source of truth — keep this number in sync with it). 
 **At load, only a local `packageVersion("TrialSimulator")`
@@ -177,13 +178,26 @@ retrieve it at B with `trial$get_output()` (the in-progress
 per-replicate row, sanctioned for use inside actions). This keeps
 the value in the audit trail — it appears as a column in
 `controller$get_output()` after the run, useful for post-hoc
-analysis and report tables.
+analysis and report tables. **Save only what a branch actually
+computes**: a column saved in only some replicates is NA-filled
+automatically when `controller$run()` combines replicate outputs,
+so branched actions need no defensive NA-placeholder saves.
 
-Reserve `trial$save_custom_data(..., overwrite = TRUE)` +
-`trial$get(name)` for **non-tabular state**: a fitted model object,
-a list, a data frame — anything that does not fit cleanly as a
-column in the per-replicate output. See `helpers.md` gotchas for
-the namespace and `overwrite = TRUE` rules.
+Reserve `trial$save_custom_data()` + `trial$get(name)` for
+**non-tabular, within-replicate state**: a fitted model object, a
+list, a data frame — anything that does not fit cleanly as a column
+in the per-replicate output. Custom data is strictly
+replicate-local: every replicate starts empty, and `trial$get()` on
+a name not saved earlier in the same replicate is an error, not
+NULL. See `helpers.md` gotchas for the namespace and `overwrite`
+rules.
+
+**Read-only constants every replicate needs** — design parameters,
+boundary tables, template objects of testing procedures — do not
+belong in custom data (cleared per replicate) or script globals:
+register them at setup as `trial(global_data = list(...))` and read
+with `trial$get_global_data(name)` inside actions. Entries can never
+be modified; R6 objects and data.tables are copied on every read.
 
 ## R6 method visibility — only use the documented public methods
 
@@ -204,7 +218,9 @@ calls for that kind of operation.
 
 - *Trial setup* (called once after `trial()`, before `$run()`):
   `$add_regimen(regimen)` (must precede `$add_arms`), `$add_arms(sample_ratio, ...)`
-- *Data access in actions*: `$get_locked_data(milestone_name)`
+- *Data access in actions*: `$get_locked_data(milestone_name)`,
+  `$get_global_data(name)` (read-only copy of a `trial(global_data =
+  list(...))` entry)
 - *Result plumbing in actions*:
   `$save(value, name, overwrite)` / `$bind(value, name)` / `$save_custom_data(value, name, overwrite)` / `$get(name)` / `$get_output(cols, simplify, tidy)`
 - *Trial status queries in actions*:

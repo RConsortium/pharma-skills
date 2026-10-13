@@ -258,7 +258,8 @@ exp1$add_endpoints(ep_primary, ep_secondary, ep_baselines)
 ```r
 trial(name, n_patients, description = name, seed = NULL,
       enroller = StaggeredRecruiter, dropout = NULL,
-      stratification_factors = NULL, silent = FALSE, ...)
+      stratification_factors = NULL, global_data = list(),
+      silent = FALSE, ...)
 ```
 
 | Arg | Type | Required | Notes |
@@ -269,6 +270,7 @@ trial(name, n_patients, description = name, seed = NULL,
 | `enroller` | function | no | Defaults to `StaggeredRecruiter` — the only accepted value; omit it. |
 | `dropout` | function | no | Returns dropout time vector of length n. **One global dropout function per trial — applies to ALL endpoints uniformly per patient.** Each patient draws a single dropout time; that time censors every TTE endpoint and zeroes out any non-TTE readouts whose readout-time exceeds it. There is no API for endpoint-specific dropout. See helpers.md "Global dropout — no per-endpoint variation". |
 | `stratification_factors` | character | no | Names of baseline endpoints (`type = "baseline"`); enables stratified randomization |
+| `global_data` | named list | no | Read-only constants available in every replicate via `trial$get_global_data(name)` — design parameters, boundary tables, template objects of testing procedures. Entries can never be modified; R6 objects and data.tables are copied at registration and on every read. |
 | `silent` | logical | no | Suppress messages |
 | `...` | any | no | Passed to `enroller` and `dropout` |
 

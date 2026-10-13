@@ -75,16 +75,25 @@ alternative will silently corrupt the family-wise error rate.
 **Why the construction site matters.** A `controller$run(n = ...)` executes
 each milestone's *action function once per replicate*, but everything at
 *script level* (the `endpoint`/`arm`/`trial`/`milestone` objects) is built
-**once** and shared by all replicates. The graph is **per-replicate state**:
-it must therefore live inside the action functions, never at script level.
+**once** and shared by all replicates. The graph is **per-replicate
+state**. Two sanctioned ways to keep replicates independent:
+
+- **Template via `global_data` (preferred; the `actionFunctions`
+  vignette's pattern).** Construct the as-designed graph once at setup
+  and register it: `trial(..., global_data = list(gt_template = gt))`.
+  In the first GTP milestone's action, `trial$get_global_data('gt_template')`
+  returns an **independent copy** of the template, so no replicate can
+  touch the registered object or any other replicate's graph.
+- **Construct fresh inside the first GTP milestone's action** —
+  equivalent; builds the same graph every replicate.
 
 Forbidden — these are the tempting wrong turns; do **not** do any of them:
 
-- **Do not construct `gt` at script level / once globally** (the way
-  endpoints and arms are built). A single graph shared across replicates
-  carries rejections and spent alpha from one replicate into the next and
-  destroys the FWER. `gt` must be constructed **inside** the action of the
-  first GTP milestone, so a fresh graph is built every replicate.
+- **Do not share one live `gt` object across replicates** (a script-level
+  object used directly by actions, a closure/global variable). A shared
+  graph carries rejections and spent alpha from one replicate into the
+  next and destroys the FWER. The only sanctioned script-level graph is
+  the read-only `global_data` template above.
 - **Do not build a new `gt` at later milestones.** After the first, you must
   resume the *same* graph via `trial$get(...)` — a fresh graph there loses
   the earlier rejections and alpha propagation.
@@ -97,10 +106,12 @@ Forbidden — these are the tempting wrong turns; do **not** do any of them:
 
 Steps:
 
-1. **Construct `gt` fresh inside the action of the first milestone where any
-   GTP endpoint is tested** — unconditionally, every replicate. This is what
-   keeps replicates independent. Do **not** call `gt$reset()`; a fresh
-   object per replicate makes it unnecessary.
+1. **Start from a fresh graph inside the action of the first milestone
+   where any GTP endpoint is tested** — unconditionally, every replicate:
+   `gt <- trial$get_global_data('gt_template')` (an independent copy of
+   the registered template), or construct `GraphicalTesting$new(...)`
+   there. Do **not** call `gt$reset()`; a fresh object per replicate
+   makes it unnecessary.
 2. At each testing milestone, assemble that stage's `stats` rows and call
    `gt$test(stats)` immediately, then read `gt$get_current_decision()`.
    Three things must be set correctly, **per hypothesis** (not per
@@ -116,16 +127,20 @@ Steps:
    - **`max_info`** — planned (`planned_max_info`) while a hypothesis is
      still continuing, but the **observed** information at its final test
      (observed can exceed planned, which the class otherwise rejects).
-3. Persist the object: `trial$save_custom_data(gt, "gt", overwrite = TRUE)`
-   — **never** `trial$bind()` (it carries tabular rows, not graph state).
+3. Persist the object: `trial$save_custom_data(gt, name = "gt")` —
+   **never** `trial$bind()` (it carries tabular rows, not graph state).
+   Custom data is replicate-local, so the first save of a replicate
+   needs no `overwrite`; a later testing milestone that re-saves the
+   updated graph sets `overwrite = TRUE`.
 4. At the next milestone, `gt <- trial$get("gt")`, test that stage's stats,
    read the decision. Repeat until no hypothesis remains to be tested.
 5. Save the decision in **every** action that tests, under **stage-specific
    names** (next section).
 
-`trial$save_custom_data` stores an in-memory reference (no serialization),
-so this is cheap. Testing per stage is equivalent to one batch call and
-~1.3× faster than rebuilding the graph each milestone.
+`trial$save_custom_data` stores an in-memory reference (no serialization)
+and `get_global_data` clones the template once per replicate — both cheap.
+Testing per stage is equivalent to one batch call and ~1.3× faster than
+rebuilding the graph each milestone.
 
 ## Reading and saving decisions
 
@@ -161,6 +176,11 @@ hs  <- c('pfs','os'); alp <- c(0.0125, 0.0125)          # one-sided, FWER 0.025
 tr  <- matrix(c(0,1,1,0), 2, 2); asf <- c('asOF','asOF')
 mx  <- c(pfs = 120L, os = 90L)                          # planned max events
 
+## Setup: register the as-designed graph as a read-only template.
+trial_obj <- trial(...,
+  global_data = list(gt_template = GraphicalTesting$new(alp, tr, asf, mx, hs,
+                                                        silent = TRUE)))
+
 action_interim <- function(trial, ...) {
   ld <- trial$get_locked_data('interim')
   fp <- fitLogrank(Surv(pfs, pfs_event) ~ arm, placebo='control', data=ld, alternative='less')
@@ -174,9 +194,9 @@ action_interim <- function(trial, ...) {
     is_final   = c(TRUE, FALSE),        # pfs done here; os continues
     max_info   = c(ip, mx['os'])        # pfs: observed (its final); os: planned
   )
-  gt <- GraphicalTesting$new(alp, tr, asf, mx, hs, silent = TRUE)  # fresh, per replicate
+  gt <- trial$get_global_data('gt_template')   # independent copy, per replicate
   gt$test(stats)
-  trial$save_custom_data(gt, 'gt', overwrite = TRUE)              # persist (not bind)
+  trial$save_custom_data(gt, name = 'gt')       # persist (not bind); first save
   d <- gt$get_current_decision()                                  # also drives any adaptation
   trial$save(unname(d['pfs'] == 'reject'), 'pfs_rej')            # pfs decided once, here
   trial$save(unname(d['os']  == 'reject'), 'os_rej_interim')
@@ -203,7 +223,8 @@ action_final <- function(trial, ...) {
   `fit*()` wrappers when they fit the analysis, but the user may specify a
   different p-value computation (e.g. under adaptation) — the agent's job
   is to ensure whatever is fed in is properly one-sided.
-- One graph per replicate (construct fresh at the first GTP milestone).
+- One graph per replicate: a fresh copy of the `global_data` template
+  (or a freshly constructed object) at the first GTP milestone.
 - `planned_max_info` must be whole numbers > 0; update `max_info` to
   observed at each hypothesis's final stage.
 - For non-asOF/asP spending, never approximate — compute via rpact/gsDesign

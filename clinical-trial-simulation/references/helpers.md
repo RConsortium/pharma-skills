@@ -382,7 +382,7 @@ tr$add_regimen(reg)              # MUST be before add_arms
 tr$add_arms(sample_ratio, ...)   # errors otherwise
 ```
 
-### `save_custom_data` namespace + `overwrite`
+### Custom data (`save_custom_data` / `get`) and `global_data`
 
 **Prefer `trial$save()` + `trial$get_output()` for scalar state.**
 When the value being passed between milestones is a single
@@ -397,26 +397,50 @@ object, a data frame) and would not fit cleanly as a column.
 
 For the cases where `save_custom_data()` is the right tool:
 
-`save()` and `save_custom_data()` share a name registry. Calling both
-with the same `name` errors with "X has been used to name something in
-custom data." Use **distinct** names.
-
-The custom-data registry persists across replicates (the value resets
-between replicates, but the name doesn't). Without `overwrite = TRUE`,
-replicate 2 errors on the duplicate name. **Always set
-`overwrite = TRUE` on `save_custom_data()`.**
+- **Strictly replicate-local.** Every replicate starts with empty
+  custom data; nothing saved in one replicate reaches the next, and
+  data saved before `run()` does not reach the replicates (that is
+  what `global_data` is for, below). After `run()`, the last
+  replicate's custom data remains available for inspection.
+- `save()` and `save_custom_data()` share a name registry within a
+  replicate ("X has been used to name something in custom data") —
+  use **distinct** names across the two.
+- `overwrite = TRUE` is needed only when a later milestone of the
+  **same replicate** re-saves the name (e.g., carrying an updated
+  testing object forward); the first save of a name needs nothing.
+- `trial$get(name)` on a name not saved earlier in the current
+  replicate is an **error**, not `NULL` — and `NULL` itself cannot
+  be stored (`save_custom_data()` rejects it). For an object that is
+  only conditionally produced upstream, gate the read on a
+  `trial$save()`'d flag.
 
 ```r
-# Non-tabular state: a fitted Cox model object passed to a later milestone.
-trial$save_custom_data(value = cox_fit, name = "cox_model", overwrite = TRUE)
+# First save of a name in a replicate: no overwrite needed.
+trial$save_custom_data(value = cox_fit, name = "cox_model")
+# Re-saving the same name later in the SAME replicate:
+trial$save_custom_data(value = updated_fit, name = "cox_model", overwrite = TRUE)
+
+# Object produced only in some branches upstream? Gate the read:
+if (trial$get_output("model_fitted") == 1L) {
+  model <- trial$get(name = "cox_model")
+}
 ```
 
-When retrieving in a later milestone, guard against `NULL` (the
-saving milestone may not have fired):
+**Cross-replicate constants belong in `global_data`, not in custom
+data.** Register design parameters, boundary tables, or template
+objects of testing procedures once at setup via
+`trial(global_data = list(...))`; read them in any action with
+`trial$get_global_data(name)`. Entries can never be modified — R6
+objects and data.tables are copied at registration and on every
+read, so a template (e.g., an as-designed `GraphicalTesting` object)
+comes back as a fresh independent copy in every replicate.
 
 ```r
-model <- trial$get(name = "cox_model")
-if (is.null(model)) model <- <fallback>
+tr <- trial(..., global_data = list(fwer = 0.025, gt_template = gt))
+
+# inside any action:
+alpha <- trial$get_global_data(name = "fwer")
+gt    <- trial$get_global_data(name = "gt_template")  # fresh copy per read
 ```
 
 ### Trials never stop early in simulation
