@@ -222,9 +222,15 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
+| Conversation log | [prompt.html](conversation/prompt.html) |
 | TrialSimulator version | required |
 | R version | required |
 | Skill version | required |
+
+The **Conversation log** row links the session's conversation
+(SKILL.md "Conversation log"). If the session log could not be read,
+the row is a placeholder and the same rule as above applies: the
+final announced turn asks the user for the session log file.
 
 §0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source". **Report date** is the date the report is generated (the current date), written as a literal `YYYY-MM-DD` — never a placeholder.
 
@@ -267,7 +273,11 @@ runs/<trial_name>/
 ├── output.rds          198K   raw controller$get_output() (1000 reps)
 ├── oc_summary.rds      6.4K   OC list saved by main.R for the report
 ├── report.md           21K    this document (source of truth)
-└── report.html         31K    rendered via markdown::mark_html
+├── report.html         31K    rendered via markdown::mark_html
+└── conversation/
+    ├── prompt.md       48K    session conversation (generated)
+    ├── prompt.html     62K    rendered; linked from §0
+    └── segments/              one file per session
 ````
 
 Convention for the two `.rds` files:

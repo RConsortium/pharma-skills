@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.4.0
-  trialsimulator_min_version: "1.38.1"
+  version: 0.4.1
+  trialsimulator_min_version: "1.39.0"
 ---
 
 # TrialSimulator Skill
@@ -57,6 +57,7 @@ conversation (see "Two user modes" below).
 - `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
 - `references/parallel_targets.md` — `targets` pipeline for parallel runs; read only when a simulation is large enough to parallelize
 - `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
+- `scripts/conversation_log.R` — renders the session's conversation into `conversation/prompt.html` (see "Conversation log")
 
 These files cache the most common things to save tokens. When confused
 or when behavior contradicts these notes, consult `?<function>` in R
@@ -66,7 +67,7 @@ is the source of truth.
 
 ## Package source
 
-This skill requires TrialSimulator **≥ 1.38.1** (the minimum declared
+This skill requires TrialSimulator **≥ 1.39.0** (the minimum declared
 in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
 which is the source of truth — keep this number in sync with it). 
 **At load, only a local `packageVersion("TrialSimulator")`
@@ -643,7 +644,8 @@ check to make an error go away.
 
 ## Final step — open the main report
 
-After the report and all supplements have been rendered, **open the
+After the report and all supplements have been rendered, render the
+conversation log once more (see "Conversation log"), then **open the
 main report HTML in the user's default browser**:
 
 ```r
@@ -702,6 +704,10 @@ runs/<trial_name>/
   milestone_times.png    ← embedded in the report ONLY when the milestone-time
                             precondition holds AND the decision tree in
                             report.md §7 selects "include". Omitted otherwise.
+  conversation/          ← the session's conversation, linked from §0 of
+    prompt.md               the report (see "Conversation log" below)
+    prompt.html
+    segments/            ← one file per session, so follow-ups append
 ```
 
 `scripts/derivations/` and `supplements/` are present only when the design has non-trivial pre-simulation derivations; omit when every derivation is trivial enough to stay inline in §2 of the main report.
@@ -719,6 +725,42 @@ makes "show me the action functions" trivial. Files that don't apply
 to a given design (no custom generators, no helpers, no external
 boundaries) should be omitted entirely — empty placeholders add
 noise.
+
+### Conversation log
+
+`conversation/prompt.html` lets a reader of the report see how the
+design was reached: the user's inputs and the agent's replies —
+answers, questions, plans, and progress updates during the work.
+Tool calls, tool output, and thinking are excluded. **Every message
+carries its timestamp** (local date and time), and each session
+segment its start time, so a reader can follow when each decision
+was made and how long each stage took. It is extracted
+verbatim from the session log by `scripts/conversation_log.R` in this
+skill's directory. **Never retype or summarize the conversation
+yourself**: emphasis and tables must look exactly as the user saw
+them, and only the script guarantees that.
+
+- **Start the live log when the run folder is created**, as a
+  background process, so the user can open the file at any time and
+  watch it update:
+  `nohup Rscript <skill_dir>/scripts/conversation_log.R --out runs/<trial_name>/conversation --title "Conversation log — <trial_name>" --watch > /dev/null 2>&1 &`.
+  It re-renders whenever the session log changes and exits on its own
+  after 60 idle minutes; a second start while one is running is a
+  no-op.
+- **Render once more right before opening the report** — the same
+  command without `--watch` — so the log is current even where
+  background processes are unavailable.
+- **Follow-ups append.** When the user revises the design or adds a
+  request after receiving the report, start the watcher again and
+  render once more after the new report is finished. Each session is
+  kept as its own segment, so a follow-up in a new session appends to
+  the log instead of replacing it.
+- **If the script cannot read the session log** (exit status 2: no
+  log found, e.g. outside Claude Code), do not reconstruct the
+  conversation. Keep the §0 row as a placeholder and, in the final
+  announced turn, ask the user for the session log file (Claude Code
+  keeps it at `~/.claude/projects/<project>/<session-id>.jsonl`);
+  render it with `--session <path>` once provided.
 
 ### Parallelism
 
