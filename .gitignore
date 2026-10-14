@@ -35,3 +35,7 @@ clinical-trial-simulation/**/*.html
 # Local /simulate launcher (per-user; do not ship)
 /.claude/commands/simulate.md
 rounding-workspace/
+
+# km-digitizer: downloaded source figures and per-study run output
+km-digitizer/reference/
+km-digitizer/output/
