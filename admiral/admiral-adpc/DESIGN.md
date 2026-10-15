@@ -91,10 +91,11 @@ AFRLT/ARRLT. `difftime()`, `as.numeric()` date subtraction, and
 
 ### Decision 3: BLQ values handled with derived DTYPE records, not overwritten
 
-**Decision:** The original BLQ record is kept with AVAL missing and AVALCAT1 =
-"<BLQ"; imputed values go on a derived record with `DTYPE = "HALFLLOQ"` created
-by `derive_extreme_records()`. ANL01FL/ANL02FL tell downstream tools which
-records to use.
+**Decision:** The original BLQ record is kept with AVALCAT1 = "<BLQ" and AVAL
+missing; imputed values go on a derived record with `DTYPE = "HALFLLOQ"`
+created by `derive_extreme_records()`. Pre-dose BLQ samples supplied with
+PCSTRESN = 0 (as in the CDISC pilot) keep AVAL = 0 and are not imputed.
+ANL01FL/ANL02FL tell downstream tools which records to use.
 
 **Rationale:**
 - Overwriting AVAL loses traceability and fails ADaM derived-record conventions

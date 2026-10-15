@@ -12,6 +12,7 @@ R package and the pharmaverse ecosystem.
 | [admiral-adae](admiral-adae/) | Adverse Events | OCCDS | Available |
 | [admiral-adrs](admiral-adrs/) | Tumor Response (RECIST 1.1) | BDS | Available |
 | [admiral-adtte](admiral-adtte/) | Time to Event | BDS-TTE | Available |
+| [admiral-adpc](admiral-adpc/) | PK Concentrations (ADPC / ADNCA) | BDS | Available |
 
 ## Structure
 
@@ -43,10 +44,16 @@ admiral/
 │   ├── DESIGN.md
 │   ├── README.md
 │   └── benchmarks/
-└── admiral-adtte/        ← Time-to-event skill (ADTTE)
+├── admiral-adtte/        ← Time-to-event skill (ADTTE)
+│   ├── SKILL.md
+│   ├── DESIGN.md
+│   ├── README.md
+│   └── benchmarks/
+└── admiral-adpc/         ← PK concentrations skill (ADPC / ADNCA)
     ├── SKILL.md
     ├── DESIGN.md
     ├── README.md
+    ├── references/
     └── benchmarks/
 ```
 
