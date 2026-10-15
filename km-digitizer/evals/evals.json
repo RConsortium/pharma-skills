@@ -1,0 +1,23 @@
+{
+  "skill_name": "km-digitizer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Digitize the KM plot at reference/KMPlot/os_407.PNG. This is a KEYNOTE-407 OS ITT plot with two curves: Pembrolizumab plus chemo (blue) vs Placebo plus chemo (red). X-axis is Time (months) 0-72, Y-axis is OS (%) 0-100. The plot has annotated survival rates at 12, 24, 36, 48, and 60 months. Extract both curves and save as JSON to output/kn407_os_digitized.json. Also generate a debug overlay image.",
+      "expected_output": "JSON with two curves, ~50-150 change points each. Pembro 5yr OS should be near 18.4%, Placebo near 9.7%. Curve starts near 100% at time 0.",
+      "files": ["reference/KMPlot/os_407.PNG"]
+    },
+    {
+      "id": 2,
+      "prompt": "Please digitize the PFS Kaplan-Meier curves from reference/KMPlot/pfs_407.PNG. This is KEYNOTE-407 PFS with Pembrolizumab plus chemo (blue) vs Placebo plus chemo (red). Time axis goes from 0 to 72 months, PFS from 0% to 100%. Annotated values include 36.3%/19.2% at 12 months and 10.8%/3.5% at 60 months. Save the digitized data to output/kn407_pfs_digitized.json with a debug image.",
+      "expected_output": "JSON with two curves. PFS drops steeply in first 12 months. Pembro 5yr PFS near 10.8%, Placebo near 3.5%. Should handle the steep early drop correctly.",
+      "files": ["reference/KMPlot/pfs_407.PNG"]
+    },
+    {
+      "id": 3,
+      "prompt": "Digitize the OS Kaplan-Meier plot at reference/KMPlot/kn189 OS ITT.png. This is KEYNOTE-189 overall survival ITT with two arms: Pembrolizumab + chemo (blue, top curve) vs Placebo + chemo (red, bottom curve). X-axis: Time (months) 0-72. Y-axis: OS (%) 0-100. Annotated survival rates appear at 12, 24, 36, 48, and 60 months for both curves. Number at risk: Pembro arm 410/283/184/126/95/77/0 and Placebo arm 206/98/55/34/27/22/0 at months 0/12/24/36/48/60/72. Save digitized data to output/kn189_os_eval/km_digitized.json with a debug image.",
+      "expected_output": "JSON with two curves. Pembro 5yr OS near 19.4%, Placebo near 11.3%. Debug image shows yellow dots on blue curve and magenta dots on red curve. RMSE should be under 1%.",
+      "files": ["reference/KMPlot/kn189 OS ITT.png"]
+    }
+  ]
+}
