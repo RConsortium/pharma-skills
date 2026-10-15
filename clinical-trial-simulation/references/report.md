@@ -144,7 +144,7 @@ parameters used, (c) caveats inline if any.
                                        gsDesign / multcomp / ...) were used
 3. Treatment Arms and Endpoints      — per arm: endpoint(...) calls +
                                        arm() + add_endpoints(), bundled
-4. Trial Configuration               — n, duration, accrual, dropout, stratification
+4. Trial Configuration               — n, accrual, dropout, stratification
 5. Milestones                        — per milestone (trigger + what fires)
 6. Milestone Actions                 — per action (full body verbatim);
                                        analysis, adaptation, and saves
@@ -214,6 +214,7 @@ Recommended format:
 
 | Metric | Value |
 |---|---|
+| Report date | required |
 | Input tokens | ... |
 | Output tokens | ... |
 | Cache read tokens | ... |
@@ -221,11 +222,17 @@ Recommended format:
 | Total cost (USD) | $... |
 | Model | claude-opus-4-7 (or actual) |
 | Session duration | hh:mm |
+| Conversation log | [prompt.html](conversation/prompt.html) |
 | TrialSimulator version | required |
 | R version | required |
 | Skill version | required |
 
-§0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source".
+The **Conversation log** row links the session's conversation
+(SKILL.md "Conversation log"). If the session log could not be read,
+the row is a placeholder and the same rule as above applies: the
+final announced turn asks the user for the session log file.
+
+§0 shows the version *values* as literal strings. The agent looks them up once before writing the report — no R chunks in the report itself. See SKILL.md §"Package source". **Report date** is the date the report is generated (the current date), written as a literal `YYYY-MM-DD` — never a placeholder.
 
 ### 0.5 Output Files and Reproduction
 
@@ -266,7 +273,11 @@ runs/<trial_name>/
 ├── output.rds          198K   raw controller$get_output() (1000 reps)
 ├── oc_summary.rds      6.4K   OC list saved by main.R for the report
 ├── report.md           21K    this document (source of truth)
-└── report.html         31K    rendered via markdown::mark_html
+├── report.html         31K    rendered via markdown::mark_html
+└── conversation/
+    ├── prompt.md       48K    session conversation (generated)
+    ├── prompt.html     62K    rendered; linked from §0
+    └── segments/              one file per session
 ````
 
 Convention for the two `.rds` files:
@@ -331,7 +342,7 @@ restating numbers.
 - **`software default`** — a default prescribed by the package or skill convention (e.g., `seed = NULL`, `silent = TRUE`, `plot_event = FALSE`). No rationale required.
 - **`PLACEHOLDER`** — a decision rule, combination test, or boundary marked for replacement before design finalization. Must be prominently flagged in the table (bold + `PLACEHOLDER:` prefix) and listed again in §8.
 
-Always include rows for: endpoint distribution parameters per arm, readout times for non-TTE endpoints, correlation structure (and the generator implementing it), sample size, duration, accrual schedule, dropout, stratification factors, milestone trigger thresholds, and any helper-derived literals.
+Always include rows for: endpoint distribution parameters per arm, readout times for non-TTE endpoints, correlation structure (and the generator implementing it), sample size, accrual schedule, dropout, stratification factors, milestone trigger thresholds, and any helper-derived literals.
 
 **Worked example:**
 
@@ -427,8 +438,7 @@ fine when many arms differ only in numeric values.
 ### 4. Trial Configuration
 
 Show the `trial(...)` call. Explain:
-- Sample size and duration (and whether `set_duration`/`resize` will
-  modify them adaptively).
+- Sample size (and whether `resize` will modify it adaptively).
 - Accrual schedule and the rationale (e.g., "30/mo for the first 6
   months reflects ramp-up; 50/mo thereafter").
 - Dropout: which distribution and the helper that produced its
@@ -453,7 +463,8 @@ trial timeline without reading code.
 
 Action functions are the work performed at each milestone — they may
 analyze locked data, adapt the trial (`$resize`, `$update_generator`,
-`$remove_arms`, `$add_arms`, `$set_duration`), save flags and
+`$remove_arms`, `$add_arms`, `$stop_followup`, `$update_milestone`,
+`$update_accrual_rate`, `$crossover`), save flags and
 diagnostics, or do nothing (`doNothing`). This section documents all
 of it.
 

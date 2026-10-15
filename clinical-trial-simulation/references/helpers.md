@@ -16,27 +16,39 @@ https://zhangh12.github.io/TrialSimulator/reference/.
 
 ## Enroller
 
-`trial()` **MUST always** set `enroller = StaggeredRecruiter` — it is the
-only enroller this skill supports; never a custom function. Setting it
-**requires** passing `accrual_rate` (via `trial(..., accrual_rate = <data.frame>)`);
-the two are inseparable. `StaggeredRecruiter` is **for
-`trial(enroller = ...)` only — never as an `endpoint(generator = ...)`**.
+`StaggeredRecruiter` is the default — and only accepted — enroller of
+`trial()`: omit `enroller`; never a custom function, and never as an
+`endpoint(generator = ...)`. It is non-functional without
+`accrual_rate`, which **MUST** be supplied via
+`trial(..., accrual_rate = <data.frame>)`.
 
 | Function | Purpose |
 |---|---|
-| `StaggeredRecruiter(n, accrual_rate)` | Piecewise-constant-rate accrual. `accrual_rate` is `data.frame(end_time, piecewise_rate)`. Pass via `trial(..., enroller = StaggeredRecruiter, accrual_rate = <data.frame>)`. |
+| `StaggeredRecruiter(n, accrual_rate)` | Piecewise-constant-rate accrual. `accrual_rate` is `data.frame(end_time, piecewise_rate)`. Pass via `trial(..., accrual_rate = <data.frame>)`. |
 
-Tip — **simulating a recruitment pause** (e.g., a hold for safety
-review after an interim): use a near-zero `piecewise_rate` for the
-relevant time window. The schedule still has full coverage; the rate
-is just very low during the pause.
+Tip — **simulating a recruitment pause or zero-accrual window**
+(e.g., a hold for safety review after an interim, a site not yet
+activated, a seasonal/holiday gap, or staggered site openings): set
+`piecewise_rate = 0` for the relevant time window. No patient enrolls
+during the window, calendar time still advances, and enrollment
+resumes at the window's `end_time`.
 
 ```r
 accrual_rate <- data.frame(
   end_time       = c(12, 18, Inf),
-  piecewise_rate = c(30, 0.001, 30)   # 12 mo at 30/mo, 6 mo near-pause, then 30/mo
+  piecewise_rate = c(30, 0, 30)   # 30/mo, 6-mo pause, then 30/mo
 )
 ```
+
+Do **not** fake a pause with a tiny positive rate: a finite window with
+`window-length × piecewise_rate < 1` is rejected with an error. Use `0`.
+
+The pattern above is for **pre-planned** pauses, known at design time.
+A revision or pause decided *at* a milestone (data-driven) uses
+`trial$update_accrual_rate(accrual_rate)` inside the action instead —
+there, `end_time` is measured from the milestone ("from now on"), not
+from trial start, and a leading `piecewise_rate = 0` window is the
+pause.
 
 ---
 
@@ -167,7 +179,8 @@ generators need.
 | Dropout at 1 landmark | exponential is the simple default: `dropout = rexp, rate = -log(1-p)/t`. If the user has a different model in mind (e.g., heavier early dropout, time-varying), build a custom dropout function whose first argument is `n` and pass it as `trial(dropout = my_fn, ...)`. |
 | Constant uniform accrual | none — `accrual_rate = data.frame(end_time = Inf, piecewise_rate = N)` |
 | Ramp-up accrual | none — multi-row `accrual_rate` |
-| Recruitment pause window | none — set `piecewise_rate` near zero for the pause window |
+| Recruitment pause window (pre-planned) | none — set `piecewise_rate = 0` for the pause window |
+| Revise / pause accrual at an interim decision | `trial$update_accrual_rate()` in the action; `end_time` measured from the milestone |
 
 ### Bridge: piecewise-exp marginal in a NORTA copula
 
@@ -222,19 +235,32 @@ row per experimental arm × placebo pair, with columns `arm`,
 `...` argument accepts `dplyr::filter` syntax for subsetting (e.g.,
 `biomarker == "positive"`).
 
-Use these inside action functions. **Prefer them over hand-rolled
-`coxph`/`survdiff`/`glm`/`lm` calls** — the standardized output makes
-downstream `trial$save()` clean.
+Use these inside action functions. **Always use a wrapper whenever one
+covers the test** — do not call `coxph`/`survdiff`/`glm`/`lm` directly. The
+standardized output makes downstream `trial$save()` clean. The wrappers
+return a **one-sided** p-value *by design* — that is the required form for
+simulation, never a reason to hand-roll a two-sided test (convert a
+two-sided design to its one-sided equivalent instead; see "Testing and
+multiplicity" in `SKILL.md`). The only acceptable reason to bypass a
+wrapper is that no wrapper can express the test (e.g. a non-inferiority
+margin) — and that must be justified, not assumed.
 
 | Function | Method | Covariate adjustment | Notes |
 |---|---|---|---|
 | `fitCoxph(formula, placebo, data, alternative, scale, ...)` | Cox PH | yes | `scale = "hazard ratio"` or `"log hazard ratio"` — no default; specify explicitly. `formula` is `Surv(time, event) ~ arm [+ covars + strata(...)]`. |
-| `fitLogrank(formula, placebo, data, alternative, ...)` | log-rank | no, but supports `strata(...)` | Same `Surv(...)` formula. |
+| `fitLogrank(formula, placebo, data, alternative, ...)` | log-rank | no, but supports `strata(...)` | Same `Surv(...)` formula. When the statistic is undefined (zero variance, e.g. no events in a subset) it warns and returns placeholder `z = 0`, `p = 0.5` instead of erroring — expect this in tiny sanity runs. |
 | `fitLogistic(formula, placebo, data, alternative, scale, ...)` | logistic regression | yes | `scale = "coefficient" \| "odds ratio" \| "risk ratio" \| "risk difference"` — no default; specify explicitly. |
 | `fitLinear(formula, placebo, data, alternative, ...)` | linear model (ATE via `emmeans`) | yes | |
 | `fitFarringtonManning(endpoint, placebo, data, alternative, ...)` | rate-difference test for binary | no | `endpoint` is a column name string, not a formula. |
 
 `alternative` is `"greater"` or `"less"` — one-sided is enforced.
+
+> **Miettinen–Nurminen ≡ Farrington–Manning at reasonable sample
+> sizes.** The two score tests for a rate difference are equivalent
+> (they differ only by a small-sample bias-correction factor). If a
+> Miettinen–Nurminen test is required, use `fitFarringtonManning`
+> with `delta = 0` — the score test using the pooled-proportion
+> variance.
 
 > **Get `alternative` right — it determines whether the simulation
 > answers the right question.** The direction of "treatment is
@@ -308,8 +334,11 @@ counts, sample size by arm — already there. Access via
 ``out[["n_events_<interim>_<os>"]]``.
 
 `controller$get_output(tidy = TRUE)` drops these from the returned
-data frame; use it when the auto-saved columns aren't needed for
-reporting. **Caution:** if a custom `save()` name matches the regex
+data frame; `controller$run(tidy = TRUE)` goes further and never
+saves the per-arm table (`n_events_<milestone>_<arms>`, the most
+expensive of these columns) in the first place — per-endpoint totals
+and milestone times are still saved. Use either when the auto-saved
+columns aren't needed for reporting. **Caution:** if a custom `save()` name matches the regex
 `^n_events_<.*?>_<.*?>$` or `^milestone_time_<.*?>$`, it gets dropped
 too. Pick distinctive custom names.
 
@@ -353,7 +382,7 @@ tr$add_regimen(reg)              # MUST be before add_arms
 tr$add_arms(sample_ratio, ...)   # errors otherwise
 ```
 
-### `save_custom_data` namespace + `overwrite`
+### Custom data (`save_custom_data` / `get`) and `global_data`
 
 **Prefer `trial$save()` + `trial$get_output()` for scalar state.**
 When the value being passed between milestones is a single
@@ -368,26 +397,50 @@ object, a data frame) and would not fit cleanly as a column.
 
 For the cases where `save_custom_data()` is the right tool:
 
-`save()` and `save_custom_data()` share a name registry. Calling both
-with the same `name` errors with "X has been used to name something in
-custom data." Use **distinct** names.
-
-The custom-data registry persists across replicates (the value resets
-between replicates, but the name doesn't). Without `overwrite = TRUE`,
-replicate 2 errors on the duplicate name. **Always set
-`overwrite = TRUE` on `save_custom_data()`.**
+- **Strictly replicate-local.** Every replicate starts with empty
+  custom data; nothing saved in one replicate reaches the next, and
+  data saved before `run()` does not reach the replicates (that is
+  what `global_data` is for, below). After `run()`, the last
+  replicate's custom data remains available for inspection.
+- `save()` and `save_custom_data()` share a name registry within a
+  replicate ("X has been used to name something in custom data") —
+  use **distinct** names across the two.
+- `overwrite = TRUE` is needed only when a later milestone of the
+  **same replicate** re-saves the name (e.g., carrying an updated
+  testing object forward); the first save of a name needs nothing.
+- `trial$get(name)` on a name not saved earlier in the current
+  replicate is an **error**, not `NULL` — and `NULL` itself cannot
+  be stored (`save_custom_data()` rejects it). For an object that is
+  only conditionally produced upstream, gate the read on a
+  `trial$save()`'d flag.
 
 ```r
-# Non-tabular state: a fitted Cox model object passed to a later milestone.
-trial$save_custom_data(value = cox_fit, name = "cox_model", overwrite = TRUE)
+# First save of a name in a replicate: no overwrite needed.
+trial$save_custom_data(value = cox_fit, name = "cox_model")
+# Re-saving the same name later in the SAME replicate:
+trial$save_custom_data(value = updated_fit, name = "cox_model", overwrite = TRUE)
+
+# Object produced only in some branches upstream? Gate the read:
+if (trial$get_output("model_fitted") == 1L) {
+  model <- trial$get(name = "cox_model")
+}
 ```
 
-When retrieving in a later milestone, guard against `NULL` (the
-saving milestone may not have fired):
+**Cross-replicate constants belong in `global_data`, not in custom
+data.** Register design parameters, boundary tables, or template
+objects of testing procedures once at setup via
+`trial(global_data = list(...))`; read them in any action with
+`trial$get_global_data(name)`. Entries can never be modified — R6
+objects and data.tables are copied at registration and on every
+read, so a template (e.g., an as-designed `GraphicalTesting` object)
+comes back as a fresh independent copy in every replicate.
 
 ```r
-model <- trial$get(name = "cox_model")
-if (is.null(model)) model <- <fallback>
+tr <- trial(..., global_data = list(fwer = 0.025, gt_template = gt))
+
+# inside any action:
+alpha <- trial$get_global_data(name = "fwer")
+gt    <- trial$get_global_data(name = "gt_template")  # fresh copy per read
 ```
 
 ### Trials never stop early in simulation

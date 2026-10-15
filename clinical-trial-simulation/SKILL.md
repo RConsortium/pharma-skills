@@ -6,8 +6,8 @@ description: >
   pairs each block of code with rationale, parameters, and
   operating characteristics.
 metadata:
-  version: 0.2.19
-  trialsimulator_min_version: "1.20.1"
+  version: 0.4.2
+  trialsimulator_min_version: "1.39.0"
 ---
 
 # TrialSimulator Skill
@@ -48,12 +48,20 @@ After the announcement line, briefly greet the user and ask about
 the trial setting — never ask what design type, discover it through
 conversation (see "Two user modes" below).
 
+**Read the core references at load.** Together with the version
+check, read `references/building_blocks.md`, `references/helpers.md`,
+and `references/report.md` before the first response.
+
 ## Files in this skill
 
 - `SKILL.md` (this file) — framework, conversation principles, build order, workflow
-- `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system
-- `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas
-- `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file)
+- `references/building_blocks.md` — cached reference for `endpoint`, `arm`, `trial`, `milestone`, `listener`, `controller`, `regimen`, and the condition system; read at load (see "Loading announcement")
+- `references/helpers.md` — catalog of TrialSimulator-provided functions (RNGs, parameter solvers, analysis wrappers, post-sim utilities), plus non-obvious gotchas; read at load
+- `references/report.md` — how to write the simulation report (intentionally policy-light; organizations are encouraged to edit this file); read at load
+- `references/code_snippets.md` — worked snippets composing milestones, actions, and adaptations into common designs (currently adaptive designs: group sequential, promising zone, MAMS, enrichment, basket, RAR, …); consult when the user's design matches one
+- `references/graphical_testing.md` — `GraphicalTesting` (Maurer-Bretz) reference; read only when graphical testing is the chosen multiplicity procedure
+- `references/parallel_targets.md` — `targets` pipeline for parallel runs; read only when a simulation is large enough to parallelize
+- `scripts/conversation_log.R` — renders the session's conversation into `conversation/prompt.html` (see "Conversation log")
 
 These files cache the most common things to save tokens. When confused
 or when behavior contradicts these notes, consult `?<function>` in R
@@ -63,9 +71,10 @@ is the source of truth.
 
 ## Package source
 
-This skill targets a known-good baseline of TrialSimulator declared
-in `metadata.trialsimulator_min_version` of the YAML frontmatter
-above. **At load, only a local `packageVersion("TrialSimulator")`
+This skill requires TrialSimulator **≥ 1.39.0** (the minimum declared
+in `metadata.trialsimulator_min_version` of the YAML frontmatter above,
+which is the source of truth — keep this number in sync with it). 
+**At load, only a local `packageVersion("TrialSimulator")`
 check runs — no automatic `install_github`, no network call.** The
 load-time check + offer/auto behavior is specified in "Loading
 announcement".
@@ -126,7 +135,7 @@ Always assemble in this order. Each step depends on the previous.
 1. endpoint()              — define each endpoint per arm × endpoint
 2. arm()                   — one per treatment arm
    arm$add_endpoints()        — attach endpoints
-3. trial()                 — sample size, duration, enroller, dropout, stratification
+3. trial()                 — sample size, accrual, dropout, stratification
    regimen()                  — (optional) build a treatment-switching regimen
    trial$add_regimen()        — (optional) attach it; MUST precede add_arms
    trial$add_arms()           — attach arms with sample ratios
@@ -174,13 +183,26 @@ retrieve it at B with `trial$get_output()` (the in-progress
 per-replicate row, sanctioned for use inside actions). This keeps
 the value in the audit trail — it appears as a column in
 `controller$get_output()` after the run, useful for post-hoc
-analysis and report tables.
+analysis and report tables. **Save only what a branch actually
+computes**: a column saved in only some replicates is NA-filled
+automatically when `controller$run()` combines replicate outputs,
+so branched actions need no defensive NA-placeholder saves.
 
-Reserve `trial$save_custom_data(..., overwrite = TRUE)` +
-`trial$get(name)` for **non-tabular state**: a fitted model object,
-a list, a data frame — anything that does not fit cleanly as a
-column in the per-replicate output. See `helpers.md` gotchas for
-the namespace and `overwrite = TRUE` rules.
+Reserve `trial$save_custom_data()` + `trial$get(name)` for
+**non-tabular, within-replicate state**: a fitted model object, a
+list, a data frame — anything that does not fit cleanly as a column
+in the per-replicate output. Custom data is strictly
+replicate-local: every replicate starts empty, and `trial$get()` on
+a name not saved earlier in the same replicate is an error, not
+NULL. See `helpers.md` gotchas for the namespace and `overwrite`
+rules.
+
+**Read-only constants every replicate needs** — design parameters,
+boundary tables, template objects of testing procedures — do not
+belong in custom data (cleared per replicate) or script globals:
+register them at setup as `trial(global_data = list(...))` and read
+with `trial$get_global_data(name)` inside actions. Entries can never
+be modified; R6 objects and data.tables are copied on every read.
 
 ## R6 method visibility — only use the documented public methods
 
@@ -201,18 +223,39 @@ calls for that kind of operation.
 
 - *Trial setup* (called once after `trial()`, before `$run()`):
   `$add_regimen(regimen)` (must precede `$add_arms`), `$add_arms(sample_ratio, ...)`
-- *Data access in actions*: `$get_locked_data(milestone_name)`
+- *Data access in actions*: `$get_locked_data(milestone_name)`,
+  `$get_global_data(name)` (read-only copy of a `trial(global_data =
+  list(...))` entry)
 - *Result plumbing in actions*:
   `$save(value, name, overwrite)` / `$bind(value, name)` / `$save_custom_data(value, name, overwrite)` / `$get(name)` / `$get_output(cols, simplify, tidy)`
+- *Trial status queries in actions*:
+  `$get_current_time()` (time of the current milestone),
+  `$get_milestone_time(milestone_name)`, `$get_sample_ratio()`,
+  `$get_arms_name()` (excludes removed arms)
 - *Adaptive modifications, only inside action functions, only when
   the design adapts*:
-  `$set_duration(duration)`, `$resize(n_patients)`,
-  `$remove_arms(arms_name)`, `$update_sample_ratio(arm_names, sample_ratios)`,
+  `$resize(n_patients)`,
+  `$remove_arms(arms_name, additional_followup)`,
+  `$stop_followup(..., additional_followup)` (`...` = patient filter;
+  both take a mandatory `additional_followup`: `0`, a time, or `Inf`
+  of extra follow-up past the milestone),
+  `$update_sample_ratio(arm_names, sample_ratios)`,
   `$update_generator(arm_name, endpoint_name, generator, ...)`,
+  `$update_accrual_rate(accrual_rate)` (`end_time` measured from the
+  milestone, not trial start),
+  `$update_milestone(name, when, action, ...)` (revise a
+  not-yet-triggered milestone's trigger and/or action),
   `$add_arms(sample_ratio, ...)` (mid-trial; same method as setup, used
   for adaptive arm addition like dose-ranging, basket, or platform designs),
   `$crossover(what, how, when, delay)` (milestone-triggered treatment
   crossover for patients still in the trial)
+- *Interim decision support in actions, for a TTE comparison under a
+  one-interim + one-final design*:
+  `$conditionalPower(milestone, formula, placebo, alternative, alpha,
+  D, effect, ...)`,
+  `$eventNumberReestimationFromConditionalPower(milestone, formula,
+  placebo, alternative, alpha, target_cp, effect, ..., D_cap)`.
+  Read the `conditionalPower` vignette before using either.
 - *Combination test in actions, for seamless / dose-selection designs*:
   `$dunnettTest(formula, placebo, treatments, milestones, alternative,
   planned_info, ...)`, `$closedTest(dunnett_test, treatments, milestones,
@@ -230,7 +273,7 @@ setup methods, `$get_locked_data`, and the result-plumbing methods.
 
 **`Controllers`** (the controller object):
 
-- `$run(n, n_workers, plot_event, silent, dry_run)`, `$get_output(...)`
+- `$run(n, n_workers, plot_event, silent, tidy)`, `$get_output(...)`
 
 **Arm objects:** `$add_endpoints(...)` only.
 
@@ -274,7 +317,7 @@ follow the conversation with no R reference open.
 |---|---|
 | "use `fitLogrank` for the OS test" | "OS is tested with a one-sided log-rank test" |
 | "milestone fires at `enrollment(n=500, min_treatment_duration=6)`" | "the analysis is performed 6 months after the last patient is enrolled" |
-| "we'll call `set_duration(54)` if pooled events < 220" | "the trial duration is extended from 48 to 54 months if pooled events at month 24 fall below 220" |
+| "we'll call `update_milestone('final', when = eventNumber(...))` if CP is low" | "the final analysis is postponed from 270 to 300 OS events if conditional power at the interim falls below 30%" |
 | "boundary z = 2.523 from `asOF` spending" | "interim efficacy boundary z = 2.523 (Lan-DeMets O'Brien-Fleming spending, IF = 0.71)" |
 | "`StaggeredRecruiter` with `accrual_rate = data.frame(...)`" | "piecewise-constant accrual: 5/mo for the first 3 months, 15/mo for the next 3, then 25/mo until enrollment completes" |
 | "the action saves `gate_pass`" | "the gate decision is recorded for each replicate" |
@@ -426,6 +469,13 @@ decisions. Don't ask; just do.
   hide everything in a header docstring.
 ## Testing and multiplicity
 
+**Test one-sided, always.** Simulation hypothesis testing is one-sided
+throughout. If the user describes the design in two-sided terms, convert
+to the one-sided equivalent before anything else: a two-sided α becomes
+one-sided α/2 (e.g. two-sided 0.05 → one-sided 0.025), and every boundary
+/ critical value is computed on that one-sided scale. State the conversion
+to the user so the design is unambiguous.
+
 Two intertwined concerns: how to compute decision boundaries when a
 hypothesis is tested under group-sequential design, and how to
 control familywise error when more than one hypothesis is tested.
@@ -493,13 +543,15 @@ Procedures, in roughly increasing complexity:
    but worth reaching for on its own when the order is clear.
 
 3. **Graphical testing** (Maurer-Bretz). Alpha flows between
-   hypotheses via a pre-specified transition graph. Use the built-in
-   `GraphicalTesting` class. **Read the example in `?GraphicalTesting`
-   or the pkgdown reference page before writing** — the API is
-   concrete and easier to follow from a worked example than from
-   prose. Pair with `trial$bind()` to accumulate per-stage stats
-   across milestones and call `gt$test(stats)` once in the final
-   action; see the `actionFunctions` vignette for the bind pattern.
+   hypotheses via a pre-specified transition graph, with per-hypothesis
+   group-sequential spending. Use the built-in `GraphicalTesting` class.
+   **If this is the chosen procedure, you MUST read
+   `references/graphical_testing.md` and follow its implementation pattern
+   exactly** — constructing the graph inside the first milestone's action
+   (per replicate), carrying it across milestones via
+   `save_custom_data`/`get`, and setting `is_final` / `max_info` per
+   hypothesis. A plausible-looking alternative silently corrupts the FWER;
+   do not improvise one.
 
 4. **Built-in combination test for seamless / dose-selection
    designs** (`trial$dunnettTest` + `trial$closedTest`). The
@@ -509,6 +561,18 @@ Procedures, in roughly increasing complexity:
    the worked example — it shows the formula, the `planned_info`
    data.frame layout, and how PFS + OS can be tested under one
    closed procedure with α split between them.
+
+5. **Adaptive enrichment** — population selection rather than arm
+   selection. Enrichment designs are flexible: the number of stages,
+   the interim decision rule, the combination function, and the
+   intersection test are all design choices to collect from the
+   user, not givens. For how such a design maps onto milestones,
+   actions, and adaptation methods, **read the `enrichmentDesign`
+   vignette as a worked reference** — it implements one variant
+   (two stages, a five-zone conditional-power decision, inverse
+   normal combination, closed test with Simes' test); adapt its
+   pattern to the user's actual design rather than assuming those
+   choices.
 
 If none of these fit the user's design, ask for more details and
 implement a custom procedure (weighted Hochberg, parallel
@@ -522,8 +586,14 @@ assigned at randomization — crossover, treatment switching, rescue
 therapy, dose changes, and the like — these three vignettes cover three
 *distinct* switching designs, and which one applies is rarely clear until
 you have read them. Read all three in full before implementing, then pick
-the one that matches the user's design and follow it — do not improvise
-from a partial or approximate match:
+the one that matches the user's design and **implement it with that
+vignette's mechanism** — `regimen()` for dynamic switching, `crossover()`
+for crossover at a milestone, the endpoint-generator approach *only* for
+washout crossover. Do not re-encode switching logic inside an endpoint
+generator for a design the vignette implements via `regimen()` /
+`crossover()`, even if the numbers would come out right — it hides the
+design and defeats QC. Do not improvise from a partial or approximate
+match:
 
 - **Washout crossover** — the classical within-patient crossover design
   (e.g. 2×2 AB/BA or higher-order / multi-period), where each patient
@@ -553,6 +623,9 @@ misunderstanding of what they need. Only after that, tell the user and stop.
 For the latter two, read the relevant function signatures if the vignette
 leaves any argument unclear.
 
+Cite the matched vignette's URL in the final simulation report so the user
+has the reference for how the switching was implemented.
+
 **Confirm the post-switch outcome model before implementing.** How each
 endpoint is generated or updated once treatment changes — the `how` step
 for switching / `crossover()`, or the generator logic for washout
@@ -575,7 +648,8 @@ check to make an error go away.
 
 ## Final step — open the main report
 
-After the report and all supplements have been rendered, **open the
+After the report and all supplements have been rendered, render the
+conversation log once more (see "Conversation log"), then **open the
 main report HTML in the user's default browser**:
 
 ```r
@@ -592,7 +666,8 @@ Validate iteratively: sanity at `n = 3-5` to catch real errors, a
 short calibration at `n = 20-50` to estimate per-replicate cost, then
 production at the size the operating characteristics require (1000+
 for power; 10000+ for Type I error). Re-source the script between
-runs rather than reusing a controller.
+runs rather than reusing a controller — the package enforces this:
+a second `$run()` on the same controller errors without `reset()`.
 
 One TS-specific quirk: at very small `n`, stochastic milestone
 triggers occasionally fail to fire in a replicate, producing errors
@@ -633,6 +708,10 @@ runs/<trial_name>/
   milestone_times.png    ← embedded in the report ONLY when the milestone-time
                             precondition holds AND the decision tree in
                             report.md §7 selects "include". Omitted otherwise.
+  conversation/          ← the session's conversation, linked from §0 of
+    prompt.md               the report (see "Conversation log" below)
+    prompt.html
+    segments/            ← one file per session, so follow-ups append
 ```
 
 `scripts/derivations/` and `supplements/` are present only when the design has non-trivial pre-simulation derivations; omit when every derivation is trivial enough to stay inline in §2 of the main report.
@@ -651,20 +730,58 @@ to a given design (no custom generators, no helpers, no external
 boundaries) should be omitted entirely — empty placeholders add
 noise.
 
+### Conversation log
+
+`conversation/prompt.html` lets a reader of the report see how the
+design was reached: the user's inputs and the agent's replies —
+answers, questions, plans, and progress updates during the work.
+Tool calls, tool output, and thinking are excluded. **Every message
+carries its timestamp** (local date and time), and each session
+segment its start time, so a reader can follow when each decision
+was made and how long each stage took. It is extracted
+verbatim from the session log by `scripts/conversation_log.R` in this
+skill's directory. **Never retype or summarize the conversation
+yourself**: emphasis and tables must look exactly as the user saw
+them, and only the script guarantees that.
+
+- **Start the live log when the run folder is created**, as a
+  background process, so the user can open the file at any time and
+  watch it update:
+  `nohup Rscript <skill_dir>/scripts/conversation_log.R --out runs/<trial_name>/conversation --title "Conversation log — <trial_name>" --watch > /dev/null 2>&1 &`.
+  It re-renders whenever the session log changes and exits on its own
+  after 60 idle minutes; a second start while one is running is a
+  no-op.
+- **Render once more right before opening the report** — the same
+  command without `--watch` — so the log is current even where
+  background processes are unavailable.
+- **Follow-ups append.** When the user revises the design or adds a
+  request after receiving the report, start the watcher again and
+  render once more after the new report is finished. Each session is
+  kept as its own segment, so a follow-up in a new session appends to
+  the log instead of replacing it.
+- **If the script cannot read the session log** (exit status 2: no
+  log found, e.g. outside Claude Code), do not reconstruct the
+  conversation. Keep the §0 row as a placeholder and, in the final
+  announced turn, ask the user for the session log file (Claude Code
+  keeps it at `~/.claude/projects/<project>/<session-id>.jsonl`);
+  render it with `--session <path>` once provided.
+
 ### Parallelism
 
-**Default `n_workers = 1`** (single process). Most simulations in
-this skill's typical territory — a few thousand replicates with
-simple endpoints — finish in seconds single-process, and the script
-is universally readable. Reach for `n_workers > 1` only when runtime
-warrants it.
+**Run single-process by default.** Most simulations in this skill's
+typical territory — a few thousand replicates with simple endpoints —
+finish in seconds, single-threaded.
 
-When `n_workers > 1` is used, pass per-call configuration through the
-package's `...` mechanism: `trial(dropout = fn, my_arg = X)`,
-`endpoint(generator = fn, my_arg = Y)`, `milestone(name, when,
-action, my_arg = Z)`. The functions then receive their arguments via
-their own signature. Don't reference script-level globals from
-inside generators / dropout / enroller / action functions — `mirai`
-workers don't share the script env and globals break. The `...`
-pattern is also the idiomatic style in the package's vignettes.
-Start at 2-4 workers on a laptop; requires the `mirai` package.
+**When parallelism is warranted, use the `targets` package — never
+`controller$run(n_workers > 1)`.** `n_workers > 1` is forbidden in this
+skill. Instead, each replicate runs single-threaded and a `targets` +
+`crew` pipeline distributes batches of replicates across scenarios over
+worker processes (with result caching, reproducibility, and a clean
+scenario grid as bonuses). The worker count is half the physical cores:
+`max(1L, parallelly::availableCores(logical = FALSE) %/% 2L)`.
+
+**If parallelism is needed, read `references/parallel_targets.md`** for the
+rules — worker functions self-contained (no script-level globals; crew
+workers don't share the env), `controller$run` single-threaded returning
+`controller$get_output()`, no `seed` in `trial()`. How the work is split
+into targets is left to whatever reads and QCs best.
