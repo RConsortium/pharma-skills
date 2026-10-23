@@ -1,0 +1,37 @@
+{
+  "id": "github-issue-224",
+  "prompt": "Using the pharmaversesdtm CDISC Pilot Study PC, EX and VS domains and ADSL, derive an ADaM Pharmacokinetic Concentrations Analysis Dataset (ADPC, also used as ADNCA input for non-compartmental analysis) for xanomeline.\n\nInput data must be loaded directly from the pharmaverse R packages:\n\nlibrary(pharmaversesdtm)\nlibrary(pharmaverseadam)\npc   <- pharmaversesdtm::pc    # PK concentrations, plasma and urine\nex   <- pharmaversesdtm::ex    # Exposure, once-daily dosing, date-only EXSTDTC/EXENDTC\nvs   <- pharmaversesdtm::vs    # Vital signs, for baseline height and weight\nadsl <- pharmaverseadam::adsl  # 306 subjects\n\nDo not generate synthetic or simulated data. Do not read or copy `pharmaverseadam::adpc`; it is the reference answer used for scoring.\n\nDerive:\n- Concentration records (PARAMCD = \"XAN\") and dosing records (PARAMCD = \"DOSE\"), with PARCAT1 = specimen (PLASMA / URINE)\n- Individual dosing records expanded from EX start/end dates and EXDOSFRQ\n- NFRLT (nominal time from first dose, hours) from PCTPT and VISITDY\n- AFRLT (actual time from first dose) and ARRLT (actual time from most recent dose), in hours, with FRLTU and RRLTU\n- NRRLT (nominal time from reference dose), PCRFTDTM (reference dose datetime), ATPTREF and BASETYPE\n- DOSEA (actual dose), DOSEP (planned dose by arm) and DOSEU\n- AVAL, AVALU, AVALCAT1, and ALLOQ from PCLLOQ\n- BLQ handling: keep the original BLQ record, and for BLQ records with a missing numeric result add a derived record with DTYPE = \"HALFLLOQ\" and AVAL = LLOQ/2\n- Pre-dose copy records for the next dose (DTYPE = \"COPY\")\n- ABLFL, BASE, CHG, ANL01FL and ANL02FL\n- Baseline covariates HTBL, WTBL and BMIBL from VS\n- ASEQ\n\nOnly subjects with at least one nonzero dose should be included.",
+  "expected_output": "Executable R code using {admiral} that produces ADPC with one row per concentration, dose, or derived record. Time variables come from admiral functions: `derive_var_nfrlt()` for nominal time, `create_single_dose_dataset()` for dose expansion, `derive_vars_joined()` for previous/next dose, and `derive_vars_duration()` for actual relative times. Nothing hand-rolled with `difftime()`, `lag()` or `lead()`.\n\nCompared with `pharmaverseadam::adpc` (scoring reference): 168 subjects, all on active treatment; XAN records in PLASMA and URINE; NFRLT values from 0 to 48 hours; HALFLLOQ records with AVAL = 0.005 (LLOQ 0.01); one BASETYPE per reference dose (\"Day 1 Baseline\", \"Day 2 Baseline\", ...).\n\n**Critical note:** EX in the CDISC pilot has dates but no times, so dose times impute to 00:00 and ARRLT/AFRLT are approximate. A correct script states this with a `# REVIEW:` comment instead of silently treating imputed times as actual.",
+  "files": [],
+  "assertions": [
+    "Script loads pharmaversesdtm::pc, pharmaversesdtm::ex, pharmaversesdtm::vs and pharmaverseadam::adsl, and does not read pharmaverseadam::adpc",
+    "derive_var_nfrlt() is used to derive NFRLT from PCTPT and VISITDY; no manual case_when() mapping of PCTPT strings to hours",
+    "create_single_dose_dataset() is used to expand EX dosing intervals into individual dose records",
+    "derive_vars_joined() is used to find the previous and next dose for each sample; lag() or lead() dose matching is absent",
+    "derive_vars_duration() with out_unit = \"HOURS\" is used for AFRLT and ARRLT; difftime() and as.numeric() date subtraction are absent",
+    "derive_vars_merged() is used for ADSL and VS merges; plain left_join() on ADSL is absent",
+    "derive_vars_dtm() derives ADTM from PCDTC and dose datetimes from EXSTDTC/EXENDTC",
+    "Output contains both XAN concentration records and DOSE records",
+    "Output includes exactly the 168 subjects with a nonzero dose; placebo subjects are excluded",
+    "NFRLT for XAN records spans 0 to 48 hours and matches pharmaverseadam::adpc for the same USUBJID, PCTPT and PARCAT1",
+    "ARRLT is 0 for DOSE records and between -0.5 and 48 hours for XAN records",
+    "Original BLQ records are kept with AVALCAT1 = \"<BLQ\" and are not overwritten in place: AVAL stays missing, or 0 for pre-dose BLQ samples supplied as PCSTRESN = 0",
+    "Derived records with DTYPE = \"HALFLLOQ\" exist and have AVAL = 0.005",
+    "Pre-dose copy records with DTYPE = \"COPY\" or \"COPY/HALFLLOQ\" exist for samples taken at the next dose time",
+    "ANL02FL = \"Y\" only on records where DTYPE is missing",
+    "BASETYPE is populated per reference dose and BASE is derived within BASETYPE",
+    "HTBL, WTBL and BMIBL are present, with BMIBL computed by compute_bmi()",
+    "ASEQ is unique within USUBJID, checked with derive_var_obs_number(check_type = \"error\") or an equivalent stopifnot()",
+    "FRLTU and RRLTU equal \"HOURS\" on records where the corresponding time variable is non-missing",
+    "# REVIEW: comment at nominal time mapping (PCTPT to NFRLT, range_method, treatment duration)",
+    "# REVIEW: comment noting that EX dose times are missing and imputed to 00:00, so ARRLT/AFRLT are approximate",
+    "# REVIEW: comment at the BLQ imputation rule (LLOQ/2 vs 0) and ANL01FL/ANL02FL definitions",
+    "# REVIEW: comment at the DOSEP planned dose mapping by treatment arm",
+    "Record counts by PARAMCD, PARCAT1 and DTYPE are printed to the console for verification",
+    "Script runs end-to-end without errors"
+  ],
+  "language": "R",
+  "target_skills": [
+    "admiral-adpc"
+  ]
+}
