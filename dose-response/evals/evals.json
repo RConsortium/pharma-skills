@@ -1,0 +1,139 @@
+{
+  "skill_name": "dose-response",
+  "evals": [
+    {
+      "id": 1,
+      "name": "adas-cog-primary-endpoint",
+      "prompt": "Please generate R code to perform the primary ADAS-Cog analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder.",
+      "files": [
+        "submissions/pilot01/"
+      ],
+      "expected_output": "Executable R script with two models (trend + pairwise), correct variables (SITEGR1, TRTP, TRTPN, BASE, CHG), proper filters (EFFFL, ANL01FL, ACTOT, Week 24), and correct emmeans usage with contrast('revpairwise', infer = TRUE).",
+      "assertions": [
+        {
+          "id": "a1",
+          "text": "The generated code builds two distinct models (model_a for continuous treatment, model_b for categorical treatment)"
+        },
+        {
+          "id": "a2",
+          "text": "model_a treats treatment dose as numeric (TRTPN) for the linear trend test"
+        },
+        {
+          "id": "a3",
+          "text": "model_a calls emmeans with 'at = list(TRTPN = c(...))' to evaluate LS means at dose levels 0, 54, 81"
+        },
+        {
+          "id": "a4",
+          "text": "model_b uses the categorical treatment variable TRTP (wrapped in factor() is acceptable)"
+        },
+        {
+          "id": "a5",
+          "text": "model_b does NOT use factor(TRTPN) \u2014 must use TRTP as the primary categorical variable"
+        },
+        {
+          "id": "a6",
+          "text": "Pairwise comparisons use contrast(..., 'revpairwise', infer = TRUE) to calculate 95% CIs on differences"
+        },
+        {
+          "id": "a7",
+          "text": "Pairwise comparisons are NEVER derived from model_a (the continuous model)"
+        },
+        {
+          "id": "a8",
+          "text": "Site covariate uses SITEGR1 (pooled site group per SAP), NOT SITEID"
+        },
+        {
+          "id": "a9",
+          "text": "Baseline covariate uses BASE directly, not reconstructed from AVAL"
+        },
+        {
+          "id": "a10",
+          "text": "Population filter uses EFFFL == 'Y' (or EFFFL == \"Y\")"
+        },
+        {
+          "id": "a11",
+          "text": "Analysis flag filter uses ANL01FL == 'Y' (or ANL01FL == \"Y\")"
+        },
+        {
+          "id": "a12",
+          "text": "Endpoint visit filter uses AVISIT == 'Week 24' (or AVISIT == \"Week 24\")"
+        },
+        {
+          "id": "a13",
+          "text": "PARAMCD filter uses PARAMCD == 'ACTOT' (or PARAMCD == \"ACTOT\")"
+        },
+        {
+          "id": "a14",
+          "text": "Outcome variable is CHG (change from baseline)"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "cibic-plus-endpoint",
+      "prompt": "Please generate R code to perform the co-primary CIBIC+ analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder.",
+      "files": [
+        "submissions/pilot01/"
+      ],
+      "expected_output": "Executable R script with two models (trend + pairwise), correct variables (SITEGR1, TRTP, TRTPN, AVAL), proper filters (EFFFL, ANL01FL, CIBICVAL, Week 24), NO baseline covariate, and correct emmeans usage with contrast('revpairwise', infer = TRUE).",
+      "assertions": [
+        {
+          "id": "b1",
+          "text": "The generated code builds two distinct models (model_a for continuous treatment, model_b for categorical treatment)"
+        },
+        {
+          "id": "b2",
+          "text": "model_a treats treatment dose as numeric (TRTPN) for the linear trend test"
+        },
+        {
+          "id": "b3",
+          "text": "model_a calls emmeans with 'at = list(TRTPN = c(...))' to evaluate LS means at dose levels 0, 54, 81"
+        },
+        {
+          "id": "b4",
+          "text": "model_b uses the categorical treatment variable TRTP (wrapped in factor() is acceptable)"
+        },
+        {
+          "id": "b5",
+          "text": "model_b does NOT use factor(TRTPN) \u2014 must use TRTP as the primary categorical variable"
+        },
+        {
+          "id": "b6",
+          "text": "Pairwise comparisons use contrast(..., 'revpairwise', infer = TRUE) to calculate 95% CIs on differences"
+        },
+        {
+          "id": "b7",
+          "text": "Pairwise comparisons are NEVER derived from model_a (the continuous model)"
+        },
+        {
+          "id": "b8",
+          "text": "Site covariate uses SITEGR1 (pooled site group per SAP), NOT SITEID"
+        },
+        {
+          "id": "b9",
+          "text": "NO baseline covariate (BASE or similar) included \u2014 CIBIC+ has no baseline per SAP"
+        },
+        {
+          "id": "b10",
+          "text": "Population filter uses EFFFL == 'Y' (or EFFFL == \"Y\")"
+        },
+        {
+          "id": "b11",
+          "text": "Analysis flag filter uses ANL01FL == 'Y' (or ANL01FL == \"Y\")"
+        },
+        {
+          "id": "b12",
+          "text": "Endpoint visit filter uses AVISIT == 'Week 24' (or AVISIT == \"Week 24\")"
+        },
+        {
+          "id": "b13",
+          "text": "PARAMCD filter uses PARAMCD == 'CIBICVAL' (or PARAMCD == \"CIBICVAL\")"
+        },
+        {
+          "id": "b14",
+          "text": "Outcome variable is AVAL (not CHG \u2014 CIBIC+ is a global change score)"
+        }
+      ]
+    }
+  ]
+}
