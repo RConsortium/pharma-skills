@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: ia3-closed-testing
+expected_outcome: |
+  Recomputes the IA3 efficacy boundary at the actual events (Z about 2.22),
+  runs gsDose::combTest for the four intersection hypotheses containing dose 2
+  (combination Z about 2.39/2.47/2.47/2.60, all rejected), concludes by closed
+  testing that dose 2 is superior to control, and delivers a Word report with a
+  closed-testing section, one combined results JSON, and a standalone
+  reproduction R script.
