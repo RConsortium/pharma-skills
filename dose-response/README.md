@@ -1,7 +1,7 @@
-## Dose-Response Skill
-A skill for AI coding agents (Cline, Claude Code, or compatible) that generates correct R or SAS code for dose-response analyses (ANCOVA or ANOVA) where treatment is a continuous dose variable. Covers linear trend testing and pairwise group comparisons with 95% confidence intervals.
+# Dose-Response Skill
+A skill that generates R code for dose-response analyses (ANCOVA or ANOVA) where treatment is a continuous dose variable. Covers linear trend testing and pairwise group comparisons with 95% confidence intervals.
 
-### What It Does
+## What It Does
 Given a dose-response analysis request, this skill:
 1. **Identifies the analysis pattern** — trend test only, or trend test + pairwise comparisons
 2. **Enforces the two-model requirement** — generates separate models for the linear trend test (continuous treatment) and pairwise comparisons (categorical treatment), preventing the common failure of deriving pairwise contrasts from the continuous model
@@ -15,130 +15,40 @@ Given a dose-response analysis request, this skill:
 | Pattern 2 | Trend test + pairwise comparisons |
 | Pattern 2 variant | Multiple endpoints, same design |
 
-### Requirements
-**To use this skill with trial submission documents in PDF:**
-* Python virtual environment with `pypdfium2` (If you use a different PDF processor, edit `CLAUDE.md` for Claude Code or `.clinerules/pdf-reading.md` for Cline).
+## Recommendations
+To use this skill with trial submission documents in PDF, it is recommended to use a Python virtual environment with a pdf processor such as `pypdfium2` that conserves table formatting (see environment instructions in [references/submission-orientation.md](references/submission-orientation.md)).
 
-### Installation - Cline VSCode extension
-Download the `dose-response/` skill package. Copy the `dose-response/` folder into your workspace's `.agents/skills/` directory. Copy the `.clinerules/`, `references/`, and `submissions/` folders into your **workspace root**.
+## Usage
+Invoke the skill by describing the analysis naturally:
+- *"Please generate R code to perform the primary ADAS-Cog analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder."*
+- *"Please generate R code to perform the co-primary CIBIC+ analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder."*
+- *"Please generate R code to perform the primary dose-response ADAS-Cog analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder."*
+    - We have found that the skill sometimes performs better when "trigger" key words are not used in the prompt. This may be due to the agent reading through more of the submission documents rather than immediately resorting to target checks within the submission.
 
+The skill will identify the correct pattern and generate code using variable names, dose levels, covariates, and population flags extracted from the submission documents via [`references/submission-orientation.md`](references/submission-orientation.md).
 
-```bash
-# In bash, run these commands from your workspace root
-
-# 1. Create the skill directory and copy the skill package
-mkdir -p .agents/skills/
-cp -r dose-response .agents/skills/
-
-# 2. Copy root workspace dependencies (check for existing files first!)
-cp -r dose-response/.clinerules ./
-cp -r dose-response/references ./
-cp -r dose-response/submissions ./
-```
-This will give the following structure:
-
-```
-your-workspace/
-├── .clinerules/
-│   ├── workflow.md
-│   ├── pdf-reading.md
-│   └── python-environment.md
-├── .agents/
-│   └── skills/
-│       └── dose-response/
-│           ├── SKILL.md
-│           ├── DESIGN.md
-│           ├── LICENSE
-│           ├── README.md
-│           └── CLAUDE.md
-├── references/
-│   ├── submission-orientation.md
-│   └── REFERENCE.md
-└── submissions/
-    └── pilot01/
-        ├── SAP.pdf
-        ├── ADRG.pdf
-        ├── define.xml
-        └── *.csv
-```
-
-Create a Python virtual environment for PDF reading (If you prefer a different pdf processor, change the instructions in `.clinerules/pdf-reading.md`):
-```bash
-python -m venv .venv
-.venv/bin/pip install pypdfium2 
-```
-
-### Installation - Claude Code
-Download the `dose-response/` skill package. Copy the `dose-response/` folder into your project's `.claude/skills/` directory. Copy `CLAUDE.md`, `references/`, and `submissions/` folders into your **project root**.
-
-```bash
-# In bash, run these commands from your project root:
-
-# 1. Create the skill directory and copy the skill package
-mkdir -p .claude/skills/
-cp -r dose-response .claude/skills/
-
-# 2. Copy root workspace dependencies (check for existing files first!)
-cp dose-response/CLAUDE.md ./
-cp -r dose-response/references ./
-cp -r dose-response/submissions ./
-```
-
-This will give the following structure:
-
-```
-your-project/
-├── CLAUDE.md
-├── .claude/
-│   └── skills/
-│       └── dose-response/
-│           ├── SKILL.md
-│           ├── DESIGN.md
-│           ├── LICENSE
-│           ├── README.md
-│           └── CLAUDE.md
-├── references/
-│   ├── submission-orientation.md
-│   └── REFERENCE.md
-└── submissions/
-    └── pilot01/
-        ├── SAP.pdf
-        ├── ADRG.pdf
-        ├── define.xml
-        └── *.csv
-```
-
-Create a Python virtual environment for PDF reading (If you prefer a different pdf processor, change the instructions in `CLAUDE.md`):
-```bash
-python -m venv .venv
-.venv/bin/pip install pypdfium2 
-```
-
-### Usage
-Invoke the skill in Claude Code or Cline by describing the analysis naturally:
-- *"Please generate R code to perform the primary ADAS-Cog analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in `submissions/pilot01` folder."*
-- *"Please generate R code to perform the co-primary CIBIC+ analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in `submissions/pilot01` folder."*
-
-The skill will identify the correct pattern and generate code using variable names, dose levels, covariates, and population flags extracted from the submission documents via `references/submission-orientation.md`.
-
-### Key Design Principles
+## Key Design Principles
 * **Two-model requirement**: Pairwise comparisons always require a separate categorical model — never derived from the continuous trend-test model. This is the most common silent failure in dose-response code generation.
 * **emmeans correctness**: `at = list(...)` is required on the continuous model; `contrast(..., 'revpairwise', infer = TRUE)` produces CIs on differences, not on group means.
-* **Context-driven**: The skill does not perform endpoint extraction or variable mapping — it assumes the calling agent has already resolved variable names, dose levels, covariates, and file paths from the submission documents via `references/submission-orientation.md`.
-* **SAP-first**: Reading the SAP is treated as a requirement. The agent must read the SAP model specification before writing any code — general statistical knowledge is not a substitute.
+* **Document-driven** : The skill guides the agent through extracting exact model specifications, dose levels, covariates, and variable names directly from submission documents (SAP, ADRG, define.xml) via [references/submission-orientation.md](references/submission-orientation.md) before generating any R code.
 
-### Skill File Reference
+
+## Skill File Reference
 | File | Purpose |
 | ------ | ------ |
-| `SKILL.md` | Main entry point — scope, workflow steps, pattern examples, self-check |
-| `DESIGN.md` | Skill scope documentation |
-| `references/submission-orientation.md` | Required workflow for extracting endpoints and variable mappings from SAP, ADRG, and `define.xml` |
-| `references/REFERENCE.md` | General code generation rules and self-check checklist |
+| [SKILL.md](SKILL.md) | Main entry point — scope, workflow steps, pattern examples, self-check |
+| [DESIGN.md](DESIGN.md) | Skill scope documentation |
+| [references/submission-orientation.md](references/submission-orientation.md) | Required workflow for extracting endpoints and variable mappings from SAP, ADRG, and `define.xml` |
+| [references/REFERENCE.md](references/REFERENCE.md) | General code generation rules and self-check checklist |
+| [references/examples.md](references/examples.md) | R code templates for the agent|
+
+**Why code template patterns are in a separate reference file**:
+Code template patterns are separated from the main skill instructions to prevent agents from skipping the required document extraction workflow by jumping directly to code generation, resulting in incorrect variable mappings. Progressive disclosure of code patterns enforces the structured workflow so that code that adheres to the submission context.
+
 
 ### Tested On
 * CDISC pilot01 submission
-* Model: Gemma4-31B-it
-* ADaM datasets (Patterns 1/2)
+* Model: Gemma4-31B-it within Cline
 
 ### License
 [MIT](LICENSE)

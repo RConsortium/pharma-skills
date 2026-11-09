@@ -24,7 +24,7 @@ These skills produce artifacts that can feed into clinical trial design and regu
 | [statistical-reviewer](statistical-reviewer/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
 | [rounding](rounding/) | Verify rounding compliance -- ties away from zero, round-once-at-display, fixed display precision with trailing zeros. |
 | [km-digitizer](km-digitizer/) | Digitize Kaplan-Meier survival curves from published PNG images, reconstruct individual patient-level time-to-event data (IPDfromKM) with a verification gate, and generate Word reports with KM comparison plots, survival statistics, and hazard rate curves. |
-| [dose-response](dose-response/) | Extract endpoint specifications and CDISC mappings from trial submission documents (`SAP`, `ADRG`, `define.xml`) and generate R/SAS code for dose-response ANCOVA/ANOVA analyses with trend tests, pairwise comparisons, and their 95% CIs. |
+| [dose-response](dose-response/) | Extract endpoint specifications and CDISC mappings from trial submission documents (`SAP`, `ADRG`, `define.xml`) and generate R code for dose-response ANCOVA/ANOVA analyses with trend tests, pairwise comparisons, and their 95% CIs. |
 
 ## Installation
 

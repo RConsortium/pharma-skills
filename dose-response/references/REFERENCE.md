@@ -8,9 +8,8 @@ This file contains the general rules for generating statistical analysis code in
 
 - DO NOT SUBMIT ANY CODE UNTIL EVERY SINGLE RULE HAS BEEN **RECHECKED** AGAINST THE CODE YOU JUST WROTE. THERE ARE LIKELY ERRORS IN YOUR CODE.
 - Merging is a last resort if a single dataset cannot answer the user query. Before writing code that merges datasets, recheck the column names of the relevant datasets — the merge may be unnecessary.
-- Many routine statistical models have pre-packaged functions in R and SAS that output SEs and CIs. If you find yourself writing convoluted code for established statistical analyses, you are doing too much work and it will probably be wrong. Think again.
-- If the user does not request a particular coding language, ask first. In clinical trial submission contexts, R and SAS are the preferred options.
-- For R: do not write a `.R` file to source it. Write code directly.
+- Many routine statistical models have pre-packaged functions in R that output SEs and CIs. If you find yourself writing convoluted code for established statistical analyses, you are doing too much work and it will probably be wrong. Think again.
+- Do not write a `.R` file to source it. Write code directly.
 
 ---
 
@@ -22,6 +21,7 @@ Before writing code, identify the following from your context:
 - Statistical method and model specification (`statistical_method`, `statistical_model`)
 - Outcome variable (`cdisc_param` — e.g., CHG for change from baseline, AVAL for raw endpoint value)
 - Covariates (`covariates` field)
+- Grouping or pooling rules (`grouping or pooling rules` field) 
 - Endpoint visit (`endpoint_visit`)
 - Baseline visit (`baseline_visit`)
 
@@ -74,7 +74,7 @@ Apply filters in this order:
 |--------------|------|
 | N-suffixed numeric variables (e.g., `AGEGR1N`, `SEXN`, `RACEN`) | Keep as numeric — do NOT factor unless SAP explicitly states categorical |
 | Treatment variable as continuous predictor (e.g., `TRTPN` in trend model) | Keep as numeric |
-| Treatment variable as categorical (e.g., dose groups for pairwise comparisons) | Factor in R; CLASS statement in SAS |
+| Treatment variable as categorical (e.g., dose groups for pairwise comparisons) | Factor in R |
 | Site grouping variables (e.g., `SITEGR1`) and individual site (`SITEID`) | Always factor — stored as integers but represent categorical groups |
 | Any variable whose `DataType` in define.xml is `text` | Always treat as categorical |
 
@@ -97,17 +97,11 @@ Apply filters in this order:
 
 ---
 
-## ADaM Conventions
-
-- For any ADaM variable convention question, search the ADaMIG (`adam_reference.md`) before making assumptions
-- If you cannot find this file, tell the user and they will add it to the project directory
-
----
 
 ## Confidence Intervals
 
 - Always compute 95% CIs unless the SAP specifies otherwise
-- In R: use a function that computes CIs explicitly — do not assume summary output includes CIs
+- Use a function that computes CIs explicitly — do not assume summary output includes CIs
 - CIs must be on the quantities of interest (e.g., pairwise differences, LS means, etc), not on intermediate quantities (e.g., individual group means) unless both are needed.
 
 ---
@@ -117,7 +111,7 @@ Apply filters in this order:
 - Always start by reading the data file using the full file path from context
 - Always print unique `PARAMCD` and `AVISIT` values in the filtered data to allow downstream verification
 - Generate separate code blocks for each endpoint — do not share model objects across endpoints
-- Use actual variable names from context — do not use `as.formula()` with strings in R
+- Use actual variable names from context — do not use `as.formula()` with strings 
 - Prefer straightforward code over helper functions or complex abstractions
 
 ---
@@ -125,23 +119,29 @@ Apply filters in this order:
 
 ## Self-Check Checklist
 
-Before returning any code to the user, verify the following checklist line by line. Stopping early will result in errors and code that fails to run.
+Before returning any code to the user, verify the following checklist line by line. Stopping early will result in numerical errors and non-conformant code.
 
-- [ ] Does this analysis require a skill? If so, verify you followed it.
+- [ ] Does this analysis require a skill? If so, verify you followed it exactly. This is your time to go back and correct if you took shortcuts.
 - [ ] Every CDISC variable in the statistical model matches the extracted mapped variable description
 - [ ] Outcome variable matches `cdisc_param` (CHG vs AVAL)
+- [ ] PARAMCD filter value matches the parameter code confirmed in `define.xml` against the endpoint description from the SAP
+- [ ] PARAMCD value occurs in the dataset
 - [ ] Treatment variable type is correct (continuous vs categorical per model spec)
+- [ ] All covariates are mapped based on functional intent described in the SAP, cross-referenced with `define.xml`
 - [ ] N-suffixed variables are not factored unless explicitly required by SAP
-- [ ] Categorical variables (site, treatment groups, etc) are factored in R / in CLASS in SAS
+- [ ] Categorical variables (site, treatment groups, age groups, etc) are factored
+- [ ] All grouping and pooling rules quoted from the SAP. 
+- [ ] If a site pooling variable appears in the dataset, use the one that corresponds to the SAP rule for the endpoint.
 - [ ] `BASE` is used directly without reconstruction
 - [ ] `AVISIT` filter is applied explicitly
-- [ ] Analysis flag filter is applied if specified in ADRG GUIDANCE
+- [ ] Analysis flag filter is applied if specified in the ADRG 
 - [ ] 95% CIs are computed and on the correct quantities
 - [ ] `PARAMCD` and `AVISIT` are printed from filtered data
 - [ ] Separate code blocks per endpoint
-- [ ] No `as.formula()` with strings (R)
+- [ ] No `as.formula()` with strings
 - [ ] Code reads data from full file path
 - [ ] Correct dataset used for each endpoint (multi-dataset submissions)
-- [ ] ADaM variable convention questions checked against ADaMIG or user, not assumed
+- [ ] Code is not returned in a .R file
+- [ ] ADaM variable convention questions checked against `ADaMIG_v1.3.pdf` or user, not assumed
 
 If any item fails, fix the code before returning it. **PRIORITIZE CORRECTNESS OVER SPEED.**
