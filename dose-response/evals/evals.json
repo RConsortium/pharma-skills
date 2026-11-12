@@ -1,0 +1,46 @@
+{
+  "evals": [
+    {
+      "id": "dose-response-adas-cog",
+      "description": "Generate R code for the primary ADAS-Cog dose-response analysis, including trend test and pairwise comparisons.",
+      "prompt": "Please generate R code to perform the primary dose-response ADAS-Cog analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder.",
+      "assertions": [
+        {"id": "a1", "type": "code_structure", "description": "Generates two distinct models (one for trend, one for pairwise)"},
+        {"id": "a2", "type": "code_logic", "description": "Trend model uses TRTPN as a numeric/continuous predictor"},
+        {"id": "a3", "type": "code_logic", "description": "Trend model emmeans uses 'at = list(TRTPN = ...)' to evaluate at specific dose levels"},
+        {"id": "a4", "type": "code_logic", "description": "Pairwise model uses TRTP as a categorical predictor"},
+        {"id": "a5", "type": "code_logic", "description": "Pairwise model does NOT use factor(TRTPN)"},
+        {"id": "a6", "type": "code_logic", "description": "Pairwise comparisons use contrast(..., 'revpairwise', infer = TRUE)"},
+        {"id": "a7", "type": "code_logic", "description": "Pairwise comparisons are extracted from the categorical model only"},
+        {"id": "a8", "type": "code_logic", "description": "Site covariate uses SITEGR1 (pooled site group per SAP), NOT SITEID"},
+        {"id": "a9", "type": "code_logic", "description": "Baseline covariate uses BASE directly"},
+        {"id": "a10", "type": "code_logic", "description": "Filters for Efficacy Population (EFFFL == 'Y')"},
+        {"id": "a11", "type": "code_logic", "description": "Filters for Analysis Record (ANL01FL == 'Y')"},
+        {"id": "a12", "type": "code_logic", "description": "Filters for Week 24 (AVISIT == 'Week 24')"},
+        {"id": "a13", "type": "code_logic", "description": "Filters for correct parameter (PARAMCD == 'ACTOT')"},
+        {"id": "a14", "type": "code_logic", "description": "Outcome variable is CHG (Change from baseline)"}
+      ]
+    },
+    {
+      "id": "dose-response-cibic",
+      "description": "Generate R code for the co-primary CIBIC+ dose-response analysis, including trend test and pairwise comparisons.",
+      "prompt": "Please generate R code to perform the co-primary dose-response CIBIC+ analysis specified in the SAP, including pairwise treatment comparisons and their 95% CIs. The submission files can be found in submissions/pilot01 folder.",
+      "assertions": [
+        {"id": "b1", "type": "code_structure", "description": "Generates two distinct models (one for trend, one for pairwise)"},
+        {"id": "b2", "type": "code_logic", "description": "Trend model uses TRTPN as a numeric/continuous predictor"},
+        {"id": "b3", "type": "code_logic", "description": "Trend model emmeans uses 'at = list(TRTPN = ...)' to evaluate at specific dose levels"},
+        {"id": "b4", "type": "code_logic", "description": "Pairwise model uses TRTP as a categorical predictor"},
+        {"id": "b5", "type": "code_logic", "description": "Pairwise model does NOT use factor(TRTPN)"},
+        {"id": "b6", "type": "code_logic", "description": "Pairwise comparisons use contrast(..., 'revpairwise', infer = TRUE)"},
+        {"id": "b7", "type": "code_logic", "description": "Pairwise comparisons are extracted from the categorical model only"},
+        {"id": "b8", "type": "code_logic", "description": "Site covariate uses SITEGR1 (pooled site group per SAP), NOT SITEID"},
+        {"id": "b9", "type": "code_logic", "description": "Model does NOT include a baseline covariate (ANOVA, not ANCOVA)"},
+        {"id": "b10", "type": "code_logic", "description": "Filters for Efficacy Population (EFFFL == 'Y')"},
+        {"id": "b11", "type": "code_logic", "description": "Filters for Analysis Record (ANL01FL == 'Y')"},
+        {"id": "b12", "type": "code_logic", "description": "Filters for Week 24 (AVISIT == 'Week 24')"},
+        {"id": "b13", "type": "code_logic", "description": "Filters for correct parameter (PARAMCD == 'CIBICVAL')"},
+        {"id": "b14", "type": "code_logic", "description": "Outcome variable is AVAL (Raw value)"}
+      ]
+    }
+  ]
+}

@@ -22,9 +22,9 @@ These skills produce artifacts that can feed into clinical trial design and regu
 | [admiral/admiral-adpc](admiral/admiral-adpc/) | Derive ADaM Pharmacokinetic Concentrations Analysis Datasets (ADPC / ADNCA) from SDTM PC and EX. Covers nominal and actual dose-relative times, dosing records, BLQ handling, and NCA-ready output. |
 | [clinical-trial-ipd-sim](clinical-trial-ipd-sim/) | Generate synthetic IPD, source CRFs, SDTM, ADaM, and exports for registered clinical trials using an R/pharmaverse g-formula causal-DAG workflow calibrated to posted protocol and results. |
 | [statistical-reviewer](statistical-reviewer/) | Simulate an independent statistical reviewer auditing a clinical trial submission package (SDTM, ADaM, TLF, SAP, CSR) — reproducing endpoints, tracing results across data layers, flagging population inconsistencies, and assessing data realism. |
-| [rounding](rounding/) | Verify rounding compliance -- ties away
-from zero, round-once-at-display, fixed display precision with trailing zeros. |
+| [rounding](rounding/) | Verify rounding compliance -- ties away from zero, round-once-at-display, fixed display precision with trailing zeros. |
 | [km-digitizer](km-digitizer/) | Digitize Kaplan-Meier survival curves from published PNG images, reconstruct individual patient-level time-to-event data (IPDfromKM) with a verification gate, and generate Word reports with KM comparison plots, survival statistics, and hazard rate curves. |
+| [dose-response](dose-response/) | Extract endpoint specifications and CDISC mappings from trial submission documents (`SAP`, `ADRG`, `define.xml`) and generate R code for dose-response ANCOVA/ANOVA analyses with trend tests, pairwise comparisons, and their 95% CIs. |
 
 ## Installation
 
