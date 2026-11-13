@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: design-boundaries-vignette
+expected_outcome: |
+  Derives the stage weights w from expected events via gsDesign2 (FA row about
+  0.850/0.414/0.327), computes design-stage OBF efficacy boundaries with
+  gsDose::gsBoundary of about Z = 2.96 (IA2), 2.27 (IA3), 2.03 (FA), and
+  delivers a bundle with a Word report (design assumptions, analysis plan,
+  boundary table), a machine-readable JSON of the results, and a standalone
+  R script that reproduces the boundaries with inlined values.
