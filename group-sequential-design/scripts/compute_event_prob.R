@@ -21,20 +21,21 @@
 compute_event_prob <- function(analysis_time, lambdaC, hr, eta,
                                 gamma_vec, R_vec, ratio = 1,
                                 S = NULL, n_quad = 50) {
-  # Cumulative hazard function (handles piecewise)
-  cum_hazard <- function(t, lambda_vec, S_vec) {
-    if (is.null(S_vec) || length(lambda_vec) == 1) {
-      return(lambda_vec[1] * t)
-    }
-    breaks <- c(0, S_vec, Inf)
-    H <- 0
+  # P(event by time t) with dropout as a competing risk (handles piecewise):
+  # integral of lambda(u) * exp(-H(u) - eta * u) du, closed form per piece
+  event_cdf <- function(t, lambda_vec, S_vec) {
+    breaks <- if (is.null(S_vec) || length(lambda_vec) == 1) c(0, Inf) else c(0, S_vec, Inf)
+    p <- 0
+    surv <- 1
     for (j in seq_along(lambda_vec)) {
       t_lo <- breaks[j]
       t_hi <- min(t, breaks[j + 1])
       if (t_lo >= t) break
-      H <- H + lambda_vec[j] * (t_hi - t_lo)
+      h <- lambda_vec[j] + eta
+      p <- p + surv * lambda_vec[j] / h * (1 - exp(-h * (t_hi - t_lo)))
+      surv <- surv * exp(-h * (t_hi - t_lo))
     }
-    H
+    p
   }
 
   # Treatment hazard vector = lambdaC * hr (proportional hazards)
@@ -62,24 +63,22 @@ compute_event_prob <- function(analysis_time, lambdaC, hr, eta,
     # Quadrature points (midpoints of sub-intervals)
     t_enroll <- seq(s_start, s_end, length.out = n_quad + 1)
     t_mid <- (t_enroll[-1] + t_enroll[-(n_quad + 1)]) / 2
+    # Each quadrature point stands for rate * dur / n_quad patients
+    w <- rate * dur / n_quad
 
     for (t_e in t_mid) {
       fup <- analysis_time - t_e
       if (fup <= 0) next
 
-      # Survival for control and treatment arms
-      H_ctrl <- cum_hazard(fup, lambdaC, S)
-      H_trt  <- cum_hazard(fup, lambdaE, S)
-      s_ctrl <- exp(-H_ctrl - eta * fup)
-      s_trt  <- exp(-H_trt  - eta * fup)
+      # P(event) for control and treatment arms; dropouts are not events
+      p_ctrl <- event_cdf(fup, lambdaC, S)
+      p_trt  <- event_cdf(fup, lambdaE, S)
 
       # P(event) averaged across arms weighted by allocation ratio
-      p_ctrl <- 1 - s_ctrl
-      p_trt  <- 1 - s_trt
       p_avg  <- (p_ctrl / (1 + ratio)) + (p_trt * ratio / (1 + ratio))
 
-      weighted_prob <- weighted_prob + p_avg
-      total_weight  <- total_weight + 1
+      weighted_prob <- weighted_prob + w * p_avg
+      total_weight  <- total_weight + w
     }
   }
 
